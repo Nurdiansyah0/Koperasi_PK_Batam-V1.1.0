@@ -10,7 +10,7 @@ class Barang extends Model
     protected $primaryKey = 'barang_id';
     
     // Disable timestamps if not present in the old schema
-    public $timestamps = true; 
+    public $timestamps = false; 
 
     protected $fillable = [
         'nama_barang',

@@ -20,6 +20,7 @@ class AdminController extends Controller
         if ($request->user()->role !== 'admin') {
             abort(403, 'Unauthorized');
         }
+        return $request->user()->user_id;
     }
 
     public function getDashboardStats(Request $request)
@@ -266,7 +267,7 @@ class AdminController extends Controller
         $setoran = SetoranKasir::find($request->setoran_id);
         if ($setoran) {
             $setoran->status = 'approved';
-            $setoran->approved_at = Carbon::now();
+            $setoran->approved_by = $request->user()->user_id;
             $setoran->save();
             return response()->json(['success' => true, 'message' => 'Setoran disetujui']);
         }

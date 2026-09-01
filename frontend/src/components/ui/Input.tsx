@@ -5,10 +5,11 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string
   error?: string
   icon?: ReactNode
+  rightElement?: ReactNode
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, required, icon, ...props }, ref) => {
+  ({ className, label, error, required, icon, rightElement, ...props }, ref) => {
     return (
       <div className="w-full space-y-1.5">
         {label && (
@@ -18,7 +19,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
         <div className="relative flex items-center">
           {icon && (
-            <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center justify-center">
+            <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center justify-center z-10">
               {icon}
             </div>
           )}
@@ -29,12 +30,18 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               'focus-visible:border-blue-500 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-blue-500/15',
               'disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100',
               icon && 'pl-10',
+              rightElement && 'pr-10',
               error && 'border-rose-400 focus-visible:border-rose-500 focus-visible:ring-rose-500/15',
               className
             )}
             required={required}
             {...props}
           />
+          {rightElement && (
+            <div className="absolute right-3 text-slate-400 flex items-center justify-center z-10">
+              {rightElement}
+            </div>
+          )}
         </div>
         {error && <p className="text-xs font-medium text-rose-500 mt-1">{error}</p>}
       </div>

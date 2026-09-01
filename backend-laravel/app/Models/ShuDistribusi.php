@@ -20,6 +20,10 @@ class ShuDistribusi extends Model
         'created_at'
     ];
 
+    protected $casts = [
+        'created_at' => 'datetime'
+    ];
+
     public function anggota()
     {
         return $this->belongsTo(Anggota::class, 'anggota_id', 'anggota_id');

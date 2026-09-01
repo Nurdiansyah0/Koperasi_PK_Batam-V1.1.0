@@ -99,8 +99,10 @@ describe('Fitur Keranjang Kasir (Transaksi POS)', () => {
     await user.click(screen.getByText('Kopi Kapal Api'))
     
     // Select Anggota
-    const combobox = screen.getByRole('combobox')
-    await user.selectOptions(combobox, '1')
+    const anggotaInput = screen.getByPlaceholderText('Ketik nama anggota...')
+    await user.type(anggotaInput, 'Budi Santoso')
+    const anggotaOption = await screen.findByText('Budi Santoso')
+    await user.click(anggotaOption)
     
     // Select Metode Hutang
     await user.click(screen.getByText('Hutang'))

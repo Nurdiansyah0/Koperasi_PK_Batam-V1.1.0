@@ -542,11 +542,6 @@ class KasirController extends Controller
         try {
             $anggota = Anggota::lockForUpdate()->find($request->anggota_id);
             if (!$anggota) throw new \Exception("Anggota tidak ditemukan");
-                $limit_hutang = $anggota->saldo + 100000; // Saldo + 100k allowance
-                if (($anggota->hutang + $totalHarga) > $limit_hutang) {
-                    $sisa_limit = $limit_hutang - $anggota->hutang;
-                    throw new \Exception("Gagal: Limit hutang Koperasi tidak mencukupi. Sisa limit Anda: Rp " . number_format($sisa_limit, 0, ',', '.'));
-                }
 
             if ($anggota->saldo < $request->nominal) throw new \Exception("Saldo tidak mencukupi");
 

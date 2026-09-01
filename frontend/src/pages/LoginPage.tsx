@@ -5,13 +5,15 @@ import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { User, Lock, AlertCircle, ShieldCheck } from 'lucide-react'
+import { User, Lock, AlertCircle, ShieldCheck, Eye, EyeOff } from 'lucide-react'
 import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt'
 import toast from 'react-hot-toast'
 
 export function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
@@ -93,13 +95,47 @@ export function LoginPage() {
               <Input
                 label="Password"
                 icon={<Lock className="w-4 h-4" />}
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="Masukkan password"
                 autoComplete="current-password"
+                rightElement={
+                  <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                }
               />
+            </div>
+
+            <div className="flex items-center justify-between text-sm pt-1">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <div className="relative flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <div className="w-4 h-4 rounded border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800 peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all flex items-center justify-center">
+                    <svg className="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </div>
+                </div>
+                <span className="text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-300 transition-colors select-none text-xs sm:text-sm">
+                  Ingat saya
+                </span>
+              </label>
+              
+              <a href="#" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold transition-colors text-xs sm:text-sm focus:outline-none focus-visible:underline">
+                Lupa password?
+              </a>
             </div>
 
             <Button 
@@ -117,6 +153,16 @@ export function LoginPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Footer */}
+      <div className="mt-8 text-center z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <p className="text-slate-400 dark:text-slate-500 text-xs sm:text-sm">
+          &copy; 2025 Koperasi PK Batam. All rights reserved.
+        </p>
+        <p className="text-slate-500/80 dark:text-slate-600 text-[10px] sm:text-xs mt-1">
+          Version 1.1.0
+        </p>
+      </div>
 
       <PwaInstallPrompt />
     </div>

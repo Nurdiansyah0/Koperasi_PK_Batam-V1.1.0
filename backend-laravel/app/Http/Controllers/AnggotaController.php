@@ -30,6 +30,7 @@ class AnggotaController extends Controller
 
     public function getProfil(Request $request)
     {
+        $anggotaId = $this->getAnggotaId($request); // Ensure user is anggota
         $user = $request->user();
         $anggota = $user->anggota;
 
@@ -67,7 +68,7 @@ class AnggotaController extends Controller
             'items.*.jumlah' => 'required|integer|min:1',
         ]);
 
-        $anggotaId = $request->user()->anggota->anggota_id;
+        $anggotaId = $this->getAnggotaId($request);
         $metode = $request->metode_pembayaran;
         $items = $request->items;
 

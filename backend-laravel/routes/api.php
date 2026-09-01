@@ -72,5 +72,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/monitor-barang', [AdminController::class, 'getMonitorBarang']);
         Route::get('/shu-distribusi', [AdminController::class, 'getShuDistribusi']);
         Route::get('/data-kasir', [AdminController::class, 'getDataKasir']);
+        Route::post('/restock-barang', [AdminController::class, 'restockBarang']);
+        Route::get('/riwayat-restock', [AdminController::class, 'getRiwayatRestock']);
     });
 });

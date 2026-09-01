@@ -14,8 +14,12 @@ class SetoranKasir extends Model
         'kasir_id',
         'nominal',
         'status',
-        'approved_at',
+        'approved_by',
         'created_at'
+    ];
+
+    protected $casts = [
+        'created_at' => 'datetime',
     ];
 
     public function kasir()

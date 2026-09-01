@@ -8,6 +8,7 @@ class PembayaranHutang extends Model
 {
     protected $table = 'pembayaran_hutang';
     protected $primaryKey = 'pembayaran_id';
+    const UPDATED_AT = null;
 
     protected $fillable = [
         'anggota_id',
