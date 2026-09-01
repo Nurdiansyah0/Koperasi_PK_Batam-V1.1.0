@@ -16,9 +16,9 @@ export default defineConfig({
       },
       includeAssets: ['favicon.svg', 'Logo.svg', 'robots.txt'],
       manifest: {
-        name: 'Koperasi Karyawan PK Batam',
-        short_name: 'Koperasi PK',
-        description: 'Sistem Informasi & Kasir Koperasi Karyawan PK Batam',
+        name: 'Koperasi Karyawan PKPPK BTH',
+        short_name: 'Koperasi PKPPK',
+        description: 'Sistem Informasi & Kasir Koperasi Karyawan PKPPK BTH',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
@@ -63,7 +63,11 @@ export default defineConfig({
     host: '0.0.0.0', // Exposes network IP so mobile phones can connect over Wi-Fi
     port: 5173,
     proxy: {
-      // All /api traffic goes to the Laravel backend (port 8001)
+      // All /laravel and /api traffic goes to the Laravel backend (port 8001)
+      '/laravel': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+      },
       '/api': {
         target: 'http://localhost:8001',
         changeOrigin: true,

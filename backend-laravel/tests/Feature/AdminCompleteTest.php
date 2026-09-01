@@ -247,20 +247,21 @@ class AdminCompleteTest extends TestCase
 
     public function test_tambah_user_exception()
     {
-        // To trigger the catch (\Exception $e) block, we can bypass Laravel's validation
-        // by sending a username that exceeds the DB string length limit (usually 255 chars).
-        // It will pass the controller's 'string' validation but fail at the PDO execution level.
-        $longUsername = str_repeat('a', 300);
+        User::saving(function () {
+            throw new \Exception('Simulated database failure');
+        });
 
         $response = $this->withHeader('Authorization', "Bearer {$this->token}")
                          ->postJson('/laravel/api/admin/tambah-user', [
-                             'username' => $longUsername,
+                             'username' => 'test_user_ex',
                              'password' => 'password',
                              'role' => 'anggota'
                          ]);
         
         $response->assertStatus(400);
-        $this->assertStringContainsString('Data too long', $response->json('message') ?? '');
+        $this->assertStringContainsString('Simulated database failure', $response->json('message') ?? '');
+        User::flushEventListeners();
+        User::boot();
     }
 
     public function test_submit_opname_massal_exception()
@@ -292,18 +293,21 @@ class AdminCompleteTest extends TestCase
     public function test_restock_barang_exception()
     {
         $barang = Barang::first();
-        // Send a sumber_dana that exceeds 255 chars to trigger a PDO exception
-        $longSumber = str_repeat('a', 300);
+        \App\Models\RiwayatRestock::saving(function () {
+            throw new \Exception('Simulated database failure');
+        });
 
         $response = $this->withHeader('Authorization', "Bearer {$this->token}")
                          ->postJson('/laravel/api/admin/restock-barang', [
                              'barang_id' => $barang->barang_id,
                              'jumlah_tambah' => 10,
                              'harga_beli_satuan' => 5000,
-                             'sumber_dana' => $longSumber
+                             'sumber_dana' => 'Kas Koperasi'
                          ]);
         
         $response->assertStatus(500);
-        $this->assertStringContainsString('Data too long', $response->json('message') ?? '');
+        $this->assertStringContainsString('Simulated database failure', $response->json('message') ?? '');
+        \App\Models\RiwayatRestock::flushEventListeners();
+        \App\Models\RiwayatRestock::boot();
     }
 }

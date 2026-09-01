@@ -7,8 +7,9 @@ use App\Http\Controllers\AnggotaController;
 use App\Http\Controllers\KasirController;
 use App\Http\Controllers\AdminController;
 
-// Public routes
-Route::post('/login', [AuthController::class, 'login']);
+// Public routes with rate limiting
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+Route::post('/reset-password', [AuthController::class, 'resetPasswordWithChallenge'])->middleware('throttle:5,1');
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -20,6 +21,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('anggota')->group(function () {
         Route::get('/profil', [AnggotaController::class, 'getProfil']);
         Route::get('/barang', [AnggotaController::class, 'getDataBarangBelanja']);
+        Route::get('/paket-belanja', [AnggotaController::class, 'getPaketBelanja']);
         Route::post('/transaksi', [AnggotaController::class, 'simpanTransaksi']);
         Route::get('/transaksi', [AnggotaController::class, 'getHistoriTransaksi']);
         Route::post('/bayar-hutang', [AnggotaController::class, 'bayarHutang']);
@@ -74,5 +76,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/data-kasir', [AdminController::class, 'getDataKasir']);
         Route::post('/restock-barang', [AdminController::class, 'restockBarang']);
         Route::get('/riwayat-restock', [AdminController::class, 'getRiwayatRestock']);
+    });
+
+    // AI & Gemini Integration Module
+    Route::prefix('ai')->group(function () {
+        Route::get('/status', [\App\Http\Controllers\AiController::class, 'status']);
+        Route::post('/chat', [\App\Http\Controllers\AiController::class, 'chat']);
+        Route::get('/insights', [\App\Http\Controllers\AiController::class, 'getInsights']);
+        Route::post('/scan-invoice', [\App\Http\Controllers\AiController::class, 'scanInvoice']);
     });
 });

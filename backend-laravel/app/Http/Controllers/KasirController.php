@@ -409,7 +409,7 @@ class KasirController extends Controller
     {
         $this->checkKasir($request);
         $pembayaran = PembayaranHutang::with(['anggota', 'kasir'])
-            ->orderByRaw("FIELD(status, 'pending', 'approved', 'rejected')")
+            ->orderByRaw("CASE status WHEN 'pending' THEN 1 WHEN 'approved' THEN 2 WHEN 'rejected' THEN 3 ELSE 4 END")
             ->orderBy('created_at', 'desc')
             ->get()->map(function($p) {
                 return [

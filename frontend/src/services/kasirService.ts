@@ -46,7 +46,7 @@ export const kasirService = {
 
   
   tolakPesananAnggota: async (transaksiId: number | number[], alasan?: string): Promise<ApiResponse> => {
-    const response = await api.post('/kasir/tolak-pesanan-anggota', { 
+    const response = await api.post('/laravel/api/kasir/tolak-pesanan-anggota', { 
       transaksi_ids: Array.isArray(transaksiId) ? transaksiId : [transaksiId], 
       alasan 
     })

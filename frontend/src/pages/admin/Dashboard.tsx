@@ -4,6 +4,7 @@ import { adminService } from '@/services/adminService'
 import { DashboardAdmin } from '@/types'
 import { formatRupiah } from '@/lib/utils'
 import { IosBottomSheet } from '@/components/ios/IosBottomSheet'
+import { AiBusinessInsightsCard } from '@/components/ai/AiBusinessInsightsCard'
 import {
   TrendingUp, ArrowUpRight, ShoppingBag,
   CreditCard, Wallet, Package, Gift, Users,
@@ -55,7 +56,7 @@ export function AdminDashboard() {
         <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
           Dashboard Admin
         </h1>
-        <p className="text-xs text-slate-500 mt-0.5">Ringkasan operasional Koperasi PK Batam</p>
+        <p className="text-xs text-slate-500 mt-0.5">Ringkasan operasional Koperasi Karyawan PKPPK BTH</p>
       </div>
 
       {/* ── Hero: Pendapatan Hari Ini (full width) ── */}
@@ -218,6 +219,9 @@ export function AdminDashboard() {
         </div>
       </div>
 
+      {/* ── Google AI Studio / Gemini Business Insights ── */}
+      <AiBusinessInsightsCard />
+
       {/* --- Detail Matrix Bottom Sheets --- */}
       
       {/* Pendapatan Sheet */}
@@ -335,7 +339,7 @@ export function AdminDashboard() {
               <span className={`font-bold ${realHutangRatio > 80 ? 'text-rose-600' : realHutangRatio > 50 ? 'text-amber-600' : 'text-emerald-600'}`}>{realHutangRatio}%</span>
             </div>
           </div>
-          <p className="text-xs text-slate-500 text-center">Uang Koperasi yang sedang berada di tangan anggota (belum dilunasi/potong gaji).</p>
+          <p className="text-xs text-slate-500 text-center">Total pinjaman/belanja kredit yang sedang berjalan dan belum disetorkan ke kasir.</p>
           <button onClick={() => navigate('/admin/anggota')} className="w-full py-3 bg-rose-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
             Pantau Hutang Anggota
           </button>

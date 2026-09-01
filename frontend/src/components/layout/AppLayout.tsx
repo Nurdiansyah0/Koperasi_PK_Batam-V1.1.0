@@ -5,7 +5,7 @@ import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
 import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt'
 import { useAuthStore } from '@/store/authStore'
-import { LogOut, Menu, UserCircle2 } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 
 export function AppLayout() {
   const { user, isAuthenticated, logout } = useAuthStore()
@@ -32,9 +32,15 @@ export function AppLayout() {
           <div className="flex items-center gap-2.5">
             <div className="flex items-center gap-2">
               <img src="/Logo.svg" alt="Logo" className="w-7 h-7 rounded-lg shadow-2xs" />
-              <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white">
-                Koperasi PK
-              </span>
+              <div className="flex flex-col">
+                <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white leading-none">
+                  Koperasi PKPPK BTH
+                </span>
+                <span className="flex items-center gap-1 text-[9px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live System
+                </span>
+              </div>
             </div>
           </div>
 
@@ -43,7 +49,7 @@ export function AppLayout() {
               onClick={() => navigate(user.role === 'anggota' ? '/anggota/profil' : `/${user.role}`)}
               className="flex items-center gap-2 py-1 px-2.5 rounded-full bg-slate-100 dark:bg-zinc-800/80 active:scale-95 transition-transform"
             >
-              <div className="w-5 h-5 rounded-full bg-blue-600 text-white font-extrabold text-[10px] flex items-center justify-center">
+              <div className="w-5 h-5 rounded-full bg-blue-600 text-white font-extrabold text-[10px] flex items-center justify-center shadow-xs">
                 {user.username.charAt(0).toUpperCase()}
               </div>
               <span className="text-xs font-bold text-slate-700 dark:text-slate-200 capitalize">

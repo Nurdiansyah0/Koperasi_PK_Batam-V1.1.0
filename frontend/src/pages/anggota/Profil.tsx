@@ -84,14 +84,24 @@ export function ProfilPage() {
       {/* 2. Apple Settings: Keuangan & Saldo */}
       <IosListSection title="Informasi Keuangan">
         <IosListItem
-          title="Saldo Simpanan"
-          subtitle="Tersedia untuk transaksi"
+          title="Saldo Bebas"
+          subtitle="Tersedia untuk transaksi belanja"
           value={<span className="font-bold text-blue-600">{formatRupiah(profil?.saldo || 0)}</span>}
         />
         <IosListItem
+          title="Simpanan Pokok"
+          subtitle="Jaminan resmi (collateral) limit kredit"
+          value={<span className="font-bold text-amber-600">{formatRupiah(profil?.simpanan_pokok || (profil ? (profil.saldo + profil.hutang) : 400000))}</span>}
+        />
+        <IosListItem
           title="Total Hutang"
-          subtitle="Potong gaji bulanan"
+          subtitle="Belanja kredit belum lunas"
           value={<span className="font-bold text-rose-600">{formatRupiah(profil?.hutang || 0)}</span>}
+        />
+        <IosListItem
+          title="Sisa Pagu Kredit"
+          subtitle="Batas belanja hutang tersedia"
+          value={<span className="font-bold text-emerald-600">{formatRupiah(profil?.sisa_limit_hutang || 0)}</span>}
         />
         <IosListItem
           title="SHU Berjalan"

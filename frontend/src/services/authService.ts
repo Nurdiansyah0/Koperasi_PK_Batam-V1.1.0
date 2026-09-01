@@ -21,4 +21,14 @@ export const authService = {
     })
     return data
   },
+
+  resetPasswordWithChallenge: async (payload: {
+    username: string
+    digit_hutang: string
+    digit_shu: string
+    password_baru: string
+  }): Promise<ApiResponse> => {
+    const { data } = await api.post<ApiResponse>('/laravel/api/reset-password', payload)
+    return data
+  },
 }

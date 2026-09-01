@@ -70,8 +70,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="flex items-center gap-3">
             <img src="/Logo.svg" alt="Logo Koperasi" className="w-9 h-9 bg-white rounded-xl p-1 shadow-sm" />
             <div>
-              <h2 className="text-base font-bold tracking-tight text-white leading-tight">Koperasi PK</h2>
-              <p className="text-[10px] text-blue-400 font-semibold uppercase tracking-wider">Koperasi Batam</p>
+              <h2 className="text-base font-bold tracking-tight text-white leading-tight">Koperasi PKPPK</h2>
+              <p className="text-[10px] text-blue-400 font-semibold uppercase tracking-wider">Karyawan BTH</p>
             </div>
           </div>
           {onClose && (

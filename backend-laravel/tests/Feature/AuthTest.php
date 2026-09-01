@@ -105,8 +105,8 @@ class AuthTest extends TestCase
         ]);
 
         // 3. Assert
-        $response->assertStatus(200)
-                 ->assertJsonPath('user.saldo', '10000.00');
+        $response->assertStatus(200);
+        $this->assertEquals(10000, (float)$response->json('user.saldo'));
     }
 
     public function test_it_can_get_current_user_profile()
@@ -137,5 +137,110 @@ class AuthTest extends TestCase
             'tokenable_id' => $user->user_id,
             'name' => 'test_logout'
         ]);
+    }
+
+    public function test_reset_password_with_valid_challenge()
+    {
+        $user = User::create([
+            'username' => 'anggota_reset_' . rand(1000, 9999),
+            'password_hash' => Hash::make('oldpassword'),
+            'role' => 'anggota'
+        ]);
+
+        $anggota = \App\Models\Anggota::create([
+            'user_id' => $user->user_id,
+            'nama_lengkap' => 'Anggota Reset Test',
+            'no_identitas' => '87654321',
+            'email' => 'reset@example.com',
+            'saldo' => 500000,
+            'hutang' => 350000, // 2 digit depan = '35'
+            'shu' => 1458750,  // 3 digit belakang = '750'
+            'created_at' => now(),
+        ]);
+
+        // Success test
+        $response = $this->postJson('/laravel/api/reset-password', [
+            'username' => $user->username,
+            'digit_hutang' => '35',
+            'digit_shu' => '750',
+            'password_baru' => 'newpassword123',
+        ]);
+
+        $response->assertStatus(200)
+                 ->assertJson(['success' => true]);
+
+        $user->refresh();
+        $this->assertTrue(Hash::check('newpassword123', $user->password_hash));
+    }
+
+    public function test_reset_password_fails_with_invalid_challenge()
+    {
+        $user = User::create([
+            'username' => 'anggota_fail_' . rand(1000, 9999),
+            'password_hash' => Hash::make('oldpassword'),
+            'role' => 'anggota'
+        ]);
+
+        \App\Models\Anggota::create([
+            'user_id' => $user->user_id,
+            'nama_lengkap' => 'Anggota Fail Test',
+            'no_identitas' => '87654322',
+            'saldo' => 500000,
+            'hutang' => 350000,
+            'shu' => 1458750,
+            'created_at' => now(),
+        ]);
+
+        $response = $this->postJson('/laravel/api/reset-password', [
+            'username' => $user->username,
+            'digit_hutang' => '99', // Wrong
+            'digit_shu' => '750',
+            'password_baru' => 'newpassword123',
+        ]);
+
+        $response->assertStatus(422)
+                 ->assertJson(['success' => false]);
+    }
+
+    public function test_reset_password_fails_if_username_not_found()
+    {
+        $response = $this->postJson('/laravel/api/reset-password', [
+            'username' => 'nonexistent_user_99999',
+            'digit_hutang' => '10',
+            'digit_shu' => '123',
+            'password_baru' => 'newpassword123',
+        ]);
+
+        $response->assertStatus(404)
+                 ->assertJson(['success' => false]);
+    }
+
+    public function test_reset_password_fails_if_shu_wrong()
+    {
+        $user = User::create([
+            'username' => 'anggota_shu_fail_' . rand(1000, 9999),
+            'password_hash' => Hash::make('oldpassword'),
+            'role' => 'anggota'
+        ]);
+
+        \App\Models\Anggota::create([
+            'user_id' => $user->user_id,
+            'nama_lengkap' => 'Anggota SHU Fail Test',
+            'no_identitas' => '87654323',
+            'saldo' => 500000,
+            'hutang' => 350000,
+            'shu' => 1458750,
+            'created_at' => now(),
+        ]);
+
+        $response = $this->postJson('/laravel/api/reset-password', [
+            'username' => $user->username,
+            'digit_hutang' => '35', // Correct
+            'digit_shu' => '999',  // Wrong
+            'password_baru' => 'newpassword123',
+        ]);
+
+        $response->assertStatus(422)
+                 ->assertJson(['success' => false]);
     }
 }

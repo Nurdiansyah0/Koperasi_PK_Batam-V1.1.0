@@ -21,11 +21,17 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle 401 globally — token expired or invalid
+// Handle 401 globally — token expired or invalid on protected routes
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthRoute =
+      error.config?.url?.includes('/login') ||
+      error.config?.url?.includes('/reset-password') ||
+      window.location.pathname === '/login' ||
+      window.location.pathname === '/reset-password'
+
+    if (error.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       window.location.href = '/login'

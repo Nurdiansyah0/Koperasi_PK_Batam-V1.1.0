@@ -18,6 +18,7 @@ export function TransaksiKasir() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [search, setSearch] = useState('')
   const [metodePembayaran, setMetodePembayaran] = useState<'cash' | 'qr' | 'transfer' | 'hutang' | 'ewallet'>('cash')
+  const [uangDiterima, setUangDiterima] = useState<number | ''>('')
   const [loading, setLoading] = useState(false)
   const [selectedAnggota, setSelectedAnggota] = useState<number | ''>('')
   const [searchAnggota, setSearchAnggota] = useState('')
@@ -359,6 +360,52 @@ export function TransaksiKasir() {
                 ))}
               </div>
             </div>
+
+            {/* Smart Cash Kembalian Calculator */}
+            {metodePembayaran === 'cash' && (
+              <div className="p-3 bg-blue-50/60 dark:bg-blue-950/40 rounded-2xl border border-blue-200/60 dark:border-blue-900/40 space-y-2.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-slate-700 dark:text-zinc-300">Uang Diterima:</span>
+                  <input
+                    type="number"
+                    value={uangDiterima}
+                    onChange={(e) => setUangDiterima(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="Contoh: 50000"
+                    className="w-36 text-right px-2.5 py-1.5 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* Quick Presets */}
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setUangDiterima(total)}
+                    className="text-[10px] font-bold px-2 py-1 rounded-md bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 active:scale-95"
+                  >
+                    Uang Pas
+                  </button>
+                  {[20000, 50000, 100000].map(val => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setUangDiterima(val)}
+                      className="text-[10px] font-semibold px-2 py-1 rounded-md bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-slate-700 dark:text-zinc-300 hover:bg-slate-50 active:scale-95"
+                    >
+                      {formatRupiah(val)}
+                    </button>
+                  ))}
+                </div>
+
+                {typeof uangDiterima === 'number' && uangDiterima > 0 && (
+                  <div className="flex justify-between items-center pt-2 border-t border-blue-200/50 dark:border-blue-900/50 text-xs">
+                    <span className="font-bold text-slate-600 dark:text-zinc-400">Kembalian:</span>
+                    <span className={`font-black text-sm ${uangDiterima >= total ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                      {uangDiterima >= total ? formatRupiah(uangDiterima - total) : `Kurang ${formatRupiah(total - uangDiterima)}`}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             <Button 
               className="w-full h-12 text-base font-bold shadow-md mt-2" 

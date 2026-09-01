@@ -7,7 +7,7 @@ import { IosListSection, IosListItem } from '@/components/ios/IosList'
 import { IosBottomSheet } from '@/components/ios/IosBottomSheet'
 import { formatRupiah, formatDate } from '@/lib/utils'
 import type { ProfilAnggota, HistoriTransaksiAnggota } from '@/types'
-import { ShoppingBag, CreditCard, History, UserCircle, ArrowUpRight, CheckCircle2, QrCode } from 'lucide-react'
+import { ShoppingBag, CreditCard, History, UserCircle, ArrowUpRight, CheckCircle2, QrCode, ShieldCheck } from 'lucide-react'
 
 export function AnggotaDashboard() {
   const { user } = useAuthStore()
@@ -38,75 +38,78 @@ export function AnggotaDashboard() {
     )
   }
 
-  const quickActions = [
-    { label: 'Belanja', icon: ShoppingBag, color: 'bg-blue-600', to: '/anggota/belanja' },
-    { label: 'Bayar Hutang', icon: CreditCard, color: 'bg-rose-500', to: '/anggota/bayar-hutang' },
-    { label: 'Riwayat', icon: History, color: 'bg-amber-500', to: '/anggota/riwayat' },
-    { label: 'Profil Saya', icon: UserCircle, color: 'bg-slate-700', to: '/anggota/profil' },
-  ]
+
+
+  const simpananPokok = profil?.simpanan_pokok ?? (profil ? Math.max(400000, (profil.saldo || 0) + (profil.hutang || 0)) : 400000)
+  const limitHutang = profil?.limit_hutang ?? simpananPokok
+  const sisaLimitHutang = profil?.sisa_limit_hutang ?? Math.max(0, limitHutang - (profil?.hutang || 0))
+  const hutang = profil?.hutang || 0
+  const persentaseTerpakai = Math.min(100, Math.round((hutang / limitHutang) * 100))
 
   return (
-    <div className="space-y-6 pb-16 max-w-lg mx-auto">
-      {/* 1. Apple Wallet Membership Card */}
-      <IosMemberCard
-        nama={profil?.nama_lengkap || user?.username || 'Anggota'}
-        username={user?.username || ''}
-        saldo={profil?.saldo || 0}
-        hutang={profil?.hutang || 0}
-        shu={profil?.shu || 0}
-        anggotaId={profil?.anggota_id || user?.anggota_id}
-        onShowQR={() => setShowQrModal(true)}
-      />
+    <div className="pb-16 max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+        
+        {/* Left Column: Digital Member Card */}
+        <div className="md:col-span-6 space-y-4">
+          <IosMemberCard
+            nama={profil?.nama_lengkap || user?.username || 'Anggota'}
+            username={user?.username || ''}
+            saldo={profil?.saldo || 0}
+            simpananPokok={simpananPokok}
+            limitHutang={limitHutang}
+            sisaLimitHutang={sisaLimitHutang}
+            hutang={hutang}
+            shu={profil?.shu || 0}
+            anggotaId={profil?.anggota_id || user?.anggota_id}
+            onShowQR={() => setShowQrModal(true)}
+          />
 
-      {/* 2. iOS Quick Actions Bar */}
-      <div className="grid grid-cols-4 gap-3 px-1">
-        {quickActions.map((action) => {
-          const Icon = action.icon
-          return (
-            <button
-              key={action.label}
-              onClick={() => navigate(action.to)}
-              className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform group"
-            >
-              <div className={`w-14 h-14 rounded-2xl ${action.color} text-white flex items-center justify-center shadow-sm shadow-slate-300 dark:shadow-none group-hover:brightness-105 transition-all`}>
-                <Icon className="w-6 h-6" />
-              </div>
-              <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 text-center tracking-tight leading-tight">
-                {action.label}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* 3. Inset Grouped Recent Activity */}
-      <IosListSection title="Transaksi Terbaru" footer="Menampilkan 5 transaksi terakhir">
-        {transaksi.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-400">
-            Belum ada transaksi
+          {/* Quick Account Summary */}
+          <div className="p-4 bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-3xl shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-slate-500">Status Keanggotaan</p>
+              <p className="text-sm font-black text-slate-900 dark:text-white mt-0.5">Anggota Aktif Koperasi</p>
+            </div>
+            <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+              Terverifikasi
+            </span>
           </div>
-        ) : (
-          transaksi.map((t) => (
-            <IosListItem
-              key={t.transaksi_id}
-              icon={<ShoppingBag className="w-4 h-4" />}
-              iconBgColor={t.metode_pembayaran === 'hutang' ? 'bg-rose-500' : 'bg-blue-600'}
-              title={`Belanja #${t.transaksi_id}`}
-              subtitle={formatDate(t.created_at)}
-              value={
-                <div className="text-right">
-                  <p className="font-bold text-sm text-slate-900 dark:text-white">{formatRupiah(t.total_harga)}</p>
-                  <span className={`text-[10px] font-semibold capitalize ${t.status === 'selesai' ? 'text-emerald-600' : 'text-amber-500'}`}>
-                    {t.metode_pembayaran} &bull; {t.status}
-                  </span>
-                </div>
-              }
-              hasChevron
-              onClick={() => navigate('/anggota/riwayat')}
-            />
-          ))
-        )}
-      </IosListSection>
+        </div>
+
+        {/* Right Column: Recent Transactions & Activity */}
+        <div className="md:col-span-6 space-y-4">
+          {/* Inset Grouped Recent Activity */}
+          <IosListSection title="Aktivitas Belanja Terakhir" footer="Riwayat 5 transaksi pembelian terakhir">
+            {transaksi.length === 0 ? (
+              <div className="p-8 text-center text-sm text-slate-400">
+                Belum ada transaksi belanja
+              </div>
+            ) : (
+              transaksi.map((t) => (
+                <IosListItem
+                  key={t.transaksi_id}
+                  icon={<ShoppingBag className="w-4 h-4" />}
+                  iconBgColor={t.metode_pembayaran === 'hutang' ? 'bg-rose-500' : 'bg-blue-600'}
+                  title={`Belanja #${t.transaksi_id}`}
+                  subtitle={formatDate(t.created_at)}
+                  value={
+                    <div className="text-right">
+                      <p className="font-bold text-sm text-slate-900 dark:text-white">{formatRupiah(t.total_harga)}</p>
+                      <span className={`text-[10px] font-semibold capitalize ${t.status === 'selesai' ? 'text-emerald-600' : 'text-amber-500'}`}>
+                        {t.metode_pembayaran} &bull; {t.status}
+                      </span>
+                    </div>
+                  }
+                  hasChevron
+                  onClick={() => navigate('/anggota/riwayat')}
+                />
+              ))
+            )}
+          </IosListSection>
+        </div>
+
+      </div>
 
       {/* QR Code Member Sheet */}
       <IosBottomSheet isOpen={showQrModal} onClose={() => setShowQrModal(false)} title="Kartu Digital Anggota">

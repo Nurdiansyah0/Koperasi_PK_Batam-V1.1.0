@@ -286,7 +286,6 @@ class KasirCompleteTest extends TestCase
         $id = \Illuminate\Support\Facades\DB::table('pembayaran_hutang')->insertGetId([
             'anggota_id' => $this->anggota->anggota_id,
             'nominal' => 10000,
-            'metode_pembayaran' => 'cash',
             'status' => 'pending',
             'created_at' => now(),
         ]);
@@ -302,7 +301,6 @@ class KasirCompleteTest extends TestCase
         $id = \Illuminate\Support\Facades\DB::table('pembayaran_hutang')->insertGetId([
             'anggota_id' => $this->anggota->anggota_id,
             'nominal' => 10000,
-            'metode_pembayaran' => 'cash',
             'status' => 'pending',
             'created_at' => now(),
         ]);

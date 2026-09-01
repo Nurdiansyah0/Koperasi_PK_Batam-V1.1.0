@@ -32,11 +32,19 @@ export const anggotaService = {
     return data
   },
 
-  // ─── Belanja (Shopping) ────────────────────────────────────
+  // ─── Belanja (Shopping) & Smart Bundling ───────────────────
   getDataBarang: async (): Promise<Barang[]> => {
     // Moved to Laravel Endpoint
     const { data } = await api.get('/laravel/api/anggota/barang')
     return data.data ?? []
+  },
+
+  getPaketBelanja: async (): Promise<{ data: any[], sering_dibeli: any | null }> => {
+    const { data } = await api.get('/laravel/api/anggota/paket-belanja')
+    return {
+      data: data.data ?? [],
+      sering_dibeli: data.sering_dibeli ?? data.ai_recommendation ?? null,
+    }
   },
 
   simpanTransaksi: async (payload: {

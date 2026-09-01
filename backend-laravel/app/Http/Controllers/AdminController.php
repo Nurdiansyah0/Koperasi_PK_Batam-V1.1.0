@@ -364,7 +364,26 @@ class AdminController extends Controller
     public function getShuDistribusi(Request $request)
     {
         $this->checkAdmin($request);
-        $data = ShuDistribusi::with('anggota')->get()->map(function($s) {
+
+        $aggregates = DB::table('shu_distribusi')
+            ->selectRaw('
+                COUNT(*) as total_distribusi,
+                COALESCE(SUM(shu_60_percent), 0) as total_shu_60,
+                COALESCE(SUM(shu_10_percent), 0) as total_shu_10,
+                COALESCE(SUM(shu_30_percent), 0) as total_shu_30,
+                COALESCE(SUM(shu_60_percent + shu_10_percent + shu_30_percent), 0) as total_all_shu
+            ')
+            ->first();
+
+        $query = ShuDistribusi::with('anggota')->orderByDesc('created_at');
+        if ($request->filled('tahun')) {
+            $query->where('tahun', $request->input('tahun'));
+        }
+
+        $limit = (int) $request->input('limit', 100);
+        $records = $query->limit($limit)->get();
+
+        $data = $records->map(function($s) {
             return [
                 'shu_id' => $s->shu_id,
                 'anggota_id' => $s->anggota_id,
@@ -373,18 +392,23 @@ class AdminController extends Controller
                 'shu_60_percent' => (float) $s->shu_60_percent,
                 'shu_10_percent' => (float) $s->shu_10_percent,
                 'shu_30_percent' => (float) $s->shu_30_percent,
-                'total_shu' => (float) $s->total_shu,
+                'total_shu' => (float) ($s->shu_60_percent + $s->shu_10_percent + $s->shu_30_percent),
                 'created_at' => $s->created_at ? $s->created_at->toIso8601String() : null,
             ];
         });
-        return response()->json(['success' => true, 'data' => $data, 'summary' => [
-            'totalShu60' => $data->sum('shu_60_percent'),
-            'totalShu10' => $data->sum('shu_10_percent'),
-            'totalShu30' => $data->sum('shu_30_percent'),
-            'totalAllShu' => $data->sum('total_shu'),
-            'totalDistribusi' => $data->count(),
-            'tahunAktif' => 'All'
-        ]]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'summary' => [
+                'totalShu60' => (float) $aggregates->total_shu_60,
+                'totalShu10' => (float) $aggregates->total_shu_10,
+                'totalShu30' => (float) $aggregates->total_shu_30,
+                'totalAllShu' => (float) $aggregates->total_all_shu,
+                'totalDistribusi' => (int) $aggregates->total_distribusi,
+                'tahunAktif' => $request->input('tahun', 'All')
+            ]
+        ]);
     }
 
     public function getDataKasir(Request $request)

@@ -42,6 +42,28 @@ export interface Barang {
 
 export type BarangKasir = Barang
 
+// ─── Paket Belanja & Smart Bundling ─────────────────────────
+export interface PaketBelanjaItem {
+  barang_id: number
+  nama_barang: string
+  jumlah: number
+  qty: number
+  harga_satuan: number
+  subtotal: number
+  stok_tersedia: number
+}
+
+export interface PaketBelanja {
+  id: string
+  nama_paket: string
+  deskripsi: string
+  tag: string
+  icon: string
+  total_harga: number
+  items: PaketBelanjaItem[]
+  is_available: boolean
+}
+
 // ─── Anggota ────────────────────────────────────────────────
 export interface Anggota {
   anggota_id: number
@@ -51,6 +73,8 @@ export interface Anggota {
   username: string
   email?: string
   saldo: number
+  simpanan_pokok?: number
+  simpanan_wajib?: number
   hutang: number
   shu: number
   created_at?: string
@@ -203,7 +227,6 @@ export interface LaporanTransaksi {
   data?: Transaksi[]
 }
 
-// ─── Profil Anggota ──────────────────────────────────────────
 export interface ProfilAnggota {
   anggota_id: number
   user_id: number
@@ -211,6 +234,9 @@ export interface ProfilAnggota {
   nama_lengkap: string
   username?: string
   saldo: number
+  simpanan_pokok?: number
+  limit_hutang?: number
+  sisa_limit_hutang?: number
   hutang: number
   shu: number
 }

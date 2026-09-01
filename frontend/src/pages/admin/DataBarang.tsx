@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
-import { Plus, Edit, Trash2, ShoppingCart, History, Search, Box } from 'lucide-react'
+import { InputRupiah } from '@/components/ui/InputRupiah'
+import { Plus, Edit, Trash2, ShoppingCart, History, Search, Box, Sparkles } from 'lucide-react'
+import { SmartInvoiceScanner } from '@/components/ai/SmartInvoiceScanner'
+import { ScannedInvoiceItem } from '@/services/aiService'
 
 const ITEMS_PER_PAGE = 12
 
@@ -16,6 +19,9 @@ export function DataBarang() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+
+  // AI Scanner State
+  const [isAiScanOpen, setIsAiScanOpen] = useState(false)
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -158,7 +164,13 @@ export function DataBarang() {
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Data Barang</h1>
           <p className="text-sm text-slate-500">Kelola stok dan riwayat kulakan Koperasi</p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            <Button 
+              onClick={() => setIsAiScanOpen(true)} 
+              className="flex-1 sm:flex-none h-11 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-xs"
+            >
+              <Sparkles className="w-4 h-4 mr-2 text-amber-300 animate-pulse" /> Scan Nota AI
+            </Button>
             <Button onClick={handleOpenHistory} variant="secondary" className="flex-1 sm:flex-none h-11">
               <History className="w-4 h-4 mr-2" /> Riwayat Kulakan
             </Button>
@@ -280,8 +292,8 @@ export function DataBarang() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input label="Nama Barang" value={formData.nama_barang || ''} onChange={e => setFormData({ ...formData, nama_barang: e.target.value })} required />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Harga Modal" type="number" value={formData.harga_modal || ''} onChange={e => setFormData({ ...formData, harga_modal: Number(e.target.value) })} required />
-            <Input label="Harga Jual" type="number" value={formData.harga_jual || ''} onChange={e => setFormData({ ...formData, harga_jual: Number(e.target.value) })} required />
+            <InputRupiah label="Harga Modal" value={formData.harga_modal || ''} onChange={val => setFormData({ ...formData, harga_modal: Number(val) })} required />
+            <InputRupiah label="Harga Jual" value={formData.harga_jual || ''} onChange={val => setFormData({ ...formData, harga_jual: Number(val) })} required />
           </div>
           <Input label="Stok Awal" type="number" value={formData.stok || ''} onChange={e => setFormData({ ...formData, stok: Number(e.target.value) })} required disabled={isEditing} />
           
@@ -305,11 +317,10 @@ export function DataBarang() {
             onChange={e => setRestockData({ ...restockData, jumlah_tambah: Number(e.target.value) })} 
             required 
           />
-          <Input 
-            label="Harga Beli Satuan (Rp)" 
-            type="number" min="0" 
+          <InputRupiah 
+            label="Harga Beli Satuan" 
             value={restockData.harga_beli_satuan} 
-            onChange={e => setRestockData({ ...restockData, harga_beli_satuan: Number(e.target.value) })} 
+            onChange={val => setRestockData({ ...restockData, harga_beli_satuan: Number(val) })} 
             required 
           />
           <p className="text-xs text-slate-500 -mt-2 mb-2">Harga modal otomatis diperbarui mengikuti harga beli terbaru ini.</p>
@@ -380,6 +391,36 @@ export function DataBarang() {
               </div>
           )}
       </Modal>
+
+      {/* AI Smart Receipt Scanner Modal */}
+      <SmartInvoiceScanner
+        isOpen={isAiScanOpen}
+        onClose={() => setIsAiScanOpen(false)}
+        onApplyItems={(items, supplierName) => {
+          if (items.length > 0) {
+            const first = items[0]
+            const matched = barang.find(b => b.nama_barang.toLowerCase().includes(first.nama_barang.toLowerCase()) || first.nama_barang.toLowerCase().includes(b.nama_barang.toLowerCase()))
+            if (matched) {
+              handleOpenRestock(matched)
+              setRestockData(prev => ({
+                ...prev,
+                jumlah_tambah: first.jumlah || 1,
+                harga_beli_satuan: first.harga_beli_satuan || matched.harga_modal || 0,
+                catatan: `Scan AI Nota: ${supplierName || 'Distributor'}`,
+              }))
+            } else {
+              // Open add barang modal pre-filled
+              handleOpenModal()
+              setFormData({
+                nama_barang: first.nama_barang,
+                stok: first.jumlah || 0,
+                harga_modal: first.harga_beli_satuan || 0,
+                harga_jual: Math.round((first.harga_beli_satuan || 0) * 1.15), // Default 15% margin
+              })
+            }
+          }
+        }}
+      />
     </div>
   )
 }

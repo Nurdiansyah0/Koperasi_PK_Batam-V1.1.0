@@ -43,7 +43,7 @@ export function RiwayatTransaksiAnggota() {
     <div className="space-y-6 pb-20 max-w-lg mx-auto">
       <div className="px-1">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Riwayat Transaksi</h1>
-        <p className="text-xs text-slate-500 mt-0.5">Daftar semua pembelian barang di Koperasi PK</p>
+        <p className="text-xs text-slate-500 mt-0.5">Daftar semua pembelian barang di Koperasi PKPPK BTH</p>
       </div>
 
       <IosListSection title="Aktivitas Belanja">
@@ -120,6 +120,12 @@ export function RiwayatTransaksiAnggota() {
                 <span>Metode Pembayaran</span>
                 <span className="font-bold uppercase text-blue-600">{selectedTx.metode_pembayaran}</span>
               </div>
+              {selectedTx.nama_kasir && (
+                <div className="flex justify-between text-xs text-slate-500">
+                  <span>Kasir Melayani</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-300">@{selectedTx.nama_kasir}</span>
+                </div>
+              )}
               <div className="flex justify-between text-xs text-slate-500">
                 <span>Status</span>
                 <span className="font-bold capitalize text-emerald-600">{selectedTx.status}</span>

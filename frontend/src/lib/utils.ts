@@ -19,3 +19,22 @@ export function formatDate(dateStr: string): string {
     timeStyle: 'short',
   }).format(new Date(dateStr))
 }
+
+/**
+ * Formats a number or numeric string with thousand separator dots (e.g. 50000 -> "50.000")
+ */
+export function formatThousands(val: number | string | null | undefined): string {
+  if (val === null || val === undefined || val === '') return ''
+  const cleanStr = val.toString().replace(/\D/g, '')
+  if (!cleanStr) return ''
+  return new Intl.NumberFormat('id-ID').format(Number(cleanStr))
+}
+
+/**
+ * Parses a string with thousand separators back to a plain integer (e.g. "50.000" -> 50000)
+ */
+export function parseThousands(val: string | number | null | undefined): number {
+  if (val === null || val === undefined || val === '') return 0
+  const cleanStr = val.toString().replace(/\D/g, '')
+  return cleanStr ? Number(cleanStr) : 0
+}

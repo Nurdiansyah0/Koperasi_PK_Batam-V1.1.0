@@ -20,6 +20,27 @@ class Anggota extends Model
         'shu'
     ];
 
+    protected $appends = [
+        'simpanan_pokok',
+        'limit_hutang',
+        'sisa_limit_hutang',
+    ];
+
+    public function getSimpananPokokAttribute(): float
+    {
+        return (float) (max(400000, (float)$this->saldo + (float)$this->hutang));
+    }
+
+    public function getLimitHutangAttribute(): float
+    {
+        return $this->simpanan_pokok;
+    }
+
+    public function getSisaLimitHutangAttribute(): float
+    {
+        return (float) max(0, $this->simpanan_pokok - (float)$this->hutang);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'user_id');
