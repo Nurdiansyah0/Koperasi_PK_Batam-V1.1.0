@@ -19,7 +19,8 @@ class kasir
 
     public static function getDataBarangBelanjaKasir($conn)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         self::requireRole($user, 'kasir');
 
         $sql = "SELECT 
@@ -60,7 +61,8 @@ class kasir
 
     public static function getPesananAnggota($conn)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         self::requireRole($user, 'kasir');
 
         $sql = "SELECT t.transaksi_id, t.anggota_id, t.metode_pembayaran, t.total_harga,
@@ -118,7 +120,8 @@ class kasir
 
     public static function simpanTransaksiKasir($conn)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         self::requireRole($user, 'kasir');
         $data = getInputData();
 
@@ -244,7 +247,8 @@ class kasir
 
     public static function getAllAnggota($conn)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         self::requireRole($user, 'kasir');
 
         $sql = "SELECT 
@@ -287,7 +291,8 @@ class kasir
 
     public static function approvePembayaranHutang($conn)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         self::requireRole($user, 'kasir');
 
         $data = getInputData();
@@ -398,7 +403,8 @@ class kasir
 
     public static function getAllPembayaranHutang($conn)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         self::requireRole($user, 'kasir');
 
         $sql = "SELECT 
@@ -441,7 +447,8 @@ class kasir
 
     public static function setorAdmin($conn)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         self::requireRole($user, 'kasir');
         $data = getInputData();
         $nominal = (float)($data['nominal'] ?? 0);
@@ -481,7 +488,8 @@ class kasir
 
     public static function tarikTunai($conn)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         self::requireRole($user, 'kasir');
         $data = getInputData();
 
@@ -548,7 +556,8 @@ class kasir
 
     public static function cariProfilAnggota($conn)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         self::requireRole($user, 'kasir');
 
         $searchTerm = $_GET['search'] ?? $_GET['anggota_id'] ?? '';
@@ -612,7 +621,8 @@ class kasir
 
     public static function buatTransaksiKasir($conn)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         self::requireRole($user, 'kasir');
         $data = getInputData();
 
@@ -765,7 +775,8 @@ class kasir
 
     public static function getDaftarKasir($conn)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         self::requireRole($user, 'kasir');
 
         // PERBAIKAN: Sesuaikan dengan struktur tabel users yang ada
@@ -803,7 +814,8 @@ class kasir
     }
     public static function getHistoryTransaksi($conn)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         self::requireRole($user, 'kasir');
 
         // Ambil parameter filter dari GET atau POST
@@ -913,7 +925,8 @@ class kasir
 // Di class Kasir, perbaiki fungsi createSerahTerima
 public static function createSerahTerima($conn)
 {
-    $user = getAuthUser(self::$jwt_secret);
+    $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
     $input = getJsonInput();
     
     $kasir_to = $input['kasir_to'] ?? null;
@@ -987,7 +1000,8 @@ public static function createSerahTerima($conn)
     // Serah Terima
 public static function getSerahTerimaForMe($conn)
 {
-    $user = getAuthUser(self::$jwt_secret);
+    $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
     $current_user_id = $user['user_id'];
     
     error_log("🔄 getSerahTerimaForMe - User ID: " . $current_user_id);
@@ -1081,7 +1095,8 @@ public static function getSerahTerimaForMe($conn)
     // Approve Serah Terima
     public static function approveSerahTerima($conn)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         $input = $_POST; // Gunakan $_POST untuk menghindari getJsonInput issue
         $serah_id = $input['serah_id'] ?? null;
 
@@ -1154,7 +1169,8 @@ public static function getSerahTerimaForMe($conn)
     // Reject Serah Terima
     public static function rejectSerahTerima($conn, $data)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         $serah_id = $data['serah_id'] ?? null;
         $alasan = $data['alasan'] ?? null;
 
@@ -1229,7 +1245,8 @@ public static function getSerahTerimaForMe($conn)
 
     public static function getDashboardKasir($conn)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         $current_user_id = $user['user_id'];
 
         error_log("Getting dashboard data for kasir ID: " . $current_user_id);
@@ -1335,7 +1352,8 @@ public static function getSerahTerimaForMe($conn)
 
     public static function getTransaksiTerbaru($conn)
     {
-        $user = getAuthUser(self::$jwt_secret);
+        $user = getAuthUser(self::$jwt_secret); 
+ if (!$user) sendResponse(false, "Token tidak valid");
         $current_user_id = $user['user_id'];
 
         error_log("Getting recent transactions for kasir ID: " . $current_user_id);
