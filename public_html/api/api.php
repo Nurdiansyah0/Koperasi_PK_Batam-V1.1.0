@@ -87,12 +87,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'test') {
 global $conn;
 
 try {
-    // Log request start
-    // logError("API Request Started", [
-        'method' => $_SERVER['REQUEST_METHOD'],
-        'action' => $_GET['action'] ?? 'unknown',
-        'query_string' => $_SERVER['QUERY_STRING'] ?? ''
-    ]);
+    // Log request start disabled
 
     // DB connection
     require_once "config.php";
