@@ -167,20 +167,15 @@ class kasir
 
                 if ($metode_pembayaran === 'hutang') {
                     if ($saldo_sekarang < $total_harga) {
-                        throw new Exception("Saldo tidak cukup untuk memberikan hutang. Saldo: " . $saldo_sekarang . ", Dibutuhkan: " . $total_harga);
+                        throw new Exception("Saldo limit tidak cukup untuk memberikan hutang. Saldo: " . $saldo_sekarang . ", Dibutuhkan: " . $total_harga);
                     }
-
-                    $stmtSaldo = $conn->prepare("UPDATE anggota SET simpanan_pokok = simpanan_pokok - ? WHERE anggota_id = ?");
-                    $stmtSaldo->bind_param("di", $total_harga, $anggota_id);
-                    $stmtSaldo->execute();
-                    $stmtSaldo->close();
 
                     $stmtHutang = $conn->prepare("UPDATE anggota SET hutang = hutang + ? WHERE anggota_id = ?");
                     $stmtHutang->bind_param("di", $total_harga, $anggota_id);
                     $stmtHutang->execute();
                     $stmtHutang->close();
 
-                    error_log("Metode HUTANG: Saldo berkurang " . $total_harga . ", Hutang bertambah " . $total_harga);
+                    error_log("Metode HUTANG: Hutang bertambah " . $total_harga . ", Saldo limit terpotong otomatis via rumus");
                 } else {
                     error_log("Metode $metode_pembayaran: Tidak ada perubahan saldo/hutang");
                 }
@@ -357,16 +352,7 @@ class kasir
                 }
                 $stmtHutang->close();
 
-                $stmtSaldo = $conn->prepare("UPDATE anggota SET simpanan_pokok = simpanan_pokok + ? WHERE anggota_id = ?");
-                $stmtSaldo->bind_param("di", $nominal, $anggota_id);
-                $stmtSaldo->execute();
-
-                if ($stmtSaldo->affected_rows === 0) {
-                    throw new Exception("Gagal menambah saldo");
-                }
-                $stmtSaldo->close();
-
-                error_log("Pembayaran hutang APPROVED: ID $pembayaran_id, Hutang berkurang $nominal, Saldo bertambah $nominal");
+                error_log("Pembayaran hutang APPROVED: ID $pembayaran_id, Hutang berkurang $nominal, Saldo limit pulih otomatis");
             } elseif ($action === 'reject') {
                 $stmt = $conn->prepare("
                     UPDATE pembayaran_hutang 
