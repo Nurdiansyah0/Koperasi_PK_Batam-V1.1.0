@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
-import { Search, ChevronLeft, ChevronRight, Users, Wallet, HandCoins } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Users, Wallet, HandCoins, CreditCard, PiggyBank, UserPlus } from 'lucide-react'
 
 export function DataAnggota() {
   const [anggota, setAnggota] = useState<Anggota[]>([])
@@ -63,6 +63,16 @@ export function DataAnggota() {
   const nextPage = () => setPage(p => Math.min(totalPages, p + 1))
   const prevPage = () => setPage(p => Math.max(1, p - 1))
 
+  // Summary calculations
+  const summary = useMemo(() => {
+    return {
+      totalAnggota: anggota.length,
+      totalSaldo: anggota.reduce((sum, item) => sum + (item.saldo || 0), 0),
+      totalHutang: anggota.reduce((sum, item) => sum + (item.hutang || 0), 0),
+      totalSHU: anggota.reduce((sum, item) => sum + (item.shu || 0), 0)
+    }
+  }, [anggota])
+
   const handleOpenTopup = (item: Anggota) => {
     setSelectedAnggota(item)
     setJumlahSHU(0)
@@ -85,77 +95,194 @@ export function DataAnggota() {
     }
   }
 
+  // Get initials for Avatar
+  const getInitials = (name: string) => {
+    if (!name) return '?'
+    const parts = name.split(' ')
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase()
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+    <div className="space-y-6 max-w-7xl mx-auto pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-            <Users className="w-6 h-6 text-blue-600" />
+          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
+            <Users className="w-8 h-8 text-blue-600" />
             Data Anggota
           </h2>
-          <p className="text-sm text-slate-500 mt-1">Kelola saldo, hutang, dan SHU berjalan anggota.</p>
+          <p className="text-sm text-slate-500 mt-1">Kelola saldo, hutang, dan SHU berjalan dari seluruh anggota koperasi.</p>
         </div>
       </div>
 
-      <Card className="shadow-md border-slate-200 dark:border-slate-800 overflow-hidden">
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-slate-900">
-          <h3 className="font-bold text-lg text-slate-800 dark:text-white">Daftar Anggota</h3>
-          <div className="w-full sm:w-72">
-            <Input 
-              icon={<Search className="w-4 h-4 text-slate-400" />}
+      {/* Summary Widgets */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-lg text-blue-600 dark:text-blue-400">
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Anggota</p>
+              <h4 className="text-2xl font-bold text-slate-900 dark:text-white">
+                {loading ? '...' : summary.totalAnggota}
+              </h4>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="p-3 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg text-emerald-600 dark:text-emerald-400">
+              <Wallet className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Saldo</p>
+              <h4 className="text-xl font-bold text-slate-900 dark:text-white">
+                {loading ? '...' : formatRupiah(summary.totalSaldo)}
+              </h4>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="p-3 bg-rose-100 dark:bg-rose-900/50 rounded-lg text-rose-600 dark:text-rose-400">
+              <CreditCard className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Hutang</p>
+              <h4 className="text-xl font-bold text-slate-900 dark:text-white">
+                {loading ? '...' : formatRupiah(summary.totalHutang)}
+              </h4>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="p-3 bg-amber-100 dark:bg-amber-900/50 rounded-lg text-amber-600 dark:text-amber-400">
+              <PiggyBank className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total SHU Berjalan</p>
+              <h4 className="text-xl font-bold text-slate-900 dark:text-white">
+                {loading ? '...' : formatRupiah(summary.totalSHU)}
+              </h4>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="shadow-sm border-slate-200 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900">
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+            Direktori Anggota
+          </h3>
+          <div className="w-full sm:w-80 relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input 
+              type="text"
               placeholder="Cari nama atau username..." 
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             />
           </div>
         </div>
         
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
+            <TableHeader className="bg-slate-50/80 dark:bg-slate-800/80">
               <TableRow>
-                <TableHead className="font-bold">Nama</TableHead>
-                <TableHead className="font-bold">Username</TableHead>
-                <TableHead className="font-bold text-right">Saldo</TableHead>
-                <TableHead className="font-bold text-right">Hutang</TableHead>
-                <TableHead className="font-bold text-right">SHU Berjalan</TableHead>
-                <TableHead className="text-right font-bold w-32">Aksi</TableHead>
+                <TableHead className="font-bold text-slate-600 py-4">Anggota</TableHead>
+                <TableHead className="font-bold text-slate-600 text-right py-4">Saldo Aktif</TableHead>
+                <TableHead className="font-bold text-slate-600 text-right py-4">Hutang Berjalan</TableHead>
+                <TableHead className="font-bold text-slate-600 text-right py-4">SHU Tersedia</TableHead>
+                <TableHead className="font-bold text-slate-600 text-right py-4 w-32">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><div className="h-4 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-32"></div></TableCell>
-                    <TableCell><div className="h-4 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-24"></div></TableCell>
-                    <TableCell><div className="h-4 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-20 ml-auto"></div></TableCell>
-                    <TableCell><div className="h-4 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-20 ml-auto"></div></TableCell>
-                    <TableCell><div className="h-4 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-24 ml-auto"></div></TableCell>
-                    <TableCell><div className="h-8 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-24 ml-auto"></div></TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 animate-pulse"></div>
+                        <div className="space-y-2">
+                          <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-32"></div>
+                          <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-24"></div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell><div className="h-5 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-24 ml-auto"></div></TableCell>
+                    <TableCell><div className="h-5 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-24 ml-auto"></div></TableCell>
+                    <TableCell><div className="h-5 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-24 ml-auto"></div></TableCell>
+                    <TableCell><div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-md animate-pulse w-28 ml-auto"></div></TableCell>
                   </TableRow>
                 ))
               ) : paginatedData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-32 text-center text-slate-500">
+                  <TableCell colSpan={5} className="h-48 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center">
-                      <Users className="w-8 h-8 text-slate-300 mb-2" />
-                      <p>Tidak ada data anggota ditemukan.</p>
+                      <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
+                        <Users className="w-8 h-8 text-slate-300" />
+                      </div>
+                      <p className="font-medium text-slate-600 dark:text-slate-400">Tidak ada anggota ditemukan</p>
+                      <p className="text-sm mt-1">Coba sesuaikan kata kunci pencarian Anda.</p>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 paginatedData.map((item) => (
-                  <TableRow key={item.anggota_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <TableCell className="font-bold text-slate-900 dark:text-white">{item.nama_lengkap || 'Belum Ada Nama'}</TableCell>
-                    <TableCell className="font-mono text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded inline-block mt-2">
-                      @{item.username}
+                  <TableRow key={item.anggota_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group">
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-sm shrink-0">
+                          {getInitials(item.nama_lengkap || 'BN')}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">
+                            {item.nama_lengkap || 'Belum Ada Nama'}
+                          </span>
+                          <span className="text-xs font-medium text-slate-500 flex items-center gap-1 mt-0.5">
+                            @{item.username}
+                          </span>
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell className="text-right font-semibold text-blue-600">{formatRupiah(item.saldo)}</TableCell>
-                    <TableCell className="text-right font-semibold text-rose-600">{formatRupiah(item.hutang)}</TableCell>
-                    <TableCell className="text-right font-semibold text-emerald-600">{formatRupiah(item.shu)}</TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline" className="text-xs h-8 px-2 font-bold shadow-sm" onClick={() => handleOpenTopup(item)}>
-                        <HandCoins className="w-3 h-3 mr-1" /> Cairkan SHU
+                      <span className="inline-flex font-bold text-slate-700 dark:text-slate-300">
+                        {formatRupiah(item.saldo)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {item.hutang > 0 ? (
+                        <span className="inline-flex items-center px-2 py-1 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400 font-bold text-sm">
+                          {formatRupiah(item.hutang)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 font-medium text-sm">Rp 0</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                       {item.shu > 0 ? (
+                        <span className="inline-flex items-center px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 font-bold text-sm">
+                          {formatRupiah(item.shu)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 font-medium text-sm">Rp 0</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right pr-4">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        disabled={item.shu <= 0}
+                        className="h-8 px-3 font-semibold shadow-sm border-slate-200 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/30 transition-all text-xs" 
+                        onClick={() => handleOpenTopup(item)}
+                      >
+                        <HandCoins className="w-3.5 h-3.5 mr-1.5" /> Cairkan
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -167,22 +294,22 @@ export function DataAnggota() {
 
         {/* Pagination Footer */}
         {!loading && filteredAndSortedData.length > 0 && (
-          <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <span className="text-xs font-semibold text-slate-500">
-              Menampilkan {((page - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(page * ITEMS_PER_PAGE, filteredAndSortedData.length)} dari {filteredAndSortedData.length} anggota
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <span className="text-sm text-slate-500">
+              Menampilkan <span className="font-bold text-slate-700 dark:text-slate-300">{((page - 1) * ITEMS_PER_PAGE) + 1}</span> - <span className="font-bold text-slate-700 dark:text-slate-300">{Math.min(page * ITEMS_PER_PAGE, filteredAndSortedData.length)}</span> dari <span className="font-bold text-slate-700 dark:text-slate-300">{filteredAndSortedData.length}</span> anggota
             </span>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-1">
               <Button 
                 type="button"
                 variant="outline" 
                 size="sm" 
                 onClick={prevPage} 
                 disabled={page === 1}
-                className="h-9 px-3 border-slate-200 shadow-sm bg-white"
+                className="h-8 px-3 border-slate-200 text-slate-600 bg-white"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" /> Sebelumnya
               </Button>
-              <div className="flex items-center px-2 text-sm font-bold text-slate-700">
+              <div className="px-3 text-sm font-bold text-slate-700 dark:text-slate-300">
                 {page} / {totalPages}
               </div>
               <Button 
@@ -191,7 +318,7 @@ export function DataAnggota() {
                 size="sm" 
                 onClick={nextPage} 
                 disabled={page === totalPages}
-                className="h-9 px-3 border-slate-200 shadow-sm bg-white"
+                className="h-8 px-3 border-slate-200 text-slate-600 bg-white"
               >
                 Selanjutnya <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
@@ -200,32 +327,49 @@ export function DataAnggota() {
         )}
       </Card>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Pencairan / Topup SHU ke Saldo">
-        <form onSubmit={handleTopup} className="space-y-4">
-          <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 flex flex-col gap-1 text-sm">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-500">Anggota</span>
-              <span className="font-bold text-slate-900 dark:text-white">{selectedAnggota?.nama_lengkap || 'Tanpa Nama'} ({selectedAnggota?.username})</span>
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Pencairan SHU ke Saldo">
+        <form onSubmit={handleTopup} className="space-y-5">
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-700 space-y-3">
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-sm shrink-0">
+                {getInitials(selectedAnggota?.nama_lengkap || '')}
+              </div>
+              <div>
+                <p className="font-bold text-slate-900 dark:text-white leading-tight">
+                  {selectedAnggota?.nama_lengkap || 'Tanpa Nama'}
+                </p>
+                <p className="text-xs text-slate-500 mt-0.5">@{selectedAnggota?.username}</p>
+              </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-500">SHU Tersedia</span>
-              <span className="font-bold text-emerald-600">{formatRupiah(selectedAnggota?.shu || 0)}</span>
+            <div className="flex justify-between items-center pt-1">
+              <span className="text-sm font-medium text-slate-500">SHU Tersedia</span>
+              <span className="text-lg font-bold text-emerald-600">{formatRupiah(selectedAnggota?.shu || 0)}</span>
             </div>
           </div>
-          <Input 
-            label="Nominal Pencairan ke Saldo (Rp)" 
-            type="number" 
-            required 
-            max={selectedAnggota?.shu || 0}
-            min={1}
-            value={jumlahSHU || ''} 
-            onChange={e => setJumlahSHU(Number(e.target.value))} 
-            placeholder="Masukkan nominal"
-            icon={<Wallet className="w-4 h-4 text-slate-400" />}
-          />
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>Batal</Button>
-            <Button type="submit" loading={saving} variant="primary" className="font-bold px-6">Proses</Button>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Nominal Pencairan</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="text-slate-500 font-medium">Rp</span>
+              </div>
+              <input 
+                type="number" 
+                required 
+                max={selectedAnggota?.shu || 0}
+                min={1}
+                value={jumlahSHU || ''} 
+                onChange={e => setJumlahSHU(Number(e.target.value))} 
+                placeholder="0"
+                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-slate-900 dark:text-white font-medium"
+              />
+            </div>
+            <p className="text-xs text-slate-500">Saldo ini akan otomatis ditambahkan ke saldo aktif anggota.</p>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <Button type="button" variant="ghost" className="font-medium" onClick={() => setIsModalOpen(false)}>Batal</Button>
+            <Button type="submit" loading={saving} variant="primary" className="font-bold px-6 shadow-md shadow-blue-500/20">Konfirmasi Pencairan</Button>
           </div>
         </form>
       </Modal>
