@@ -311,7 +311,7 @@ class AdminController extends Controller
     public function getLaporanTransaksi(Request $request)
     {
         $this->checkAdmin($request);
-        $q = Transaksi::with('kasir');
+        $q = Transaksi::with(['kasir', 'anggota']);
         if ($request->tanggal_awal) $q->whereDate('created_at', '>=', $request->tanggal_awal);
         if ($request->tanggal_akhir) $q->whereDate('created_at', '<=', $request->tanggal_akhir);
 
@@ -321,18 +321,32 @@ class AdminController extends Controller
         $total_pendapatan = $transaksi->sum('total_harga');
 
         $breakdown_pembayaran = [
-            'cash' => $transaksi->where('metode_pembayaran', 'cash')->sum('total_harga'),
-            'qr' => $transaksi->where('metode_pembayaran', 'qr')->sum('total_harga'),
-            'ewallet' => $transaksi->where('metode_pembayaran', 'ewallet')->sum('total_harga'),
-            'transfer' => $transaksi->where('metode_pembayaran', 'transfer')->sum('total_harga'),
-            'hutang' => $transaksi->where('metode_pembayaran', 'hutang')->sum('total_harga'),
+            'cash' => (float) $transaksi->where('metode_pembayaran', 'cash')->sum('total_harga'),
+            'qr' => (float) $transaksi->where('metode_pembayaran', 'qr')->sum('total_harga'),
+            'ewallet' => (float) $transaksi->where('metode_pembayaran', 'ewallet')->sum('total_harga'),
+            'transfer' => (float) $transaksi->where('metode_pembayaran', 'transfer')->sum('total_harga'),
+            'hutang' => (float) $transaksi->where('metode_pembayaran', 'hutang')->sum('total_harga'),
         ];
 
-        // This is a simplified group-by for demonstration, matching format
+        $data = $transaksi->map(function($t) {
+            return [
+                'transaksi_id' => $t->transaksi_id,
+                'created_at' => $t->created_at ? $t->created_at->toIso8601String() : null,
+                'nama_anggota' => $t->anggota ? $t->anggota->nama_lengkap : 'Umum',
+                'metode_pembayaran' => $t->metode_pembayaran,
+                'total_harga' => (float) $t->total_harga,
+                'kasir_username' => $t->kasir ? $t->kasir->username : null,
+            ];
+        });
+
         return response()->json([
             'success' => true,
-            'total_transaksi' => $total_transaksi,
-            'total_pendapatan' => (float) $total_pendapatan,
+            'summary' => [
+                'total_transaksi' => $total_transaksi,
+                'total_pendapatan' => (float) $total_pendapatan,
+                'total_hutang' => $breakdown_pembayaran['hutang'],
+            ],
+            'data' => $data,
             'breakdown_pembayaran' => $breakdown_pembayaran,
             'breakdown_kasir' => [], // Needs grouping logic if required in UI
             'transaksi_harian' => [],
