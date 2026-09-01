@@ -93,7 +93,7 @@ class Admin {
         $user = getAuthUser(self::$jwt_secret);
         self::requireRole($user,'admin');
 
-        $res = $conn->query("SELECT a.anggota_id, u.username, a.(simpanan_pokok + 100000 - hutang) AS saldo, a.hutang, a.shu FROM anggota a JOIN users u ON u.user_id=a.user_id");
+        $res = $conn->query("SELECT a.anggota_id, u.username, (a.simpanan_pokok + 100000 - a.hutang) AS saldo, a.hutang, a.shu FROM anggota a JOIN users u ON u.user_id=a.user_id");
         $rows=[];
         while($r=$res->fetch_assoc()) $rows[]=$r;
         sendResponse(true,["data"=>$rows]);
@@ -121,9 +121,9 @@ class Admin {
             $stmt->close();
             // Jika role anggota, buat entry di table anggota
             if($role==='anggota'){
-                $stmtA=$conn->prepare("INSERT INTO anggota(user_id,(simpanan_pokok + 100000 - hutang) AS saldo,hutang,shu) VALUES(?,?,?,?)");
+                $stmtA=$conn->prepare("INSERT INTO anggota(user_id,saldo,hutang,shu) VALUES(?,?,?,?)");
                 $saldo=0; $hutang=0; $shu=0;
-                $stmtA->bind_param("iddd",$user_id,$(simpanan_pokok + 100000 - hutang) AS saldo,$hutang,$shu);
+                $stmtA->bind_param("iddd",$user_id,$saldo,$hutang,$shu);
                 $stmtA->execute();
                 $stmtA->close();
             }

@@ -145,7 +145,7 @@ class kasir
                 error_log("Processing transaksi_id: " . $transaksi_id);
 
                 $stmtGet = $conn->prepare("
-                SELECT t.*, a.(simpanan_pokok + 100000 - hutang) AS saldo, a.hutang, a.shu 
+                SELECT t.*, (a.simpanan_pokok + 100000 - a.hutang) AS saldo, a.hutang, a.shu 
                 FROM transaksi t 
                 LEFT JOIN anggota a ON a.anggota_id = t.anggota_id 
                 WHERE t.transaksi_id = ? AND t.status IN ('pending','on_process')
@@ -306,7 +306,7 @@ class kasir
         $conn->begin_transaction();
         try {
             $stmt = $conn->prepare("
-                SELECT ph.*, a.(simpanan_pokok + 100000 - hutang) AS saldo, a.hutang 
+                SELECT ph.*, (a.simpanan_pokok + 100000 - a.hutang) AS saldo, a.hutang 
                 FROM pembayaran_hutang ph 
                 LEFT JOIN anggota a ON a.anggota_id = ph.anggota_id 
                 WHERE ph.pembayaran_id = ?
