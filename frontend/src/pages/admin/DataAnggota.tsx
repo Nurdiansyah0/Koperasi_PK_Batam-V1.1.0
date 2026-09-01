@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
-import { Search, ChevronLeft, ChevronRight, Users, Wallet, HandCoins, CreditCard, PiggyBank, UserPlus } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Users, Wallet, HandCoins, CreditCard, UserCheck, Calculator } from 'lucide-react'
 
 export function DataAnggota() {
   const [anggota, setAnggota] = useState<Anggota[]>([])
@@ -63,13 +63,19 @@ export function DataAnggota() {
   const nextPage = () => setPage(p => Math.min(totalPages, p + 1))
   const prevPage = () => setPage(p => Math.max(1, p - 1))
 
-  // Summary calculations
+  // Smart Analytics for Members (non-redundant with dashboard)
   const summary = useMemo(() => {
+    const total = anggota.length
+    const aktif = anggota.filter(a => a.saldo > 0).length
+    const berhutang = anggota.filter(a => a.hutang > 0).length
+    const totalSaldo = anggota.reduce((sum, item) => sum + (item.saldo || 0), 0)
+    const avgSaldo = total > 0 ? totalSaldo / total : 0
+
     return {
-      totalAnggota: anggota.length,
-      totalSaldo: anggota.reduce((sum, item) => sum + (item.saldo || 0), 0),
-      totalHutang: anggota.reduce((sum, item) => sum + (item.hutang || 0), 0),
-      totalSHU: anggota.reduce((sum, item) => sum + (item.shu || 0), 0)
+      totalAnggota: total,
+      anggotaAktif: aktif,
+      anggotaBerhutang: berhutang,
+      rataRataSaldo: avgSaldo
     }
   }, [anggota])
 
@@ -115,7 +121,7 @@ export function DataAnggota() {
         </div>
       </div>
 
-      {/* Summary Widgets */}
+      {/* Smart Analytics Widgets */}
       <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 lg:divide-x divide-slate-100 dark:divide-slate-800">
           <div className="p-5 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -125,19 +131,19 @@ export function DataAnggota() {
             <div>
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Anggota</p>
               <h4 className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
-                {loading ? '...' : summary.totalAnggota}
+                {loading ? '...' : summary.totalAnggota} <span className="text-sm font-medium text-slate-500 normal-case tracking-normal">orang</span>
               </h4>
             </div>
           </div>
           
           <div className="p-5 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors sm:border-l sm:border-slate-100 dark:sm:border-slate-800 lg:border-none">
             <div className="p-3 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg text-emerald-600 dark:text-emerald-400 shrink-0">
-              <Wallet className="w-5 h-5" />
+              <UserCheck className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Saldo</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Memiliki Saldo</p>
               <h4 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
-                {loading ? '...' : formatRupiah(summary.totalSaldo)}
+                {loading ? '...' : summary.anggotaAktif} <span className="text-sm font-medium text-slate-500 normal-case tracking-normal">anggota</span>
               </h4>
             </div>
           </div>
@@ -147,21 +153,21 @@ export function DataAnggota() {
               <CreditCard className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Hutang</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Memiliki Hutang</p>
               <h4 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
-                {loading ? '...' : formatRupiah(summary.totalHutang)}
+                {loading ? '...' : summary.anggotaBerhutang} <span className="text-sm font-medium text-slate-500 normal-case tracking-normal">anggota</span>
               </h4>
             </div>
           </div>
 
           <div className="p-5 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-t sm:border-l border-slate-100 dark:border-slate-800 lg:border-none">
-            <div className="p-3 bg-amber-100 dark:bg-amber-900/50 rounded-lg text-amber-600 dark:text-amber-400 shrink-0">
-              <PiggyBank className="w-5 h-5" />
+            <div className="p-3 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg text-indigo-600 dark:text-indigo-400 shrink-0">
+              <Calculator className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total SHU Berjalan</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Rata-rata Saldo</p>
               <h4 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
-                {loading ? '...' : formatRupiah(summary.totalSHU)}
+                {loading ? '...' : formatRupiah(summary.rataRataSaldo)}
               </h4>
             </div>
           </div>
