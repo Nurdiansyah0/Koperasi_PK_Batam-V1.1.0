@@ -180,6 +180,7 @@ class AdminController extends Controller
         $anggota = Anggota::with('user')->get()->map(function($a) {
             return [
                 'anggota_id' => $a->anggota_id,
+                'nama_lengkap' => $a->nama_lengkap,
                 'username' => $a->user ? $a->user->username : '',
                 'saldo' => (float) $a->saldo,
                 'hutang' => (float) $a->hutang,
