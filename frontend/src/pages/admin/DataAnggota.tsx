@@ -123,50 +123,50 @@ export function DataAnggota() {
 
       {/* Smart Analytics Widgets */}
       <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 lg:divide-x divide-slate-100 dark:divide-slate-800">
-          <div className="p-5 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-lg text-blue-600 dark:text-blue-400 shrink-0">
-              <Users className="w-5 h-5" />
+        <div className="grid grid-cols-1 md:grid-cols-2">
+          <div className="p-6 flex items-center gap-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800 md:border-r">
+            <div className="p-4 bg-blue-100 dark:bg-blue-900/50 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
+              <Users className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Anggota</p>
-              <h4 className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
-                {loading ? '...' : summary.totalAnggota} <span className="text-sm font-medium text-slate-500 normal-case tracking-normal">orang</span>
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Anggota</p>
+              <h4 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                {loading ? '...' : summary.totalAnggota} <span className="text-base font-medium text-slate-500 normal-case tracking-normal">orang</span>
               </h4>
             </div>
           </div>
           
-          <div className="p-5 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors sm:border-l sm:border-slate-100 dark:sm:border-slate-800 lg:border-none">
-            <div className="p-3 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg text-emerald-600 dark:text-emerald-400 shrink-0">
-              <UserCheck className="w-5 h-5" />
+          <div className="p-6 flex items-center gap-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800">
+            <div className="p-4 bg-emerald-100 dark:bg-emerald-900/50 rounded-xl text-emerald-600 dark:text-emerald-400 shrink-0">
+              <UserCheck className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Memiliki Saldo</p>
-              <h4 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
-                {loading ? '...' : summary.anggotaAktif} <span className="text-sm font-medium text-slate-500 normal-case tracking-normal">anggota</span>
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Memiliki Saldo</p>
+              <h4 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                {loading ? '...' : summary.anggotaAktif} <span className="text-base font-medium text-slate-500 normal-case tracking-normal">anggota</span>
               </h4>
             </div>
           </div>
 
-          <div className="p-5 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-t sm:border-none border-slate-100 dark:border-slate-800">
-            <div className="p-3 bg-rose-100 dark:bg-rose-900/50 rounded-lg text-rose-600 dark:text-rose-400 shrink-0">
-              <CreditCard className="w-5 h-5" />
+          <div className="p-6 flex items-center gap-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b md:border-b-0 border-slate-100 dark:border-slate-800 md:border-r">
+            <div className="p-4 bg-rose-100 dark:bg-rose-900/50 rounded-xl text-rose-600 dark:text-rose-400 shrink-0">
+              <CreditCard className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Memiliki Hutang</p>
-              <h4 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
-                {loading ? '...' : summary.anggotaBerhutang} <span className="text-sm font-medium text-slate-500 normal-case tracking-normal">anggota</span>
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Memiliki Hutang</p>
+              <h4 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                {loading ? '...' : summary.anggotaBerhutang} <span className="text-base font-medium text-slate-500 normal-case tracking-normal">anggota</span>
               </h4>
             </div>
           </div>
 
-          <div className="p-5 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-t sm:border-l border-slate-100 dark:border-slate-800 lg:border-none">
-            <div className="p-3 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg text-indigo-600 dark:text-indigo-400 shrink-0">
-              <Calculator className="w-5 h-5" />
+          <div className="p-6 flex items-center gap-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+            <div className="p-4 bg-indigo-100 dark:bg-indigo-900/50 rounded-xl text-indigo-600 dark:text-indigo-400 shrink-0">
+              <Calculator className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Rata-rata Saldo</p>
-              <h4 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Rata-rata Saldo</p>
+              <h4 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                 {loading ? '...' : formatRupiah(summary.rataRataSaldo)}
               </h4>
             </div>
@@ -196,10 +196,12 @@ export function DataAnggota() {
             <TableHeader className="bg-slate-50/80 dark:bg-slate-800/80">
               <TableRow>
                 <TableHead className="font-bold text-slate-600 py-4">Anggota</TableHead>
+                <TableHead className="font-bold text-slate-600 text-right py-4">S. Pokok</TableHead>
+                <TableHead className="font-bold text-slate-600 text-right py-4">S. Wajib</TableHead>
                 <TableHead className="font-bold text-slate-600 text-right py-4">Saldo Aktif</TableHead>
-                <TableHead className="font-bold text-slate-600 text-right py-4">Hutang Berjalan</TableHead>
+                <TableHead className="font-bold text-slate-600 text-right py-4">Hutang</TableHead>
                 <TableHead className="font-bold text-slate-600 text-right py-4">SHU Tersedia</TableHead>
-                <TableHead className="font-bold text-slate-600 text-right py-4 w-32">Aksi</TableHead>
+                <TableHead className="font-bold text-slate-600 text-right py-4 w-28">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -215,15 +217,17 @@ export function DataAnggota() {
                         </div>
                       </div>
                     </TableCell>
+                    <TableCell><div className="h-5 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-20 ml-auto"></div></TableCell>
+                    <TableCell><div className="h-5 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-20 ml-auto"></div></TableCell>
                     <TableCell><div className="h-5 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-24 ml-auto"></div></TableCell>
-                    <TableCell><div className="h-5 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-24 ml-auto"></div></TableCell>
-                    <TableCell><div className="h-5 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-24 ml-auto"></div></TableCell>
-                    <TableCell><div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-md animate-pulse w-28 ml-auto"></div></TableCell>
+                    <TableCell><div className="h-5 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-20 ml-auto"></div></TableCell>
+                    <TableCell><div className="h-5 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-20 ml-auto"></div></TableCell>
+                    <TableCell><div className="h-8 bg-slate-100 dark:bg-slate-800 rounded-md animate-pulse w-24 ml-auto"></div></TableCell>
                   </TableRow>
                 ))
               ) : paginatedData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-48 text-center text-slate-500">
+                  <TableCell colSpan={7} className="h-48 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center">
                       <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
                         <Users className="w-8 h-8 text-slate-300" />
@@ -250,6 +254,16 @@ export function DataAnggota() {
                           </span>
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="inline-flex font-medium text-slate-500 dark:text-slate-400 text-sm">
+                        {formatRupiah(item.simpanan_pokok)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="inline-flex font-medium text-slate-500 dark:text-slate-400 text-sm">
+                        {formatRupiah(item.simpanan_wajib)}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <span className="inline-flex font-bold text-slate-700 dark:text-slate-300">
