@@ -1,9 +1,18 @@
 <?php
 // config.php
-$servername = "localhost";
-$username   = "dqfqxjrd_admin";
-$password   = "Ma2syndicate";          
-$dbname     = "dqfqxjrd_koperasi_db";
+$is_local = (isset($_SERVER['HTTP_HOST']) && (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false)) || php_sapi_name() === 'cli';
+
+if ($is_local) {
+    $servername = "127.0.0.1";
+    $username   = "koperasi_user";
+    $password   = "koperasi_dev123";          
+    $dbname     = "koperasi_dev";
+} else {
+    $servername = "localhost";
+    $username   = "dqfqxjrd_admin";
+    $password   = "Ma2syndicate";          
+    $dbname     = "dqfqxjrd_koperasi_db";
+}
 
 // Enable detailed error reporting
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
