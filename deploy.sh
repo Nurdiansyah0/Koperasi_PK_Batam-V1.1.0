@@ -1,28 +1,30 @@
 #!/bin/bash
-# Script to deploy public_html contents to the production server
+set -e
 
-# Variables
 REMOTE_USER="dqfqxjrd"
 REMOTE_HOST="koperasipkbatam.my.id"
 REMOTE_PORT="6401"
-REMOTE_DIR="/home/dqfqxjrd/public_html/"
-LOCAL_DIR="./public_html/"
+REMOTE_DIR="/home/dqfqxjrd/public_html"
+LOCAL_DIR="./public_html"
 SSH_KEY="./id_rsa"
+SSH_CMD="ssh -i $SSH_KEY -p $REMOTE_PORT -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST"
+SCP_CMD="scp -i $SSH_KEY -P $REMOTE_PORT -o StrictHostKeyChecking=no"
 
-# Ensure SSH key has correct permissions
 chmod 600 $SSH_KEY
 
-echo "🚀 Starting deployment to $REMOTE_HOST..."
+echo "🚀 Compressing local files..."
+cd $LOCAL_DIR
+tar -czf /tmp/legacy_deploy.tar.gz --exclude="tests" --exclude="phpunit.xml" --exclude=".gitignore" ./* ./.[!.]* 2>/dev/null || true
+cd ..
 
-# Use rsync to upload only updated files. 
-# We sync the contents of LOCAL_DIR/ to REMOTE_DIR/
-# We exclude tests and the SSH keys themselves just in case.
-rsync -avz --no-perms --no-owner --no-group --delete \
-  --exclude="tests" \
-  --exclude="phpunit.xml" \
-  --exclude=".gitignore" \
-  --exclude="deploy.sh" \
-  -e "ssh -i $SSH_KEY -p $REMOTE_PORT -o StrictHostKeyChecking=no" \
-  $LOCAL_DIR $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR
+echo "🧹 Wiping production server directory (Removing Laravel & React assets)..."
+$SSH_CMD "find $REMOTE_DIR -mindepth 1 -maxdepth 1 ! -name '.well-known' ! -name 'cgi-bin' -exec rm -rf {} +"
+
+echo "📤 Uploading files to server..."
+$SCP_CMD /tmp/legacy_deploy.tar.gz $REMOTE_USER@$REMOTE_HOST:/tmp/legacy_deploy.tar.gz
+
+echo "📦 Extracting files on server..."
+$SSH_CMD "tar -xzf /tmp/legacy_deploy.tar.gz -C $REMOTE_DIR && rm /tmp/legacy_deploy.tar.gz"
 
 echo "✅ Deployment completed successfully!"
+rm /tmp/legacy_deploy.tar.gz
