@@ -116,63 +116,57 @@ export function DataAnggota() {
       </div>
 
       {/* Summary Widgets */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-lg text-blue-600 dark:text-blue-400">
-              <Users className="w-6 h-6" />
+      <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 lg:divide-x divide-slate-100 dark:divide-slate-800">
+          <div className="p-5 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-lg text-blue-600 dark:text-blue-400 shrink-0">
+              <Users className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Anggota</p>
-              <h4 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Anggota</p>
+              <h4 className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
                 {loading ? '...' : summary.totalAnggota}
               </h4>
             </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg text-emerald-600 dark:text-emerald-400">
-              <Wallet className="w-6 h-6" />
+          </div>
+          
+          <div className="p-5 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors sm:border-l sm:border-slate-100 dark:sm:border-slate-800 lg:border-none">
+            <div className="p-3 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg text-emerald-600 dark:text-emerald-400 shrink-0">
+              <Wallet className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Saldo</p>
-              <h4 className="text-xl font-bold text-slate-900 dark:text-white">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Saldo</p>
+              <h4 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
                 {loading ? '...' : formatRupiah(summary.totalSaldo)}
               </h4>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 bg-rose-100 dark:bg-rose-900/50 rounded-lg text-rose-600 dark:text-rose-400">
-              <CreditCard className="w-6 h-6" />
+          <div className="p-5 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-t sm:border-none border-slate-100 dark:border-slate-800">
+            <div className="p-3 bg-rose-100 dark:bg-rose-900/50 rounded-lg text-rose-600 dark:text-rose-400 shrink-0">
+              <CreditCard className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Hutang</p>
-              <h4 className="text-xl font-bold text-slate-900 dark:text-white">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Hutang</p>
+              <h4 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
                 {loading ? '...' : formatRupiah(summary.totalHutang)}
               </h4>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 bg-amber-100 dark:bg-amber-900/50 rounded-lg text-amber-600 dark:text-amber-400">
-              <PiggyBank className="w-6 h-6" />
+          <div className="p-5 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-t sm:border-l border-slate-100 dark:border-slate-800 lg:border-none">
+            <div className="p-3 bg-amber-100 dark:bg-amber-900/50 rounded-lg text-amber-600 dark:text-amber-400 shrink-0">
+              <PiggyBank className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total SHU Berjalan</p>
-              <h4 className="text-xl font-bold text-slate-900 dark:text-white">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total SHU Berjalan</p>
+              <h4 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
                 {loading ? '...' : formatRupiah(summary.totalSHU)}
               </h4>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
+      </Card>
 
       <Card className="shadow-sm border-slate-200 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900">
         <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4">
