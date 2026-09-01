@@ -88,7 +88,7 @@ global $conn;
 
 try {
     // Log request start
-    logError("API Request Started", [
+    // logError("API Request Started", [
         'method' => $_SERVER['REQUEST_METHOD'],
         'action' => $_GET['action'] ?? 'unknown',
         'query_string' => $_SERVER['QUERY_STRING'] ?? ''
@@ -491,7 +491,7 @@ try {
 }
 
 // Log successful completion
-logError("API Request Completed Successfully for action: " . $action);
+// logError("API Request Completed Successfully for action: " . $action);
 
 $conn->close();
 ob_end_flush();
