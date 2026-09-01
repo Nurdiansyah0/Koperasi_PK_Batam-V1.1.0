@@ -145,7 +145,7 @@ class kasir
                 error_log("Processing transaksi_id: " . $transaksi_id);
 
                 $stmtGet = $conn->prepare("
-                SELECT t.*, a.saldo, a.hutang, a.shu 
+                SELECT t.*, a.(simpanan_pokok + 100000 - hutang) AS saldo, a.hutang, a.shu 
                 FROM transaksi t 
                 LEFT JOIN anggota a ON a.anggota_id = t.anggota_id 
                 WHERE t.transaksi_id = ? AND t.status IN ('pending','on_process')
@@ -170,7 +170,7 @@ class kasir
                         throw new Exception("Saldo tidak cukup untuk memberikan hutang. Saldo: " . $saldo_sekarang . ", Dibutuhkan: " . $total_harga);
                     }
 
-                    $stmtSaldo = $conn->prepare("UPDATE anggota SET saldo = saldo - ? WHERE anggota_id = ?");
+                    $stmtSaldo = $conn->prepare("UPDATE anggota SET simpanan_pokok = simpanan_pokok - ? WHERE anggota_id = ?");
                     $stmtSaldo->bind_param("di", $total_harga, $anggota_id);
                     $stmtSaldo->execute();
                     $stmtSaldo->close();
@@ -256,7 +256,7 @@ class kasir
                     user_id,
                     nama_lengkap,
                     email,
-                    saldo,
+                    (simpanan_pokok + 100000 - hutang) AS saldo,
                     hutang,
                     shu,
                     created_at
@@ -306,7 +306,7 @@ class kasir
         $conn->begin_transaction();
         try {
             $stmt = $conn->prepare("
-                SELECT ph.*, a.saldo, a.hutang 
+                SELECT ph.*, a.(simpanan_pokok + 100000 - hutang) AS saldo, a.hutang 
                 FROM pembayaran_hutang ph 
                 LEFT JOIN anggota a ON a.anggota_id = ph.anggota_id 
                 WHERE ph.pembayaran_id = ?
@@ -357,7 +357,7 @@ class kasir
                 }
                 $stmtHutang->close();
 
-                $stmtSaldo = $conn->prepare("UPDATE anggota SET saldo = saldo + ? WHERE anggota_id = ?");
+                $stmtSaldo = $conn->prepare("UPDATE anggota SET simpanan_pokok = simpanan_pokok + ? WHERE anggota_id = ?");
                 $stmtSaldo->bind_param("di", $nominal, $anggota_id);
                 $stmtSaldo->execute();
 
@@ -504,7 +504,7 @@ class kasir
             sendResponse(false, "ID anggota required");
         }
 
-        $stmtCheck = $conn->prepare("SELECT saldo FROM anggota WHERE anggota_id = ?");
+        $stmtCheck = $conn->prepare("SELECT (simpanan_pokok + 100000 - hutang) AS saldo FROM anggota WHERE anggota_id = ?");
         $stmtCheck->bind_param("i", $anggota_id);
         $stmtCheck->execute();
         $saldoData = $stmtCheck->get_result()->fetch_assoc();
@@ -531,7 +531,7 @@ class kasir
             $tarik_id = $conn->insert_id;
             $stmt->close();
 
-            $stmtSaldo = $conn->prepare("UPDATE anggota SET saldo = saldo - ? WHERE anggota_id = ?");
+            $stmtSaldo = $conn->prepare("UPDATE anggota SET simpanan_pokok = simpanan_pokok - ? WHERE anggota_id = ?");
             $stmtSaldo->bind_param("di", $nominal, $anggota_id);
             $stmtSaldo->execute();
 
@@ -574,7 +574,7 @@ class kasir
 
         $stmt = $conn->prepare("
             SELECT anggota_id, user_id, nama_lengkap, username, email, 
-                   saldo, hutang, shu, created_at, updated_at
+                   (simpanan_pokok + 100000 - hutang) AS saldo, hutang, shu, created_at, updated_at
             FROM anggota 
             WHERE anggota_id = ? LIMIT 1
         ");
@@ -730,8 +730,8 @@ class kasir
             }
 
             if ($metode_pembayaran === 'hutang' && $anggota_id) {
-                $stmtSaldo = $conn->prepare("UPDATE anggota SET saldo = saldo - ?, hutang = hutang + ? WHERE anggota_id = ?");
-                $stmtSaldo->bind_param("ddi", $total_harga, $total_harga, $anggota_id);
+                $stmtSaldo = $conn->prepare("UPDATE anggota SET hutang = hutang + ? WHERE anggota_id = ?");
+                $stmtSaldo->bind_param("di", $total_harga, $anggota_id);
                 $stmtSaldo->execute();
                 $stmtSaldo->close();
             }

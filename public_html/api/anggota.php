@@ -90,7 +90,7 @@ class Anggota
 
         error_log("DEBUG getProfil - Anggota_id ditemukan: " . $anggota_id);
 
-        $stmt = $conn->prepare("SELECT anggota_id, user_id, nama_lengkap, saldo, hutang, shu FROM anggota WHERE anggota_id = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT anggota_id, user_id, nama_lengkap, (simpanan_pokok + 100000 - hutang) AS saldo, hutang, shu FROM anggota WHERE anggota_id = ? LIMIT 1");
         if (!$stmt) {
             sendResponse(false, "Prepare statement gagal: " . $conn->error);
             return;
@@ -667,7 +667,7 @@ public static function getHistoriTransaksi($conn)
         $anggota_id = self::resolveAnggotaId($conn, $user);
         $anggota_data = null;
         if ($anggota_id) {
-            $stmt_anggota = $conn->prepare("SELECT anggota_id, user_id, nama_lengkap, saldo, hutang, shu FROM anggota WHERE anggota_id = ? LIMIT 1");
+            $stmt_anggota = $conn->prepare("SELECT anggota_id, user_id, nama_lengkap, (simpanan_pokok + 100000 - hutang) AS saldo, hutang, shu FROM anggota WHERE anggota_id = ? LIMIT 1");
             $stmt_anggota->bind_param("i", $anggota_id);
             $stmt_anggota->execute();
             $result_anggota = $stmt_anggota->get_result();
