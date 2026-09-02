@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { kasirService } from '@/services/kasirService'
 import { useAuthStore } from '@/store/authStore'
@@ -12,35 +12,40 @@ import {
   TrendingUp, 
   ShoppingBag, 
   CreditCard, 
-  ArrowRight,
-  ShieldCheck,
-  ShieldAlert,
-  ScanLine,
-  BadgeCheck,
-  ReceiptText,
-  Landmark,
-  ChevronRight
+  ArrowRight, 
+  ShieldCheck, 
+  ShieldAlert, 
+  ScanLine, 
+  BadgeCheck, 
+  ReceiptText, 
+  Landmark, 
+  ChevronRight 
 } from 'lucide-react'
 
 export function KasirDashboard() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
-  const [data, setData] = useState<DashboardKasir | null>(null)
-  const [transaksiTerbaru, setTransaksiTerbaru] = useState<Transaksi[]>([])
-  const [activeShift, setActiveShift] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    Promise.all([
-      kasirService.getDashboard(),
-      kasirService.getTransaksiTerbaru(),
-      kasirService.getActiveShiftInfo()
-    ]).then(([dashboard, transaksi, shiftInfo]) => {
-      setData(dashboard)
-      setTransaksiTerbaru(transaksi)
-      setActiveShift(shiftInfo.data?.latest_incoming || null)
-    }).catch(console.error).finally(() => setLoading(false))
-  }, [])
+  const { data: dashboardPayload, isLoading: loading } = useQuery({
+    queryKey: ['kasir', 'dashboard-combined'],
+    queryFn: async () => {
+      const [dashboard, transaksi, shiftInfo] = await Promise.all([
+        kasirService.getDashboard(),
+        kasirService.getTransaksiTerbaru(),
+        kasirService.getActiveShiftInfo()
+      ])
+      return {
+        data: dashboard,
+        transaksiTerbaru: transaksi,
+        activeShift: shiftInfo.data?.latest_incoming || null
+      }
+    },
+    staleTime: 1000 * 30,
+  })
+
+  const data = dashboardPayload?.data || null
+  const transaksiTerbaru = dashboardPayload?.transaksiTerbaru || []
+  const activeShift = dashboardPayload?.activeShift || null
 
   if (loading) {
     return (

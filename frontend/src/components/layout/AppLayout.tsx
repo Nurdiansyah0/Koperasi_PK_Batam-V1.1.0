@@ -14,7 +14,7 @@ export function AppLayout() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (token) {
+    if (token && !user) {
       api.get('/laravel/api/me')
         .then(res => {
           if (res.data?.user) {
@@ -27,7 +27,7 @@ export function AppLayout() {
           }
         })
     }
-  }, [token])
+  }, [token, user])
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />
