@@ -292,7 +292,7 @@ export function ManajemenPkmPage() {
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-20 max-w-5xl mx-auto">
-      {/* PRINT-ONLY CSS */}
+      {/* PRINT-ONLY CSS (STANDAR DOKUMEN ISO A4) */}
       <style dangerouslySetInnerHTML={{__html: `
         @media screen {
           #printable-shopping-sheet {
@@ -302,14 +302,20 @@ export function ManajemenPkmPage() {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 8mm 10mm;
+            margin: 12mm 15mm;
+          }
+          *, *::before, *::after {
+            box-sizing: border-box !important;
           }
           html, body {
-            height: 100% !important;
-            background: #ffffff !important;
-            color: #000000 !important;
+            width: 100% !important;
+            height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            font-size: 10pt !important;
+            line-height: 1.3 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
@@ -317,137 +323,152 @@ export function ManajemenPkmPage() {
             display: none !important;
           }
           #printable-shopping-sheet {
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: space-between !important;
+            display: block !important;
             width: 100% !important;
-            min-height: 94vh !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
             background: #ffffff !important;
             color: #000000 !important;
-            padding: 4mm 6mm !important;
-            margin: 0 !important;
-            box-sizing: border-box !important;
-            font-family: Arial, Helvetica, sans-serif !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+          }
+          table.print-table {
+            width: 100% !important;
+            max-width: 100% !important;
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
+            page-break-inside: auto !important;
+          }
+          table.print-table thead {
+            display: table-header-group !important;
+          }
+          table.print-table tfoot {
+            display: table-footer-group !important;
+          }
+          table.print-table tr {
+            page-break-inside: avoid !important;
+            page-break-after: auto !important;
+          }
+          .avoid-break {
+            page-break-inside: avoid !important;
           }
         }
       `}} />
 
-      {/* DEDICATED PRINTABLE A4 SHOPPING SHEET (KOP SURAT RESMI FULL-PAGE PROPORTIONAL) */}
-      <div id="printable-shopping-sheet" className="text-black bg-white flex flex-col justify-between">
-        <div>
-          {/* OFFICIAL LETTERHEAD (KOP SURAT) */}
-          <div className="border-b-4 border-double border-black pb-4 mb-5">
-            <div className="flex items-center justify-between gap-5">
-              {/* Logo Resmi SVG Koperasi */}
-              <div className="w-20 h-20 shrink-0 flex items-center justify-center">
-                <svg viewBox="0 0 512 512" className="w-20 h-20" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="printBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#1E3A8A" />
-                      <stop offset="50%" stopColor="#2563EB" />
-                      <stop offset="100%" stopColor="#4F46E5" />
-                    </linearGradient>
-                    <linearGradient id="printGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#FDE047" />
-                      <stop offset="50%" stopColor="#F59E0B" />
-                      <stop offset="100%" stopColor="#D97706" />
-                    </linearGradient>
-                    <linearGradient id="printEmeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#34D399" />
-                      <stop offset="100%" stopColor="#059669" />
-                    </linearGradient>
-                  </defs>
-                  <rect width="512" height="512" rx="128" fill="url(#printBgGrad)" />
-                  <circle cx="256" cy="256" r="200" fill="none" stroke="rgba(255, 255, 255, 0.25)" strokeWidth="6" strokeDasharray="12 8" />
-                  <path d="M128 352 C128 220 220 128 352 128 C365 128 375 138 375 151 C375 164 365 174 352 174 C245 174 174 245 174 352 C174 365 164 375 151 375 C138 375 128 365 128 352 Z" fill="url(#printEmeraldGrad)" opacity="0.9" />
-                  <path d="M170 170 C170 156 181 145 195 145 L255 145 C295 145 325 172 325 210 C325 248 295 275 255 275 L215 275 L215 350 C215 364 204 375 190 375 C176 375 170 364 170 350 Z M215 190 L215 230 L252 230 C270 230 282 221 282 210 C282 199 270 190 252 190 Z" fill="#FFFFFF" />
-                  <path d="M285 240 L350 160 C358 150 372 148 382 156 C392 164 394 178 386 188 L330 256 L392 334 C400 344 398 359 388 367 C378 375 363 373 355 363 L305 300 L285 322 L285 275 Z" fill="url(#printGoldGrad)" />
-                </svg>
-              </div>
+      {/* DEDICATED PRINTABLE A4 SHOPPING SHEET (STANDAR KOP RESMI A4 TANPA OVERFLOW) */}
+      <div id="printable-shopping-sheet" className="text-black bg-white">
+        {/* OFFICIAL LETTERHEAD (KOP SURAT) */}
+        <div className="border-b-2 border-black pb-2 mb-3">
+          <div className="flex items-center justify-between gap-3">
+            {/* Logo Resmi SVG Koperasi (52px x 52px Presisi) */}
+            <div className="w-[52px] h-[52px] shrink-0 flex items-center justify-center">
+              <svg viewBox="0 0 512 512" className="w-[52px] h-[52px]" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="printBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#1E3A8A" />
+                    <stop offset="50%" stopColor="#2563EB" />
+                    <stop offset="100%" stopColor="#4F46E5" />
+                  </linearGradient>
+                  <linearGradient id="printGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FDE047" />
+                    <stop offset="50%" stopColor="#F59E0B" />
+                    <stop offset="100%" stopColor="#D97706" />
+                  </linearGradient>
+                  <linearGradient id="printEmeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#34D399" />
+                    <stop offset="100%" stopColor="#059669" />
+                  </linearGradient>
+                </defs>
+                <rect width="512" height="512" rx="128" fill="url(#printBgGrad)" />
+                <circle cx="256" cy="256" r="200" fill="none" stroke="rgba(255, 255, 255, 0.25)" strokeWidth="6" strokeDasharray="12 8" />
+                <path d="M128 352 C128 220 220 128 352 128 C365 128 375 138 375 151 C375 164 365 174 352 174 C245 174 174 245 174 352 C174 365 164 375 151 375 C138 375 128 365 128 352 Z" fill="url(#printEmeraldGrad)" opacity="0.9" />
+                <path d="M170 170 C170 156 181 145 195 145 L255 145 C295 145 325 172 325 210 C325 248 295 275 255 275 L215 275 L215 350 C215 364 204 375 190 375 C176 375 170 364 170 350 Z M215 190 L215 230 L252 230 C270 230 282 221 282 210 C282 199 270 190 252 190 Z" fill="#FFFFFF" />
+                <path d="M285 240 L350 160 C358 150 372 148 382 156 C392 164 394 178 386 188 L330 256 L392 334 C400 344 398 359 388 367 C378 375 363 373 355 363 L305 300 L285 322 L285 275 Z" fill="url(#printGoldGrad)" />
+              </svg>
+            </div>
 
-              {/* Teks Kop Surat Tengah */}
-              <div className="text-center flex-1">
-                <h1 className="text-xl font-black tracking-wider uppercase m-0 p-0 text-black">
-                  KOPERASI KARYAWAN PKPPK BTH
-                </h1>
-                <p className="text-sm font-bold text-gray-800 m-0 mt-1 uppercase tracking-wide">
-                  LEMBAR RENCANA KULAKAN BELANJA TOKO
-                </p>
-                <p className="text-xs text-gray-600 m-0 mt-0.5">
-                  Kota Batam, Kepulauan Riau — Unit Usaha Pertokoan & Retail
-                </p>
-              </div>
+            {/* Teks Kop Surat Tengah */}
+            <div className="text-center flex-1">
+              <h1 className="text-[15px] font-black tracking-wider uppercase m-0 p-0 text-black leading-tight">
+                KOPERASI KARYAWAN PKPPK BTH
+              </h1>
+              <p className="text-[12px] font-bold text-gray-800 m-0 mt-0.5 tracking-wide uppercase">
+                LEMBAR RENCANA KULAKAN BELANJA TOKO
+              </p>
+              <p className="text-[10px] text-gray-600 m-0">
+                Unit Usaha Pertokoan & Retail — Kota Batam, Kepulauan Riau
+              </p>
+            </div>
 
-              {/* Dokumen Meta Box Kanan */}
-              <div className="border-2 border-black p-2.5 rounded-xl text-xs text-left shrink-0 min-w-[150px] space-y-1 bg-gray-50/50">
-                <div><strong>Tanggal:</strong> {new Date().toLocaleDateString('id-ID', { dateStyle: 'medium' })}</div>
-                <div><strong>Dasar:</strong> {days} Hari Penjualan</div>
-                <div><strong>Total Item:</strong> {activeSelectedItems.length} SKU ({totalPiecesToBuy} pcs)</div>
-              </div>
+            {/* Dokumen Meta Box Kanan */}
+            <div className="border border-black p-1.5 rounded text-[10px] text-left shrink-0 min-w-[135px] space-y-0.5 bg-gray-50/40">
+              <div><strong>Tanggal:</strong> {new Date().toLocaleDateString('id-ID', { dateStyle: 'medium' })}</div>
+              <div><strong>Basis:</strong> {days} Hari ({leadTime}H Target)</div>
+              <div><strong>Item:</strong> {activeSelectedItems.length} SKU ({totalPiecesToBuy} pcs)</div>
             </div>
           </div>
-
-          {/* Clean Proportional Table: HANYA ITEM YANG DICENTANG */}
-          <table className="w-full border-collapse border border-black text-sm mb-6">
-            <thead>
-              <tr className="bg-gray-100 font-bold border-b-2 border-black text-xs">
-                <th className="border border-black p-2 text-center w-10">No</th>
-                <th className="border border-black p-2 text-center w-12">Cek</th>
-                <th className="border border-black p-2 text-left">Nama Barang</th>
-                <th className="border border-black p-2 text-center w-20">Laku ({days}H)</th>
-                <th className="border border-black p-2 text-center w-24">Sisa Stok</th>
-                <th className="border border-black p-2 text-center w-24">Jumlah Beli</th>
-                <th className="border border-black p-2 text-right w-28">Harga Modal</th>
-                <th className="border border-black p-2 text-right w-32">Total Harga Beli</th>
-              </tr>
-            </thead>
-            <tbody>
-              {activeSelectedItems.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="border border-black p-6 text-center text-gray-500">
-                    Tidak ada barang yang dicentang untuk dibeli.
-                  </td>
-                </tr>
-              ) : (
-                activeSelectedItems.map((item, idx) => (
-                  <tr key={item.barang_id} className="border-b border-black">
-                    <td className="border border-black p-2 text-center font-medium">{idx + 1}</td>
-                    <td className="border border-black p-2 text-center font-bold text-base">[ &nbsp; ]</td>
-                    <td className="border border-black p-2 font-bold">{item.nama_barang}</td>
-                    <td className="border border-black p-2 text-center">{item.total_sold} pcs</td>
-                    <td className="border border-black p-2 text-center">{item.stok_total} pcs</td>
-                    <td className="border border-black p-2 text-center font-black text-base">{item.jumlah_beli} pcs</td>
-                    <td className="border border-black p-2 text-right">{formatRupiah(item.harga_modal)}</td>
-                    <td className="border border-black p-2 text-right font-black">{formatRupiah(item.jumlah_beli * item.harga_modal)}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-            <tfoot>
-              <tr className="bg-gray-100 font-black border-t-2 border-black text-sm">
-                <td colSpan={5} className="border border-black p-2.5 text-right font-extrabold">TOTAL RENCANA BELANJA:</td>
-                <td className="border border-black p-2.5 text-center font-black text-base">{totalPiecesToBuy} pcs</td>
-                <td className="border border-black p-2.5 text-right font-extrabold">TOTAL ESTIMASI:</td>
-                <td className="border border-black p-2.5 text-right font-black text-base">{formatRupiah(totalBudgetSelected)}</td>
-              </tr>
-            </tfoot>
-          </table>
         </div>
 
+        {/* Clean Proportional Table: HANYA ITEM YANG DICENTANG */}
+        <table className="print-table w-full border border-black text-[11px] mb-4">
+          <thead>
+            <tr className="bg-gray-100 font-bold border-b border-black text-[10px]">
+              <th className="border border-black p-1.5 text-center" style={{ width: '5%' }}>No</th>
+              <th className="border border-black p-1.5 text-center" style={{ width: '6%' }}>Cek</th>
+              <th className="border border-black p-1.5 text-left" style={{ width: '35%' }}>Nama Barang</th>
+              <th className="border border-black p-1.5 text-center" style={{ width: '9%' }}>Laku ({days}H)</th>
+              <th className="border border-black p-1.5 text-center" style={{ width: '9%' }}>Sisa</th>
+              <th className="border border-black p-1.5 text-center" style={{ width: '10%' }}>Beli</th>
+              <th className="border border-black p-1.5 text-right" style={{ width: '12%' }}>Modal Satuan</th>
+              <th className="border border-black p-1.5 text-right" style={{ width: '14%' }}>Total Biaya</th>
+            </tr>
+          </thead>
+          <tbody>
+            {activeSelectedItems.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="border border-black p-4 text-center text-gray-500">
+                  Tidak ada barang yang dicentang untuk dibeli.
+                </td>
+              </tr>
+            ) : (
+              activeSelectedItems.map((item, idx) => (
+                <tr key={item.barang_id} className="border-b border-black">
+                  <td className="border border-black p-1.5 text-center">{idx + 1}</td>
+                  <td className="border border-black p-1.5 text-center font-bold text-xs">[ &nbsp; ]</td>
+                  <td className="border border-black p-1.5 font-bold truncate" title={item.nama_barang}>{item.nama_barang}</td>
+                  <td className="border border-black p-1.5 text-center">{item.total_sold} pcs</td>
+                  <td className="border border-black p-1.5 text-center">{item.stok_total} pcs</td>
+                  <td className="border border-black p-1.5 text-center font-black text-xs">{item.jumlah_beli} pcs</td>
+                  <td className="border border-black p-1.5 text-right">{formatRupiah(item.harga_modal)}</td>
+                  <td className="border border-black p-1.5 text-right font-black">{formatRupiah(item.jumlah_beli * item.harga_modal)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+          <tfoot>
+            <tr className="bg-gray-100 font-black border-t-2 border-black text-[11px]">
+              <td colSpan={5} className="border border-black p-1.5 text-right font-bold">TOTAL RENCANA BELANJA:</td>
+              <td className="border border-black p-1.5 text-center font-black">{totalPiecesToBuy} pcs</td>
+              <td className="border border-black p-1.5 text-right font-bold">TOTAL ESTIMASI:</td>
+              <td className="border border-black p-1.5 text-right font-black">{formatRupiah(totalBudgetSelected)}</td>
+            </tr>
+          </tfoot>
+        </table>
+
         {/* Bottom Section: Notes & Dual Signature Block */}
-        <div className="space-y-4 pt-4 border-t border-gray-300">
-          <p className="text-[11px] text-gray-600 italic">
-            * Catatan: Bawa faktur/nota fisik toko grosir setelah berbelanja untuk dicatat ke sistem melalui menu "📥 Catat Barang Masuk".
+        <div className="avoid-break space-y-3 pt-2">
+          <p className="text-[10px] text-gray-600 italic m-0">
+            * Catatan: Simpan nota/faktur toko grosir untuk diinput ke sistem pada menu "📥 Catat Barang Masuk" setelah berbelanja.
           </p>
 
-          <div className="grid grid-cols-2 gap-10 pt-4 text-xs text-center">
+          <div className="grid grid-cols-2 gap-8 pt-2 text-[11px] text-center">
             <div>
-              <p className="font-semibold mb-16">Petugas Yang Berbelanja,</p>
-              <p className="font-bold border-t border-black w-48 mx-auto pt-1.5">( ........................................ )</p>
+              <p className="font-semibold mb-12">Petugas Yang Berbelanja,</p>
+              <p className="font-bold border-t border-black w-44 mx-auto pt-1">( ........................................ )</p>
             </div>
             <div>
-              <p className="font-semibold mb-16">Pengurus / Bendahara Koperasi,</p>
-              <p className="font-bold border-t border-black w-48 mx-auto pt-1.5">( ........................................ )</p>
+              <p className="font-semibold mb-12">Pengurus / Bendahara Koperasi,</p>
+              <p className="font-bold border-t border-black w-44 mx-auto pt-1">( ........................................ )</p>
             </div>
           </div>
         </div>
