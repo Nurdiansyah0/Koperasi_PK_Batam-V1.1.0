@@ -893,8 +893,10 @@ class AdminController extends Controller
             ];
 
             // Pagination or All records
+            $transaksiQuery = (clone $q)->with($withRelations)->orderBy('created_at', 'desc');
+
             if ($perPage === 'all' || $perPage == -1) {
-                $transaksiList = $q->with($withRelations)->orderBy('created_at', 'desc')->get();
+                $transaksiList = $transaksiQuery->get();
 
                 $paginated = [
                     'current_page' => 1,
@@ -904,7 +906,7 @@ class AdminController extends Controller
                 ];
                 $items = $transaksiList;
             } else {
-                $paginator = $q->with($withRelations)->orderBy('created_at', 'desc')->paginate((int) $perPage);
+                $paginator = $transaksiQuery->paginate((int) $perPage);
 
                 $paginated = [
                     'current_page' => $paginator->currentPage(),
