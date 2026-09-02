@@ -835,7 +835,9 @@ class AdminController extends Controller
                 COALESCE(SUM(CASE WHEN metode_pembayaran = "qr" THEN total_harga ELSE 0 END), 0) as total_qr,
                 COALESCE(SUM(CASE WHEN metode_pembayaran = "transfer" THEN total_harga ELSE 0 END), 0) as total_transfer,
                 COALESCE(SUM(CASE WHEN anggota_id IS NOT NULL THEN total_harga ELSE 0 END), 0) as omset_anggota,
-                COALESCE(SUM(CASE WHEN anggota_id IS NULL THEN total_harga ELSE 0 END), 0) as omset_umum
+                COALESCE(SUM(CASE WHEN anggota_id IS NULL THEN total_harga ELSE 0 END), 0) as omset_umum,
+                COALESCE(SUM(CASE WHEN anggota_id IS NOT NULL THEN total_keuntungan ELSE 0 END), 0) as laba_anggota,
+                COALESCE(SUM(CASE WHEN anggota_id IS NULL THEN total_keuntungan ELSE 0 END), 0) as laba_umum
             ')->first();
 
             $totalTransaksi = (int) ($summaryAgg->total_transaksi ?? 0);
@@ -919,21 +921,22 @@ class AdminController extends Controller
                     'created_at' => $t->created_at ? $t->created_at->toIso8601String() : null,
                     'anggota_id' => $t->anggota_id,
                     'nama_anggota' => $t->anggota ? $t->anggota->nama_lengkap : 'Pelanggan Umum',
-                    'nomor_anggota' => $t->anggota ? $t->anggota->nomor_anggota : null,
+                    'kasir_id' => $t->kasir_id,
                     'metode_pembayaran' => $t->metode_pembayaran,
                     'total_harga' => (float) $t->total_harga,
-                    'total_keuntungan' => (float) ($t->total_keuntungan ?? 0),
-                    'kasir_id' => $t->kasir_id,
-                    'kasir_username' => $t->kasir ? $t->kasir->username : 'Kasir',
-                    'status' => $t->status ?? 'selesai',
-                    'items' => $t->details ? $t->details->map(function($d) {
+                    'total_keuntungan' => (float) $t->total_keuntungan,
+                    'modal_hpp' => max(0, (float) $t->total_harga - (float) $t->total_keuntungan),
+                    'status' => $t->status,
+                    'created_at' => $t->created_at ? $t->created_at->toISOString() : null,
+                    'items_count' => $t->details ? $t->details->count() : 0,
+                    'details' => $t->details ? $t->details->map(function($d) {
                         return [
                             'detail_id' => $d->detail_id,
                             'barang_id' => $d->barang_id,
                             'nama_barang' => $d->barang ? $d->barang->nama_barang : 'Barang #' . $d->barang_id,
-                            'satuan' => $d->barang ? $d->barang->satuan : 'pcs',
                             'jumlah' => (int) $d->jumlah,
                             'harga_satuan' => (float) $d->harga_satuan,
+                            'harga_beli_saat_ini' => (float) ($d->harga_beli_saat_ini ?? 0),
                             'subtotal' => (float) $d->subtotal,
                             'keuntungan' => (float) ($d->keuntungan ?? 0),
                         ];
@@ -954,9 +957,17 @@ class AdminController extends Controller
             $totalLabaKotor = $totalKeuntungan;
             $totalLabaBersih = max(0, $totalLabaKotor - $totalBebanOperasional);
 
-            $shuAnggota60 = round(0.60 * $totalLabaBersih, 2);
-            $shuCadangan30 = round(0.30 * $totalLabaBersih, 2);
-            $shuPengurus10 = round(0.10 * $totalLabaBersih, 2);
+            $totalLabaAnggota = (float) ($summaryAgg->laba_anggota ?? 0);
+            $totalLabaUmum = (float) ($summaryAgg->laba_umum ?? 0);
+
+            // Alokasi Net SHU Tripartit:
+            // 1. Bagian Anggota (60%) berasal dari Laba Partisipasi Belanja Anggota
+            $proporsiOpexAnggota = $totalLabaKotor > 0 ? ($totalLabaAnggota / $totalLabaKotor) * $totalBebanOperasional : 0;
+            $netLabaAnggota = max(0, $totalLabaAnggota - $proporsiOpexAnggota);
+
+            $shuAnggota60 = round(0.60 * $netLabaAnggota, 2);
+            $shuPengurus10 = round(0.10 * $netLabaAnggota, 2);
+            $shuCadangan30 = round($totalLabaBersih - $shuAnggota60 - $shuPengurus10, 2);
 
             // Rekapitulasi Partisipasi Belanja & Hak SHU Seluruh Anggota Koperasi (Sub-Ledger SHU)
             $totalOmsetAnggota = (float) ($summaryAgg->omset_anggota ?? 0);
@@ -979,7 +990,7 @@ class AdminController extends Controller
                 ->get()
                 ->keyBy('anggota_id');
 
-            $rekapAnggota = $allAnggota->map(function($a) use ($txAggPerAnggota, $totalOmsetAnggota, $totalLabaKotor, $shuAnggota60) {
+            $rekapAnggota = $allAnggota->map(function($a) use ($txAggPerAnggota, $totalOmsetAnggota, $totalLabaAnggota, $shuAnggota60) {
                 $tx = $txAggPerAnggota->get($a->anggota_id);
                 $belanja = $tx ? (float) $tx->total_belanja : 0.0;
                 $lunas = $tx ? (float) $tx->total_lunas : 0.0;
@@ -988,7 +999,7 @@ class AdminController extends Controller
                 $frek = $tx ? (int) $tx->frekuensi_belanja : 0;
 
                 $rasioBelanja = ($totalOmsetAnggota > 0 && $belanja > 0) ? ($belanja / $totalOmsetAnggota) : 0;
-                $rasioMargin = ($totalLabaKotor > 0 && $margin > 0) ? ($margin / $totalLabaKotor) : 0;
+                $rasioMargin = ($totalLabaAnggota > 0 && $margin > 0) ? ($margin / $totalLabaAnggota) : 0;
                 $hakShu = round($rasioMargin * $shuAnggota60, 2);
 
                 return [
