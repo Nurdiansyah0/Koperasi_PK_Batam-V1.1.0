@@ -232,7 +232,7 @@ Untuk menjunjung tinggi prinsip dasar jati diri koperasi *"Dari Anggota, Oleh An
 
 ---
 
-## 9. MANAJEMEN INVENTORI 2-TIER, KADALUARSA (FEFO), & PICKING REFILL TOKO (ADMIN & GUDANG)
+### 9. MANAJEMEN INVENTORI 2-TIER, KADALUARSA (FEFO), & PICKING REFILL TOKO (ADMIN & GUDANG)
 
 Untuk menjaga akurasi pembukuan, mencegah kerugian susut (*shrinkage/waste*), dan memastikan kelancaran operasional harian kasir, pengelolaan persediaan barang diatur sebagai berikut:
 
@@ -246,7 +246,22 @@ Untuk menjaga akurasi pembukuan, mencegah kerugian susut (*shrinkage/waste*), da
 
 ---
 
-### B. Prosedur Refill Display Toko 2-Langkah (*Picking Slip Work Order*)
+### B. Matriks Perbedaan Operasional: `/admin/pkm` vs `/admin/barang`
+
+Untuk menghindari kebingungan staf dan pengurus, berikut pembagian fungsi tegas antara kedua modul admin:
+
+| Parameter | Modul `/admin/pkm` (Rencana Belanja & Faktur) | Modul `/admin/barang` (Katalog & Display Toko) |
+| :--- | :--- | :--- |
+| **Fokus Utama** | **Pengadaan Eksternal (Dari Distributor/Grosir)** | **Operasional Internal (Gudang & Display Rak Toko)** |
+| **Karakter Alur** | Perencanaan belanja rutin terjadwal (Multi-SKU) | Pengawasan harian, penataan rak, & radar kadaluarsa |
+| **Basis Perhitungan** | Analisis riwayat penjualan riil (*Average Daily Sales*) | Ambang batas fisik display toko vs batas PKM ($4\text{ Hari}$) |
+| **Fitur Dokumen** | • Cetak Dokumen Rencana Belanja ISO A4 Kop Resmi<br/>• Salin Checklist Belanja ke WhatsApp Petugas | Lembar Kerja Picking Fisik Rak ($2\text{-Langkah}$) |
+| **Pencatatan Masuk** | **📥 Catat Faktur Masuk (Bulk Multi-SKU Restock):** Input 1 nota grosir (20–50 barang sekaligus) | • **Mutasi Pindah Rak** (Toko $\leftrightarrow$ Gudang)<br/>• **Kulakan Satuan** (Restock darurat 1 SKU) |
+| **Penanganan Expired** | Menginput tanggal expired batch saat terima nota | • Radar Kadaluarsa ($\le 30\text{ Hari}$ & Expired)<br/>• **Tarik Expired / Write-Off** (Pemusnahan) |
+
+---
+
+### C. Prosedur Refill Display Toko 2-Langkah (*Picking Slip Work Order*)
 Untuk mencegah selisih data akibat perbedaan antara waktu mutasi di sistem dan eksekusi fisik penataan barang:
 
 ```mermaid
@@ -254,7 +269,7 @@ flowchart TD
     A["1. Admin/Kasir Buka Menu Data Barang"] --> B["2. Klik 'Rencanakan Refill' (Buka Lembar Kerja)"]
     B --> C{"Cek Ketersediaan Gudang"}
     C -- "Stok Gudang Ada (>0)" --> D["3. Tab 'Siap Diambil': Salin Checklist ke HP/Kertas"]
-    C -- "Stok Gudang Kosong (=0)" --> E["4. Tab 'Butuh Kulakan': Klik 'Kulakan' ke Distributor"]
+    C -- "Stok Gudang Kosong (=0)" --> E["4. Tab 'Butuh Kulakan': Buka Rencana Belanja PKM / Kulakan Satuan"]
     D --> F["5. Staf Ambil Barang di Gudang & Tata di Rak Etalase"]
     F --> G["6. Verifikasi Kuantitas Fisik Riil & Klik 'Konfirmasi Selesai Ditata'"]
     G --> H["7. Stok Toko & Gudang Resmi Termutasi di Database"]
@@ -265,7 +280,9 @@ flowchart TD
    * Sistem otomatis memetakan seluruh SKU yang stok display tokonya di bawah target PKM 4 hari.
 2. **Langkah 2: Pemilahan Status Ketersediaan (Multi-Tab Handling)**
    * **Tab 🟢 Siap Diambil dari Gudang:** Menampilkan barang yang memiliki stok di gudang belakang. Staf dapat menggunakan tombol **`[ 📋 Salin Checklist ]`** untuk membawa daftar ke HP saat mengambil barang di gudang.
-   * **Tab 🔴 Gudang Kosong / Butuh Kulakan:** Menampung barang yang defisit di toko namun cadangan gudangnya 0 (Habis). Sistem menyediakan tombol cepat **`[ 🛒 Kulakan ]`** agar admin dapat langsung menerbitkan pesanan restock ke distributor tanpa menghambat refill barang lain.
+   * **Tab 🔴 Gudang Kosong / Butuh Kulakan:** Menampung barang yang defisit di toko namun cadangan gudangnya 0 (Habis). 
+     - **Buka Rencana Belanja PKM:** Untuk menyusun jadwal kulakan grosir massal lengkap dengan data penjualan dan estimasi uang kas.
+     - **Kulakan Satuan (`[ 🛒 Kulakan Satuan ]`):** Tombol cepat khusus jika hanya ingin menginput restock darurat 1 barang tertentu (misal titip beli 1 SKU di warung sebelah).
 3. **Langkah 3: Pengambilan Fisik & Penataan Rak**
    * Staf mengambil barang dari gudang, memeriksa kondisi fisik kemasan dan tanggal kadaluarsa, lalu memajangnya di rak etalase kasir.
 4. **Langkah 4: Konfirmasi Penyelesaian (*Final Verification*)**
@@ -274,7 +291,7 @@ flowchart TD
 
 ---
 
-### C. Manajemen Tanggal Kadaluarsa Berbasis FEFO (*First-Expired, First-Out*)
+### D. Manajemen Tanggal Kadaluarsa Berbasis FEFO (*First-Expired, First-Out*)
 1. **Pemisahan Catatan Expired 2-Tier:**
    * **Tanggal Expired Rak (`tgl_kadaluarsa_toko`):** Mencatat tanggal kadaluarsa dari batch yang sedang dipajang di etalase toko. Batch dengan tanggal paling dekat **wajib diletakkan di rak paling depan** agar dibeli konsumen terlebih dahulu (*FEFO Principle*).
    * **Tanggal Expired Gudang (`tgl_kadaluarsa_gudang`):** Mencatat tanggal kadaluarsa dari batch kartonan yang baru dikulak di gudang cadangan.
@@ -286,47 +303,59 @@ flowchart TD
 
 ---
 
-### D. Prosedur Mutasi Rak Internal & Kulakan Pengadaan
+### E. Prosedur Mutasi Rak Internal & Alokasi Stok Masuk (3-Mode)
 1. **Mutasi Manual Pindah Rak (`/admin/mutasi-stok`):**
    * Admin/Staf dapat memindahkan stok secara fleksibel per SKU:
      * **Gudang ➔ Toko (Refill Parsial):** Membawa stok tambahan ke etalase toko.
      * **Toko ➔ Gudang (Simpan Kembali):** Mengembalikan kelebihan stok rak ke gudang cadangan.
-2. **Pengadaan Kulakan Baru (Multi-Alokasi):**
-   * Saat menerima barang dari distributor/supplier, admin mencatat restock dengan opsi alokasi:
-     * 📦 **Masuk ke Gudang Cadangan (Direkomendasikan):** Barang disimpan di kardus belakang.
-     * 🏪 **Langsung ke Display Toko:** Barang langsung dipajang di rak depan.
-     * ⚡ **Auto-Refill PKM:** Otomatis mengisi etalase toko hingga batas PKM 4 hari, dan sisanya masuk ke gudang cadangan.
-   * Sumber dana wajib dipilih antara: **Kas Koperasi**, **Rekening Bank Koperasi**, atau **Dana Talangan Pengurus** untuk menjaga neraca kas.
+2. **Pengadaan Kulakan Baru (Multi-Alokasi 3-Mode):**
+   Saat menerima barang dari distributor/supplier, admin mencatat restock dengan opsi alokasi:
+   * 📦 **Masuk ke Gudang Cadangan (`gudang`):** Barang disimpan di kardus belakang (Direkomendasikan untuk pembelian kartonan).
+   * 🏪 **Langsung ke Display Toko (`toko`):** Barang langsung dipajang di rak depan (Untuk barang fast-moving yang raknya kosong).
+   * ⚡ **Auto-Refill PKM (`auto`):** Sistem otomatis mengisi etalase toko hingga mencapai batas PKM 4 hari, dan kelebihannya otomatis dimasukkan ke stok cadangan gudang.
+3. **Sumber Dana Pengeluaran:**
+   * Sumber dana wajib dipilih antara: **Kas Tunai Koperasi**, **Rekening Bank Koperasi**, atau **Dana Talangan Pengurus** untuk menjaga neraca buku kas.
 
 ---
 
-### E. Siklus Lengkap Pengadaan Kulakan (*Closed-Loop Procurement Workflow*)
+### F. Siklus Lengkap Pengadaan Kulakan Grosir (*Closed-Loop Procurement Workflow*)
 
 ```mermaid
 flowchart LR
-    A["1. Generate Struk Belanja (/admin/pkm)"] --> B["2. Salin WA / Bawa ke Pasar Grosir"]
-    B --> C["3. Beli Fisik & Terima Nota/Faktur Distributor"]
-    C --> D["4. Klik 'Catat Faktur Masuk' di Sistem"]
+    A["1. Generate Rencana Belanja (/admin/pkm)"] --> B["2. Salin WA / Cetak A4 Kop Resmi"]
+    B --> C["3. Beli Fisik di Grosir & Bawa Nota/Faktur"]
+    C --> D["4. Klik 'Catat Barang Masuk' di Sistem"]
     D --> E["5. Verifikasi Kuantitas, Harga Modal & Expired Batch"]
     E --> F["6. Simpan: Stok Bertambah & Buku Kas Tercatat Otomatis"]
 ```
 
-1. **Fase 1 — Sebelum Belanja (Perencanaan):**
-   * Petugas membuka menu **Struk Rencana Kulakan Belanja** ([/admin/pkm](http://localhost:5173/admin/pkm)).
-   * Memilih basis penjualan (3, 7, 14, atau 30 hari) dan target buffer persediaan.
-   * Menekan **`[ 📋 Salin WA ]`** atau **`[ 🖨️ Cetak ]`** untuk membawa struk belanja di layar HP saat menuju grosir/distributor.
+1. **Fase 1 — Sebelum Belanja (Perencanaan & Budgeting):**
+   * Petugas/Pengurus membuka menu **Rencana Belanja Kulakan** ([/admin/pkm](http://localhost:5173/admin/pkm)).
+   * Memilih basis riwayat penjualan (3, 7, 14, atau 30 hari) dan target buffer persediaan (4 atau 7 hari).
+   * Sistem otomatis menghitung estimasi uang modal kas yang harus disiapkan bendahara.
+   * Menekan **`[ 📋 Salin ke WA ]`** atau **`[ 🖨️ Cetak Kertas ]`** (Format Standar ISO A4 Kop Surat Resmi) untuk membawa checklist belanja di tangan petugas.
 2. **Fase 2 — Saat di Pasar Grosir (Pembelian Fisik):**
-   * Petugas membeli barang fisik sesuai daftar dan menerima faktur/nota fisik pembelian dari toko grosir.
+   * Petugas membeli barang fisik sesuai checklist dan meminta faktur/nota resmi pembelian dari toko grosir.
 3. **Fase 3 — Pasca Belanja / Penerimaan Barang Masuk (*Inbound Receiving*):**
-   * Setelah tiba di koperasi, petugas membuka kembali menu Struk Belanja dan menekan tombol **`[ 📥 Catat Faktur Masuk ]`**.
-   * **Data Otomatis Terisi (Pre-filled):** Seluruh item yang tadi direncanakan otomatis terdaftar di tabel faktur masuk.
-   * **Penyesuaian Realistis:** Petugas tinggal mencocokkan nomor faktur fisik, nama supplier, mengedit kuantitas riil yang terbeli, harga modal baru jika ada kenaikan/penurunan harga dari grosir, dan tanggal kadaluarsa batch terbaru.
-   * **Eksekusi 1-Klik:** Klik **"Simpan Faktur Masuk"** ➔ Stok sistem langsung bertambah, harga modal otomatis ter-update, tanggal expired tercatat, dan buku pengeluaran kas koperasi langsung tersinkronkan seketika tanpa perlu input manual satu per satu!
+   * Setelah tiba di koperasi, petugas membuka kembali menu Rencana Belanja dan menekan tombol **`[ 📥 Catat Barang Masuk ]`**.
+   * **Data Otomatis Terisi (Pre-filled):** Seluruh item yang tadi dicentang otomatis masuk ke formulir faktur penerimaan.
+   * **Penyesuaian Realistis:** Petugas mencocokkan nomor faktur fisik, nama supplier grosir, mengedit kuantitas riil yang terbeli, memperbarui harga modal baru dari nota, dan menginput tanggal expired lot baru.
+   * **Eksekusi 1-Klik:** Klik **"Simpan Faktur Masuk"** ➔ Stok sistem bertambah, harga modal dasar ter-update, tanggal expired batch tercatat, dan buku pengeluaran kas koperasi langsung tersinkronkan seketika.
+
+---
+
+### G. Prosedur Pemeliharaan & Sinkronisasi Batas PKM 4 Hari (`Sync PKM 4H`)
+1. **Tujuan:** Menyelaraskan batas kapasitas display etalase kasir dengan dinamika tren belanja anggota terbaru.
+2. **Jadwal Pelaksanaan:** Dilakukan minimal **1 kali setiap awal bulan** atau pasca evaluasi mingguan oleh Admin/Pengurus Koperasi.
+3. **Prosedur:**
+   * Buka menu `/admin/pkm`, pilih basis penjualan 30 hari (atau 7 hari).
+   * Klik tombol **`[ ⚡ Sync PKM 4H ]`**.
+   * Sistem otomatis menghitung:
+     $$\text{ADS} = \frac{\text{Total Penjualan}}{\text{Hari Evaluasi}}, \quad \text{PKM} = \max(1, \lceil \text{ADS} \times 4 \rceil)$$
+   * Nilai batas PKM seluruh produk di database langsung ter-update, sehingga audit serah terima shift kasir dan lembar kerja picking display toko selalu proporsional dan akurat.
 
 ---
 
 **Disahkan oleh:**  
 *Pengurus & Manajemen Koperasi Karyawan PKPPK BTH*  
-*Tanggal Efektif: September 2026 (Revisi 2.3 - Closed-Loop Inbound Procurement)*
-
-
+*Tanggal Efektif: September 2026 (Revisi 2.4 - Standar Operasional Prosedur Admin & Pengadaan)*

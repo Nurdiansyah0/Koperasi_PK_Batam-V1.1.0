@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { adminService } from '@/services/adminService'
 import { Barang } from '@/types'
@@ -29,6 +30,7 @@ interface RefillDraftItem {
 }
 
 export function DataBarang() {
+  const navigate = useNavigate()
   const [barang, setBarang] = useState<Barang[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -889,7 +891,25 @@ export function DataBarang() {
             /* TAB 2: GUDANG KOSONG / BUTUH KULAKAN DISTRIBUTOR */
             <div className="space-y-3">
               <div className="p-3 bg-rose-50 dark:bg-rose-950/30 rounded-2xl border border-rose-200 dark:border-rose-900/60 text-xs text-rose-900 dark:text-rose-200">
-                Barang-barang di bawah ini stok display tokonya defisit (&lt; PKM) namun <strong>stok cadangan gudang habis (0 pcs)</strong>. Silakan klik tombol <strong>"Kulakan Sekarang"</strong> untuk membuat order restock pengadaan baru.
+                Barang-barang di bawah ini stok display tokonya defisit (&lt; PKM) namun <strong>stok cadangan gudang habis (0 pcs)</strong>. Silakan klik tombol <strong>"Kulakan"</strong> untuk restock satuan, atau buka <strong>Rencana Belanja PKM</strong> untuk pengadaan faktur massal.
+              </div>
+
+              {/* Shortcut Banner to /admin/pkm */}
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-2xl border border-blue-200 dark:border-blue-900/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                <div>
+                  <span className="font-bold text-blue-900 dark:text-blue-200 block">Butuh belanja banyak barang sekaligus?</span>
+                  <span className="text-[11px] text-blue-700 dark:text-blue-300">Buka Rencana Belanja PKM untuk cetak struk A4 / WA & catat faktur nota grosir.</span>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setIsRefillModalOpen(false)
+                    navigate('/admin/pkm')
+                  }}
+                  className="h-8 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shrink-0 gap-1"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Buka Rencana Belanja PKM
+                </Button>
               </div>
 
               <div className="max-h-[45vh] overflow-y-auto space-y-2 pr-1">
@@ -922,7 +942,7 @@ export function DataBarang() {
                           }}
                           className="h-8 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shrink-0"
                         >
-                          <ShoppingCart className="w-3 h-3 mr-1" /> Kulakan
+                          <ShoppingCart className="w-3 h-3 mr-1" /> Kulakan Satuan
                         </Button>
                       </div>
                     )
