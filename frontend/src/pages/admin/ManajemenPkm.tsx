@@ -371,31 +371,9 @@ export function ManajemenPkmPage() {
         {/* OFFICIAL LETTERHEAD (KOP SURAT) */}
         <div className="border-b-2 border-black pb-2.5 mb-3">
           <div className="flex items-center justify-between gap-3">
-            {/* Logo Resmi SVG Koperasi (48px x 48px Presisi) */}
-            <div className="w-12 h-12 shrink-0 flex items-center justify-center">
-              <svg viewBox="0 0 512 512" className="w-12 h-12" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="printBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#1E3A8A" />
-                    <stop offset="50%" stopColor="#2563EB" />
-                    <stop offset="100%" stopColor="#4F46E5" />
-                  </linearGradient>
-                  <linearGradient id="printGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#FDE047" />
-                    <stop offset="50%" stopColor="#F59E0B" />
-                    <stop offset="100%" stopColor="#D97706" />
-                  </linearGradient>
-                  <linearGradient id="printEmeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#34D399" />
-                    <stop offset="100%" stopColor="#059669" />
-                  </linearGradient>
-                </defs>
-                <rect width="512" height="512" rx="128" fill="url(#printBgGrad)" />
-                <circle cx="256" cy="256" r="200" fill="none" stroke="rgba(255, 255, 255, 0.25)" strokeWidth="6" strokeDasharray="12 8" />
-                <path d="M128 352 C128 220 220 128 352 128 C365 128 375 138 375 151 C375 164 365 174 352 174 C245 174 174 245 174 352 C174 365 164 375 151 375 C138 375 128 365 128 352 Z" fill="url(#printEmeraldGrad)" opacity="0.9" />
-                <path d="M170 170 C170 156 181 145 195 145 L255 145 C295 145 325 172 325 210 C325 248 295 275 255 275 L215 275 L215 350 C215 364 204 375 190 375 C176 375 170 364 170 350 Z M215 190 L215 230 L252 230 C270 230 282 221 282 210 C282 199 270 190 252 190 Z" fill="#FFFFFF" />
-                <path d="M285 240 L350 160 C358 150 372 148 382 156 C392 164 394 178 386 188 L330 256 L392 334 C400 344 398 359 388 367 C378 375 363 373 355 363 L305 300 L285 322 L285 275 Z" fill="url(#printGoldGrad)" />
-              </svg>
+            {/* Logo Resmi Koperasi (Matching App Icon Blue & Gold) */}
+            <div className="w-14 h-14 shrink-0 flex items-center justify-center">
+              <img src="/Logo.svg" alt="Logo Koperasi PKP-PK BTH" className="w-14 h-14 object-contain drop-shadow-xs" />
             </div>
 
             {/* Teks Kop Surat Tengah */}

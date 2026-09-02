@@ -72,7 +72,7 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm 12mm;
+    margin: 12mm 15mm;
   }
 
   *, *::before, *::after {
@@ -82,15 +82,7 @@
     box-sizing: border-box !important;
   }
 
-  /* Hide screen UI controls */
-  header, nav, aside, footer,
-  .no-print, [data-no-print],
-  button, input, select, textarea,
-  .toast, [role="status"],
-  #sidebar, #bottom-nav, #topbar {
-    display: none !important;
-  }
-
+  /* Force body overflow to visible so multi-page and single-page A4 print cleanly */
   html, body {
     background: #ffffff !important;
     color: #000000 !important;
@@ -99,6 +91,36 @@
     height: auto !important;
     min-height: 100% !important;
     overflow: visible !important;
+  }
+
+  /* Hide screen UI controls */
+  header, nav, aside, footer,
+  .no-print, [data-no-print],
+  button, input, select, textarea,
+  .toast, [role="status"],
+  #sidebar, #bottom-nav, #topbar,
+  .fixed.inset-0.bg-slate-900\/60,
+  .backdrop-blur-xs {
+    display: none !important;
+  }
+
+  /* Reset Modal container when printing so it behaves as standard static document */
+  .fixed.inset-0 {
+    position: static !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    display: block !important;
+    inset: auto !important;
+  }
+
+  .relative.w-full {
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
   }
 
   /* Table formatting for print */
