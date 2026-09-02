@@ -786,338 +786,353 @@ class AdminController extends Controller
 
     public function getLaporanTransaksi(Request $request)
     {
-        $this->checkAdmin($request);
+        try {
+            $this->checkAdmin($request);
 
-        $tglAwal = $request->input('tanggal_awal');
-        $tglAkhir = $request->input('tanggal_akhir');
-        $metode = $request->input('metode_pembayaran');
-        $kasirId = $request->input('kasir_id');
-        $pembeliType = $request->input('pembeli_type');
-        $search = $request->input('search');
-        $perPage = $request->input('per_page', 25);
+            $tglAwal = $request->input('tanggal_awal');
+            $tglAkhir = $request->input('tanggal_akhir');
+            $metode = $request->input('metode_pembayaran');
+            $kasirId = $request->input('kasir_id');
+            $pembeliType = $request->input('pembeli_type');
+            $search = $request->input('search');
+            $perPage = $request->input('per_page', 25);
 
-        $q = Transaksi::query()->where('status', '!=', 'batal')->where('status', '!=', 'ditolak');
+            $q = Transaksi::query()->where('status', '!=', 'batal')->where('status', '!=', 'ditolak');
 
-        if ($tglAwal) {
-            $q->whereDate('created_at', '>=', $tglAwal);
-        }
-        if ($tglAkhir) {
-            $q->whereDate('created_at', '<=', $tglAkhir);
-        }
-        if ($metode && $metode !== 'all') {
-            $q->where('metode_pembayaran', $metode);
-        }
-        if ($kasirId && $kasirId !== 'all') {
-            $q->where('kasir_id', $kasirId);
-        }
-        if ($pembeliType === 'anggota') {
-            $q->whereNotNull('anggota_id');
-        } elseif ($pembeliType === 'umum') {
-            $q->whereNull('anggota_id');
-        }
-        if ($search) {
-            $q->where(function($sub) use ($search) {
-                $sub->where('transaksi_id', 'like', "%{$search}%")
-                    ->orWhereHas('anggota', fn($a) => $a->where('nama_lengkap', 'like', "%{$search}%"))
-                    ->orWhereHas('kasir', fn($k) => $k->where('username', 'like', "%{$search}%"));
-            });
-        }
+            if ($tglAwal) {
+                $q->whereDate('created_at', '>=', $tglAwal);
+            }
+            if ($tglAkhir) {
+                $q->whereDate('created_at', '<=', $tglAkhir);
+            }
+            if ($metode && $metode !== 'all') {
+                $q->where('metode_pembayaran', $metode);
+            }
+            if ($kasirId && $kasirId !== 'all') {
+                $q->where('kasir_id', $kasirId);
+            }
+            if ($pembeliType === 'anggota') {
+                $q->whereNotNull('anggota_id');
+            } elseif ($pembeliType === 'umum') {
+                $q->whereNull('anggota_id');
+            }
+            if ($search) {
+                $q->where(function($sub) use ($search) {
+                    $sub->where('transaksi_id', 'like', "%{$search}%")
+                        ->orWhereHas('anggota', fn($a) => $a->where('nama_lengkap', 'like', "%{$search}%"))
+                        ->orWhereHas('kasir', fn($k) => $k->where('username', 'like', "%{$search}%"));
+                });
+            }
 
-        // Summary Aggregations calculated directly on database
-        $summaryAgg = (clone $q)->selectRaw('
-            COUNT(*) as total_transaksi,
-            COALESCE(SUM(total_harga), 0) as total_pendapatan,
-            COALESCE(SUM(total_keuntungan), 0) as total_keuntungan,
-            COALESCE(SUM(CASE WHEN metode_pembayaran = "cash" THEN total_harga ELSE 0 END), 0) as total_cash,
-            COALESCE(SUM(CASE WHEN metode_pembayaran = "ewallet" THEN total_harga ELSE 0 END), 0) as total_ewallet,
-            COALESCE(SUM(CASE WHEN metode_pembayaran = "hutang" THEN total_harga ELSE 0 END), 0) as total_hutang,
-            COALESCE(SUM(CASE WHEN metode_pembayaran = "qr" THEN total_harga ELSE 0 END), 0) as total_qr,
-            COALESCE(SUM(CASE WHEN metode_pembayaran = "transfer" THEN total_harga ELSE 0 END), 0) as total_transfer,
-            COALESCE(SUM(CASE WHEN anggota_id IS NOT NULL THEN total_harga ELSE 0 END), 0) as omset_anggota,
-            COALESCE(SUM(CASE WHEN anggota_id IS NULL THEN total_harga ELSE 0 END), 0) as omset_umum
-        ')->first();
-
-        $totalTransaksi = (int) ($summaryAgg->total_transaksi ?? 0);
-        $totalPendapatan = (float) ($summaryAgg->total_pendapatan ?? 0);
-        $totalKeuntungan = (float) ($summaryAgg->total_keuntungan ?? 0);
-        $totalHpp = max(0, $totalPendapatan - $totalKeuntungan);
-        $avgTransaksi = $totalTransaksi > 0 ? round($totalPendapatan / $totalTransaksi, 2) : 0;
-
-        $breakdownPembayaran = [
-            'cash' => (float) ($summaryAgg->total_cash ?? 0),
-            'ewallet' => (float) ($summaryAgg->total_ewallet ?? 0),
-            'hutang' => (float) ($summaryAgg->total_hutang ?? 0),
-            'qr' => (float) ($summaryAgg->total_qr ?? 0),
-            'transfer' => (float) ($summaryAgg->total_transfer ?? 0),
-        ];
-
-        // Breakdown Kasir
-        $breakdownKasir = (clone $q)
-            ->selectRaw('kasir_id, COUNT(*) as total_transaksi, COALESCE(SUM(total_harga), 0) as total_omset, COALESCE(SUM(total_keuntungan), 0) as total_laba')
-            ->groupBy('kasir_id')
-            ->with('kasir:user_id,username')
-            ->get()
-            ->map(function($item) {
-                return [
-                    'kasir_id' => $item->kasir_id,
-                    'kasir_username' => $item->kasir ? $item->kasir->username : 'System',
-                    'total_transaksi' => (int) $item->total_transaksi,
-                    'total_omset' => (float) $item->total_omset,
-                    'total_laba' => (float) $item->total_laba,
-                ];
-            });
-
-        // Transaksi Harian (Grouping by Date)
-        $transaksiHarian = (clone $q)
-            ->selectRaw('DATE(created_at) as tanggal, COUNT(*) as jumlah_transaksi, COALESCE(SUM(total_harga), 0) as total_pendapatan, COALESCE(SUM(total_keuntungan), 0) as total_keuntungan')
-            ->groupBy(DB::raw('DATE(created_at)'))
-            ->orderBy('tanggal', 'asc')
-            ->get()
-            ->map(function($item) {
-                return [
-                    'tanggal' => $item->tanggal,
-                    'jumlah_transaksi' => (int) $item->jumlah_transaksi,
-                    'total_pendapatan' => (float) $item->total_pendapatan,
-                    'total_keuntungan' => (float) $item->total_keuntungan,
-                ];
-            });
-
-        $withRelations = [
-            'kasir:user_id,username',
-            'anggota:anggota_id,nama_lengkap,nomor_anggota',
-            'details:detail_id,transaksi_id,barang_id,jumlah,harga_satuan,subtotal,keuntungan',
-            'details.barang:barang_id,nama_barang,satuan'
-        ];
-
-        // Pagination or All records
-        if ($perPage === 'all' || $perPage == -1) {
-            $transaksiList = $q->with($withRelations)->orderBy('created_at', 'desc')->get();
-
-            $paginated = [
-                'current_page' => 1,
-                'last_page' => 1,
-                'total' => $transaksiList->count(),
-                'per_page' => $transaksiList->count(),
-            ];
-            $items = $transaksiList;
-        } else {
-            $paginator = $q->with($withRelations)->orderBy('created_at', 'desc')->paginate((int) $perPage);
-
-            $paginated = [
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'total' => $paginator->total(),
-                'per_page' => $paginator->perPage(),
-            ];
-            $items = $paginator->items();
-        }
-
-        $data = collect($items)->map(function($t) {
-            return [
-                'transaksi_id' => $t->transaksi_id,
-                'created_at' => $t->created_at ? $t->created_at->toIso8601String() : null,
-                'anggota_id' => $t->anggota_id,
-                'nama_anggota' => $t->anggota ? $t->anggota->nama_lengkap : 'Pelanggan Umum',
-                'nomor_anggota' => $t->anggota ? $t->anggota->nomor_anggota : null,
-                'metode_pembayaran' => $t->metode_pembayaran,
-                'total_harga' => (float) $t->total_harga,
-                'total_keuntungan' => (float) ($t->total_keuntungan ?? 0),
-                'kasir_id' => $t->kasir_id,
-                'kasir_username' => $t->kasir ? $t->kasir->username : 'Kasir',
-                'status' => $t->status ?? 'selesai',
-                'items' => $t->details ? $t->details->map(function($d) {
-                    return [
-                        'detail_id' => $d->detail_id,
-                        'barang_id' => $d->barang_id,
-                        'nama_barang' => $d->barang ? $d->barang->nama_barang : 'Barang #' . $d->barang_id,
-                        'satuan' => $d->barang ? $d->barang->satuan : 'pcs',
-                        'jumlah' => (int) $d->jumlah,
-                        'harga_satuan' => (float) $d->harga_satuan,
-                        'subtotal' => (float) $d->subtotal,
-                        'keuntungan' => (float) ($d->keuntungan ?? 0),
-                    ];
-                }) : []
-            ];
-        });
-
-        $daftarKasir = User::where('role', 'kasir')->select('user_id', 'username')->get();
-
-        // Total Beban Operasional Kas (OPEX)
-        $qPengeluaran = PengeluaranOperasional::query();
-        if ($tglAwal) $qPengeluaran->whereDate('tanggal', '>=', $tglAwal);
-        if ($tglAkhir) $qPengeluaran->whereDate('tanggal', '<=', $tglAkhir);
-
-        $totalBebanOperasional = (float) $qPengeluaran->sum('nominal');
-        $daftarPengeluaran = (clone $qPengeluaran)->orderBy('tanggal', 'desc')->get();
-
-        $totalLabaKotor = $totalKeuntungan;
-        $totalLabaBersih = max(0, $totalLabaKotor - $totalBebanOperasional);
-
-        $shuAnggota60 = round(0.60 * $totalLabaBersih, 2);
-        $shuCadangan30 = round(0.30 * $totalLabaBersih, 2);
-        $shuPengurus10 = round(0.10 * $totalLabaBersih, 2);
-
-        // Rekapitulasi Partisipasi Belanja & Hak SHU per Anggota (Sub-Ledger SHU)
-        $totalOmsetAnggota = (float) ($summaryAgg->omset_anggota ?? 0);
-        $rekapAnggota = (clone $q)
-            ->whereNotNull('anggota_id')
-            ->selectRaw("
-                anggota_id,
-                COUNT(*) as frekuensi_belanja,
-                COALESCE(SUM(total_harga), 0) as total_belanja,
-                COALESCE(SUM(CASE WHEN metode_pembayaran != 'hutang' THEN total_harga ELSE 0 END), 0) as total_lunas,
-                COALESCE(SUM(CASE WHEN metode_pembayaran = 'hutang' THEN total_harga ELSE 0 END), 0) as total_hutang,
-                COALESCE(SUM(total_keuntungan), 0) as total_margin
-            ")
-            ->groupBy('anggota_id')
-            ->with('anggota:anggota_id,nama_lengkap,email,saldo,hutang')
-            ->orderByRaw('total_belanja DESC')
-            ->get()
-            ->map(function($row) use ($totalOmsetAnggota, $shuAnggota60) {
-                $belanja = (float) $row->total_belanja;
-                $rasio = $totalOmsetAnggota > 0 ? ($belanja / $totalOmsetAnggota) : 0;
-                $hakShu = round($rasio * $shuAnggota60, 2);
-
-                return [
-                    'anggota_id' => $row->anggota_id,
-                    'nama_lengkap' => $row->anggota ? $row->anggota->nama_lengkap : 'Anggota #' . $row->anggota_id,
-                    'frekuensi_belanja' => (int) $row->frekuensi_belanja,
-                    'total_belanja' => $belanja,
-                    'total_lunas' => (float) $row->total_lunas,
-                    'total_hutang' => (float) $row->total_hutang,
-                    'saldo_hutang_koperasi' => (float) ($row->anggota ? $row->anggota->hutang : 0),
-                    'porsi_persen' => round($rasio * 100, 2),
-                    'hak_shu' => $hakShu,
-                ];
-            });
-
-        // Rekapitulasi Bulanan (Bila rentang waktu multi-bulan)
-        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
-        $monthExpr = $isSqlite ? "strftime('%Y-%m', created_at)" : "DATE_FORMAT(created_at, '%Y-%m')";
-        
-        $rekapBulanan = (clone $q)
-            ->selectRaw("
-                {$monthExpr} as periode_bulan,
+            // Summary Aggregations calculated directly on database
+            $summaryAgg = (clone $q)->selectRaw('
                 COUNT(*) as total_transaksi,
-                COALESCE(SUM(total_harga), 0) as omset_bulan,
-                COALESCE(SUM(total_keuntungan), 0) as margin_bulan,
-                COALESCE(SUM(CASE WHEN metode_pembayaran = 'hutang' THEN total_harga ELSE 0 END), 0) as piutang_bulan
-            ")
-            ->groupBy(DB::raw($monthExpr))
-            ->orderBy('periode_bulan', 'asc')
-            ->get()
-            ->map(function($m) {
+                COALESCE(SUM(total_harga), 0) as total_pendapatan,
+                COALESCE(SUM(total_keuntungan), 0) as total_keuntungan,
+                COALESCE(SUM(CASE WHEN metode_pembayaran = "cash" THEN total_harga ELSE 0 END), 0) as total_cash,
+                COALESCE(SUM(CASE WHEN metode_pembayaran = "ewallet" THEN total_harga ELSE 0 END), 0) as total_ewallet,
+                COALESCE(SUM(CASE WHEN metode_pembayaran = "hutang" THEN total_harga ELSE 0 END), 0) as total_hutang,
+                COALESCE(SUM(CASE WHEN metode_pembayaran = "qr" THEN total_harga ELSE 0 END), 0) as total_qr,
+                COALESCE(SUM(CASE WHEN metode_pembayaran = "transfer" THEN total_harga ELSE 0 END), 0) as total_transfer,
+                COALESCE(SUM(CASE WHEN anggota_id IS NOT NULL THEN total_harga ELSE 0 END), 0) as omset_anggota,
+                COALESCE(SUM(CASE WHEN anggota_id IS NULL THEN total_harga ELSE 0 END), 0) as omset_umum
+            ')->first();
+
+            $totalTransaksi = (int) ($summaryAgg->total_transaksi ?? 0);
+            $totalPendapatan = (float) ($summaryAgg->total_pendapatan ?? 0);
+            $totalKeuntungan = (float) ($summaryAgg->total_keuntungan ?? 0);
+            $totalHpp = max(0, $totalPendapatan - $totalKeuntungan);
+            $avgTransaksi = $totalTransaksi > 0 ? round($totalPendapatan / $totalTransaksi, 2) : 0;
+
+            $breakdownPembayaran = [
+                'cash' => (float) ($summaryAgg->total_cash ?? 0),
+                'ewallet' => (float) ($summaryAgg->total_ewallet ?? 0),
+                'hutang' => (float) ($summaryAgg->total_hutang ?? 0),
+                'qr' => (float) ($summaryAgg->total_qr ?? 0),
+                'transfer' => (float) ($summaryAgg->total_transfer ?? 0),
+            ];
+
+            // Breakdown Kasir
+            $breakdownKasir = (clone $q)
+                ->selectRaw('kasir_id, COUNT(*) as total_transaksi, COALESCE(SUM(total_harga), 0) as total_omset, COALESCE(SUM(total_keuntungan), 0) as total_laba')
+                ->groupBy('kasir_id')
+                ->with('kasir:user_id,username')
+                ->get()
+                ->map(function($item) {
+                    return [
+                        'kasir_id' => $item->kasir_id,
+                        'kasir_username' => $item->kasir ? $item->kasir->username : 'System',
+                        'total_transaksi' => (int) $item->total_transaksi,
+                        'total_omset' => (float) $item->total_omset,
+                        'total_laba' => (float) $item->total_laba,
+                    ];
+                });
+
+            // Transaksi Harian (Grouping by Date)
+            $transaksiHarian = (clone $q)
+                ->selectRaw('DATE(created_at) as tanggal, COUNT(*) as jumlah_transaksi, COALESCE(SUM(total_harga), 0) as total_pendapatan, COALESCE(SUM(total_keuntungan), 0) as total_keuntungan')
+                ->groupBy(DB::raw('DATE(created_at)'))
+                ->orderBy('tanggal', 'asc')
+                ->get()
+                ->map(function($item) {
+                    return [
+                        'tanggal' => $item->tanggal,
+                        'jumlah_transaksi' => (int) $item->jumlah_transaksi,
+                        'total_pendapatan' => (float) $item->total_pendapatan,
+                        'total_keuntungan' => (float) $item->total_keuntungan,
+                    ];
+                });
+
+            $withRelations = [
+                'kasir:user_id,username',
+                'anggota:anggota_id,nama_lengkap,nomor_anggota',
+                'details:detail_id,transaksi_id,barang_id,jumlah,harga_satuan,subtotal,keuntungan',
+                'details.barang:barang_id,nama_barang,satuan'
+            ];
+
+            // Pagination or All records
+            if ($perPage === 'all' || $perPage == -1) {
+                $transaksiList = $q->with($withRelations)->orderBy('created_at', 'desc')->get();
+
+                $paginated = [
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'total' => $transaksiList->count(),
+                    'per_page' => $transaksiList->count(),
+                ];
+                $items = $transaksiList;
+            } else {
+                $paginator = $q->with($withRelations)->orderBy('created_at', 'desc')->paginate((int) $perPage);
+
+                $paginated = [
+                    'current_page' => $paginator->currentPage(),
+                    'last_page' => $paginator->lastPage(),
+                    'total' => $paginator->total(),
+                    'per_page' => $paginator->perPage(),
+                ];
+                $items = $paginator->items();
+            }
+
+            $data = collect($items)->map(function($t) {
                 return [
-                    'periode_bulan' => $m->periode_bulan,
-                    'total_transaksi' => (int) $m->total_transaksi,
-                    'omset_bulan' => (float) $m->omset_bulan,
-                    'margin_bulan' => (float) $m->margin_bulan,
-                    'piutang_bulan' => (float) $m->piutang_bulan,
+                    'transaksi_id' => $t->transaksi_id,
+                    'created_at' => $t->created_at ? $t->created_at->toIso8601String() : null,
+                    'anggota_id' => $t->anggota_id,
+                    'nama_anggota' => $t->anggota ? $t->anggota->nama_lengkap : 'Pelanggan Umum',
+                    'nomor_anggota' => $t->anggota ? $t->anggota->nomor_anggota : null,
+                    'metode_pembayaran' => $t->metode_pembayaran,
+                    'total_harga' => (float) $t->total_harga,
+                    'total_keuntungan' => (float) ($t->total_keuntungan ?? 0),
+                    'kasir_id' => $t->kasir_id,
+                    'kasir_username' => $t->kasir ? $t->kasir->username : 'Kasir',
+                    'status' => $t->status ?? 'selesai',
+                    'items' => $t->details ? $t->details->map(function($d) {
+                        return [
+                            'detail_id' => $d->detail_id,
+                            'barang_id' => $d->barang_id,
+                            'nama_barang' => $d->barang ? $d->barang->nama_barang : 'Barang #' . $d->barang_id,
+                            'satuan' => $d->barang ? $d->barang->satuan : 'pcs',
+                            'jumlah' => (int) $d->jumlah,
+                            'harga_satuan' => (float) $d->harga_satuan,
+                            'subtotal' => (float) $d->subtotal,
+                            'keuntungan' => (float) ($d->keuntungan ?? 0),
+                        ];
+                    }) : []
                 ];
             });
 
-        // ── 1. RASIO MANAJEMEN KEUANGAN & KESEHATAN KOPERASI (Permenkop UKM & Financial Ratio Analysis) ──
-        $totalSeluruhAnggota = Anggota::count();
-        $jumlahAnggotaAktif = $rekapAnggota->count();
-        $rasioPartisipasiAnggota = $totalSeluruhAnggota > 0 
-            ? round(($jumlahAnggotaAktif / $totalSeluruhAnggota) * 100, 1) 
-            : 0;
+            $daftarKasir = User::where('role', 'kasir')->select('user_id', 'username')->get();
 
-        $kasLikuidMasuk = (float) (($summaryAgg->total_cash ?? 0) + ($summaryAgg->total_ewallet ?? 0) + ($summaryAgg->total_qr ?? 0) + ($summaryAgg->total_transfer ?? 0));
-        $totalPiutang = (float) ($summaryAgg->total_hutang ?? 0);
+            // Total Beban Operasional Kas (OPEX)
+            $qPengeluaran = PengeluaranOperasional::query();
+            if ($tglAwal) $qPengeluaran->whereDate('tanggal', '>=', $tglAwal);
+            if ($tglAkhir) $qPengeluaran->whereDate('tanggal', '<=', $tglAkhir);
 
-        // Rasio Piutang terhadap Omset (A/R to Sales Ratio)
-        $rasioPiutang = $totalPendapatan > 0 ? round(($totalPiutang / $totalPendapatan) * 100, 1) : 0;
+            $totalBebanOperasional = (float) $qPengeluaran->sum('nominal');
+            $daftarPengeluaran = (clone $qPengeluaran)->orderBy('tanggal', 'desc')->get();
 
-        // Cash Coverage Ratio: Kas Masuk / (Beban OPEX + Piutang)
-        $pembagiKas = $totalBebanOperasional + $totalPiutang;
-        $cashCoverageRatio = $pembagiKas > 0 ? round(($kasLikuidMasuk / $pembagiKas) * 100, 1) : 100;
+            $totalLabaKotor = $totalKeuntungan;
+            $totalLabaBersih = max(0, $totalLabaKotor - $totalBebanOperasional);
 
-        // Gross Profit Margin (GPM) & Net Profit Margin (NPM)
-        $gpm = $totalPendapatan > 0 ? round(($totalLabaKotor / $totalPendapatan) * 100, 1) : 0;
-        $npm = $totalPendapatan > 0 ? round(($totalLabaBersih / $totalPendapatan) * 100, 1) : 0;
+            $shuAnggota60 = round(0.60 * $totalLabaBersih, 2);
+            $shuCadangan30 = round(0.30 * $totalLabaBersih, 2);
+            $shuPengurus10 = round(0.10 * $totalLabaBersih, 2);
 
-        // Operating Expense Ratio (OER): Beban Operasional / Laba Kotor
-        $oer = $totalLabaKotor > 0 ? round(($totalBebanOperasional / $totalLabaKotor) * 100, 1) : 0;
+            // Rekapitulasi Partisipasi Belanja & Hak SHU per Anggota (Sub-Ledger SHU)
+            $totalOmsetAnggota = (float) ($summaryAgg->omset_anggota ?? 0);
+            $rekapAnggota = (clone $q)
+                ->whereNotNull('anggota_id')
+                ->selectRaw("
+                    anggota_id,
+                    COUNT(*) as frekuensi_belanja,
+                    COALESCE(SUM(total_harga), 0) as total_belanja,
+                    COALESCE(SUM(CASE WHEN metode_pembayaran != 'hutang' THEN total_harga ELSE 0 END), 0) as total_lunas,
+                    COALESCE(SUM(CASE WHEN metode_pembayaran = 'hutang' THEN total_harga ELSE 0 END), 0) as total_hutang,
+                    COALESCE(SUM(total_keuntungan), 0) as total_margin
+                ")
+                ->groupBy('anggota_id')
+                ->with('anggota:anggota_id,nama_lengkap,email,saldo,hutang')
+                ->orderByRaw('total_belanja DESC')
+                ->get()
+                ->map(function($row) use ($totalOmsetAnggota, $shuAnggota60) {
+                    $belanja = (float) $row->total_belanja;
+                    $rasio = $totalOmsetAnggota > 0 ? ($belanja / $totalOmsetAnggota) : 0;
+                    $hakShu = round($rasio * $shuAnggota60, 2);
 
-        // ── 2. SCORING KESEHATAN FINANSIAL KOMPREHENSIF (Skala 0 - 100) ──
-        $skorLikuiditas = $cashCoverageRatio >= 100 ? 30 : ($cashCoverageRatio >= 50 ? 20 : 10);
-        $skorPiutang = $rasioPiutang <= 15 ? 25 : ($rasioPiutang <= 35 ? 18 : ($rasioPiutang <= 50 ? 10 : 5));
-        $skorProfitabilitas = $npm >= 10 ? 25 : ($npm >= 5 ? 18 : ($npm > 0 ? 12 : 0));
-        $skorEfisiensi = $oer <= 35 ? 20 : ($oer <= 60 ? 15 : ($oer <= 85 ? 10 : 5));
+                    return [
+                        'anggota_id' => $row->anggota_id,
+                        'nama_lengkap' => $row->anggota ? $row->anggota->nama_lengkap : 'Anggota #' . $row->anggota_id,
+                        'frekuensi_belanja' => (int) $row->frekuensi_belanja,
+                        'total_belanja' => $belanja,
+                        'total_lunas' => (float) $row->total_lunas,
+                        'total_hutang' => (float) $row->total_hutang,
+                        'saldo_hutang_koperasi' => (float) ($row->anggota ? $row->anggota->hutang : 0),
+                        'porsi_persen' => round($rasio * 100, 2),
+                        'hak_shu' => $hakShu,
+                    ];
+                });
 
-        $totalSkorKesehatan = $skorLikuiditas + $skorPiutang + $skorProfitabilitas + $skorEfisiensi;
-        
-        if ($totalSkorKesehatan >= 80) {
-            $statusKesehatan = 'SEHAT (GRADE A)';
-            $badgeColor = 'green';
-            $kesimpulan = 'Perputaran kas, margin kotor, dan kolektibilitas sangat prima. Koperasi mandiri dan kuat menopang pasokan kebutuhan unit kerja PKP-PK.';
-        } elseif ($totalSkorKesehatan >= 60) {
-            $statusKesehatan = 'CUKUP SEHAT (GRADE B)';
-            $badgeColor = 'blue';
-            $kesimpulan = 'Kondisi operasional stabil dan menghasilkan laba, namun perlu penertiban batas kasbon piutang belanja anggota.';
-        } elseif ($totalSkorKesehatan >= 40) {
-            $statusKesehatan = 'KURANG SEHAT (GRADE C)';
-            $badgeColor = 'yellow';
-            $kesimpulan = 'Terjadi tekanan likuiditas. Modal kulakan terhambat oleh besarnya akumulasi piutang belanja yang belum dilunasi.';
-        } else {
-            $statusKesehatan = 'KRITIS / DALAM PENGAWASAN (GRADE D)';
-            $badgeColor = 'red';
-            $kesimpulan = 'Arus kas terganggu signifikan. Diperlukan tindakan darurat pembatasan kasbon belanja dan penagihan piutang anggota.';
-        }
+            // Rekapitulasi Bulanan (Bila rentang waktu multi-bulan)
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+            $monthExpr = $isSqlite ? "strftime('%Y-%m', created_at)" : "DATE_FORMAT(created_at, '%Y-%m')";
+            
+            $rekapBulanan = (clone $q)
+                ->selectRaw("
+                    {$monthExpr} as periode_bulan,
+                    COUNT(*) as total_transaksi,
+                    COALESCE(SUM(total_harga), 0) as omset_bulan,
+                    COALESCE(SUM(total_keuntungan), 0) as margin_bulan,
+                    COALESCE(SUM(CASE WHEN metode_pembayaran = 'hutang' THEN total_harga ELSE 0 END), 0) as piutang_bulan
+                ")
+                ->groupBy(DB::raw($monthExpr))
+                ->orderBy('periode_bulan', 'asc')
+                ->get()
+                ->map(function($m) {
+                    return [
+                        'periode_bulan' => $m->periode_bulan,
+                        'total_transaksi' => (int) $m->total_transaksi,
+                        'omset_bulan' => (float) $m->omset_bulan,
+                        'margin_bulan' => (float) $m->margin_bulan,
+                        'piutang_bulan' => (float) $m->piutang_bulan,
+                    ];
+                });
 
-        $analisisKesehatan = [
-            'total_anggota_terdaftar' => $totalSeluruhAnggota,
-            'jumlah_anggota_aktif' => $jumlahAnggotaAktif,
-            'rasio_partisipasi_persen' => $rasioPartisipasiAnggota,
-            'kas_likuid_masuk' => $kasLikuidMasuk,
-            'total_piutang_berjalan' => $totalPiutang,
-            'rasio_piutang_omset_persen' => $rasioPiutang,
-            'cash_coverage_ratio_persen' => $cashCoverageRatio,
-            'gross_profit_margin_persen' => $gpm,
-            'net_profit_margin_persen' => $npm,
-            'operating_expense_ratio_persen' => $oer,
-            'skor_kesehatan' => $totalSkorKesehatan,
-            'status_kesehatan' => $statusKesehatan,
-            'badge_color' => $badgeColor,
-            'kesimpulan_evaluasi' => $kesimpulan,
-        ];
+            // ── 1. RASIO MANAJEMEN KEUANGAN & KESEHATAN KOPERASI (Permenkop UKM & Financial Ratio Analysis) ──
+            $totalSeluruhAnggota = Anggota::count();
+            $jumlahAnggotaAktif = $rekapAnggota->count();
+            $rasioPartisipasiAnggota = $totalSeluruhAnggota > 0 
+                ? round(($jumlahAnggotaAktif / $totalSeluruhAnggota) * 100, 1) 
+                : 0;
 
-        return response()->json([
-            'success' => true,
-            'summary' => [
-                'total_transaksi' => $totalTransaksi,
-                'total_pendapatan' => $totalPendapatan,
-                'total_keuntungan' => $totalKeuntungan,
-                'total_laba_kotor' => $totalLabaKotor,
-                'total_hpp' => $totalHpp,
-                'total_beban_operasional' => $totalBebanOperasional,
-                'total_laba_bersih' => $totalLabaBersih,
-                'shu_anggota_60' => $shuAnggota60,
-                'shu_cadangan_30' => $shuCadangan30,
-                'shu_pengurus_10' => $shuPengurus10,
-                'total_hutang' => (float) ($summaryAgg->total_hutang ?? 0),
-                'total_cash' => (float) ($summaryAgg->total_cash ?? 0),
-                'total_ewallet' => (float) ($summaryAgg->total_ewallet ?? 0),
-                'total_qr' => (float) ($summaryAgg->total_qr ?? 0),
-                'total_transfer' => (float) ($summaryAgg->total_transfer ?? 0),
-                'omset_anggota' => (float) ($summaryAgg->omset_anggota ?? 0),
-                'omset_umum' => (float) ($summaryAgg->omset_umum ?? 0),
-                'avg_transaksi' => $avgTransaksi,
+            $kasLikuidMasuk = (float) (($summaryAgg->total_cash ?? 0) + ($summaryAgg->total_ewallet ?? 0) + ($summaryAgg->total_qr ?? 0) + ($summaryAgg->total_transfer ?? 0));
+            $totalPiutang = (float) ($summaryAgg->total_hutang ?? 0);
+
+            // Rasio Piutang terhadap Omset (A/R to Sales Ratio)
+            $rasioPiutang = $totalPendapatan > 0 ? round(($totalPiutang / $totalPendapatan) * 100, 1) : 0;
+
+            // Cash Coverage Ratio: Kas Masuk / (Beban OPEX + Piutang)
+            $pembagiKas = $totalBebanOperasional + $totalPiutang;
+            $cashCoverageRatio = $pembagiKas > 0 ? round(($kasLikuidMasuk / $pembagiKas) * 100, 1) : 100;
+
+            // Gross Profit Margin (GPM) & Net Profit Margin (NPM)
+            $gpm = $totalPendapatan > 0 ? round(($totalLabaKotor / $totalPendapatan) * 100, 1) : 0;
+            $npm = $totalPendapatan > 0 ? round(($totalLabaBersih / $totalPendapatan) * 100, 1) : 0;
+
+            // Operating Expense Ratio (OER): Beban Operasional / Laba Kotor
+            $oer = $totalLabaKotor > 0 ? round(($totalBebanOperasional / $totalLabaKotor) * 100, 1) : 0;
+
+            // ── 2. SCORING KESEHATAN FINANSIAL KOMPREHENSIF (Skala 0 - 100) ──
+            $skorLikuiditas = $cashCoverageRatio >= 100 ? 30 : ($cashCoverageRatio >= 50 ? 20 : 10);
+            $skorPiutang = $rasioPiutang <= 15 ? 25 : ($rasioPiutang <= 35 ? 18 : ($rasioPiutang <= 50 ? 10 : 5));
+            $skorProfitabilitas = $npm >= 10 ? 25 : ($npm >= 5 ? 18 : ($npm > 0 ? 12 : 0));
+            $skorEfisiensi = $oer <= 35 ? 20 : ($oer <= 60 ? 15 : ($oer <= 85 ? 10 : 5));
+
+            $totalSkorKesehatan = $skorLikuiditas + $skorPiutang + $skorProfitabilitas + $skorEfisiensi;
+            
+            if ($totalSkorKesehatan >= 80) {
+                $statusKesehatan = 'SEHAT (GRADE A)';
+                $badgeColor = 'green';
+                $kesimpulan = 'Perputaran kas, margin kotor, dan kolektibilitas sangat prima. Koperasi mandiri dan kuat menopang pasokan kebutuhan unit kerja PKP-PK.';
+            } elseif ($totalSkorKesehatan >= 60) {
+                $statusKesehatan = 'CUKUP SEHAT (GRADE B)';
+                $badgeColor = 'blue';
+                $kesimpulan = 'Kondisi operasional stabil dan menghasilkan laba, namun perlu penertiban batas kasbon piutang belanja anggota.';
+            } elseif ($totalSkorKesehatan >= 40) {
+                $statusKesehatan = 'KURANG SEHAT (GRADE C)';
+                $badgeColor = 'yellow';
+                $kesimpulan = 'Terjadi tekanan likuiditas. Modal kulakan terhambat oleh besarnya akumulasi piutang belanja yang belum dilunasi.';
+            } else {
+                $statusKesehatan = 'KRITIS / DALAM PENGAWASAN (GRADE D)';
+                $badgeColor = 'red';
+                $kesimpulan = 'Arus kas terganggu signifikan. Diperlukan tindakan darurat pembatasan kasbon belanja dan penagihan piutang anggota.';
+            }
+
+            $analisisKesehatan = [
+                'total_anggota_terdaftar' => $totalSeluruhAnggota,
+                'jumlah_anggota_aktif' => $jumlahAnggotaAktif,
+                'rasio_partisipasi_persen' => $rasioPartisipasiAnggota,
+                'kas_likuid_masuk' => $kasLikuidMasuk,
+                'total_piutang_berjalan' => $totalPiutang,
+                'rasio_piutang_omset_persen' => $rasioPiutang,
+                'cash_coverage_ratio_persen' => $cashCoverageRatio,
+                'gross_profit_margin_persen' => $gpm,
+                'net_profit_margin_persen' => $npm,
+                'operating_expense_ratio_persen' => $oer,
+                'skor_kesehatan' => $totalSkorKesehatan,
+                'status_kesehatan' => $statusKesehatan,
+                'badge_color' => $badgeColor,
+                'kesimpulan_evaluasi' => $kesimpulan,
+            ];
+
+            return response()->json([
+                'success' => true,
+                'summary' => [
+                    'total_transaksi' => $totalTransaksi,
+                    'total_pendapatan' => $totalPendapatan,
+                    'total_keuntungan' => $totalKeuntungan,
+                    'total_laba_kotor' => $totalLabaKotor,
+                    'total_hpp' => $totalHpp,
+                    'total_beban_operasional' => $totalBebanOperasional,
+                    'total_laba_bersih' => $totalLabaBersih,
+                    'shu_anggota_60' => $shuAnggota60,
+                    'shu_cadangan_30' => $shuCadangan30,
+                    'shu_pengurus_10' => $shuPengurus10,
+                    'total_hutang' => (float) ($summaryAgg->total_hutang ?? 0),
+                    'total_cash' => (float) ($summaryAgg->total_cash ?? 0),
+                    'total_ewallet' => (float) ($summaryAgg->total_ewallet ?? 0),
+                    'total_qr' => (float) ($summaryAgg->total_qr ?? 0),
+                    'total_transfer' => (float) ($summaryAgg->total_transfer ?? 0),
+                    'omset_anggota' => (float) ($summaryAgg->omset_anggota ?? 0),
+                    'omset_umum' => (float) ($summaryAgg->omset_umum ?? 0),
+                    'avg_transaksi' => $avgTransaksi,
+                    'analisis_kesehatan' => $analisisKesehatan,
+                ],
+                'data' => $data,
+                'rekap_anggota' => $rekapAnggota,
+                'rekap_bulanan' => $rekapBulanan,
                 'analisis_kesehatan' => $analisisKesehatan,
-            ],
-            'data' => $data,
-            'rekap_anggota' => $rekapAnggota,
-            'rekap_bulanan' => $rekapBulanan,
-            'analisis_kesehatan' => $analisisKesehatan,
-            'pengeluaran_operasional' => $daftarPengeluaran,
-            'pagination' => $paginated,
-            'breakdown_pembayaran' => $breakdownPembayaran,
-            'breakdown_kasir' => $breakdownKasir,
-            'transaksi_harian' => $transaksiHarian,
-            'daftar_kasir' => $daftarKasir,
-            'periode' => ['tanggal_awal' => $tglAwal, 'tanggal_akhir' => $tglAkhir]
-        ]);
+                'pengeluaran_operasional' => $daftarPengeluaran,
+                'pagination' => $paginated,
+                'breakdown_pembayaran' => $breakdownPembayaran,
+                'breakdown_kasir' => $breakdownKasir,
+                'transaksi_harian' => $transaksiHarian,
+                'daftar_kasir' => $daftarKasir,
+                'periode' => ['tanggal_awal' => $tglAwal, 'tanggal_akhir' => $tglAkhir]
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('getLaporanTransaksi Error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => basename($e->getFile())
+            ], 500);
+        }
     }
 
     public function getPengeluaran(Request $request)
