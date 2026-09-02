@@ -11,17 +11,17 @@ return new class extends Migration
     {
         Schema::create('jabatan_anggota', function (Blueprint $table) {
             $table->id('jabatan_id');
-            $table->unsignedBigInteger('user_id');
+            $table->integer('user_id');
             $table->string('role', 30); // 'admin', 'kasir', 'pengurus', 'anggota'
             $table->string('status', 20)->default('aktif'); // 'aktif', 'nonaktif'
-            $table->unsignedBigInteger('ditugaskan_oleh')->nullable();
+            $table->integer('ditugaskan_oleh')->nullable();
             $table->text('catatan')->nullable();
             $table->timestamp('assigned_at')->useCurrent();
             $table->timestamp('revoked_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');
-            $table->foreign('ditugaskan_oleh')->references('user_id')->on('users')->nullOnDelete();
+            $table->index('user_id');
+            $table->index('ditugaskan_oleh');
         });
 
         // Seed initial active roles based on current users
