@@ -12,6 +12,9 @@ use App\Models\Anggota;
 use App\Models\User;
 use App\Models\SetoranKasir;
 use App\Models\ShuDistribusi;
+use App\Models\SerahTerimaKasir;
+use App\Models\TarikTunai;
+use App\Models\KonversiShu;
 use Carbon\Carbon;
 
 class AdminController extends Controller
@@ -422,5 +425,406 @@ class AdminController extends Controller
             ];
         });
         return response()->json(['success' => true, 'data' => $kasir]);
+    }
+
+    public function getPkmAnalysis(Request $request)
+    {
+        $this->checkAdmin($request);
+
+        $days = (int) $request->input('days', 30);
+        $leadTimeDays = (int) $request->input('lead_time_days', 4);
+        $search = $request->input('search');
+
+        $maxDate = DB::table('transaksi')->max('created_at') ?: now();
+        $startDate = Carbon::parse($maxDate)->subDays($days);
+
+        $sales = DB::table('transaksi_detail')
+            ->join('transaksi', 'transaksi_detail.transaksi_id', '=', 'transaksi.transaksi_id')
+            ->where('transaksi.created_at', '>=', $startDate)
+            ->select('transaksi_detail.barang_id', DB::raw('SUM(transaksi_detail.jumlah) as total_sold'))
+            ->groupBy('transaksi_detail.barang_id')
+            ->pluck('total_sold', 'barang_id')
+            ->toArray();
+
+        $query = Barang::query();
+        if ($search) {
+            $query->where('nama_barang', 'like', "%{$search}%");
+        }
+        $barangs = $query->orderBy('nama_barang', 'asc')->get();
+
+        $data = $barangs->map(function ($b) use ($sales, $days, $leadTimeDays) {
+            $sold = (int) ($sales[$b->barang_id] ?? 0);
+            $ads = round($sold / max(1, $days), 2);
+            $recommendedPkm = max(1, (int) ceil($ads * $leadTimeDays));
+            $currentPkm = (int) ($b->pkm ?: 1);
+
+            return [
+                'barang_id' => $b->barang_id,
+                'nama_barang' => $b->nama_barang,
+                'stok' => (int) $b->stok,
+                'harga_modal' => (float) $b->harga_modal,
+                'harga_jual' => (float) $b->harga_jual,
+                'sales_period_days' => $days,
+                'total_sold' => $sold,
+                'ads' => $ads,
+                'lead_time_days' => $leadTimeDays,
+                'recommended_pkm' => $recommendedPkm,
+                'pkm' => $currentPkm,
+                'status_pkm' => $b->stok > $currentPkm ? 'Etalase Cukup (Ada Stok Cadangan)' : ($b->stok < $currentPkm ? 'Perlu Restock Toko' : 'Optimal'),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'summary' => [
+                'total_barang' => $barangs->count(),
+                'days' => $days,
+                'lead_time_days' => $leadTimeDays,
+                'total_pkm_units' => $data->sum('pkm'),
+                'avg_pkm' => round($data->avg('pkm'), 1),
+            ]
+        ]);
+    }
+
+    public function updatePkm(Request $request)
+    {
+        $this->checkAdmin($request);
+        $request->validate([
+            'barang_id' => 'required|integer|exists:barang,barang_id',
+            'pkm' => 'required|integer|min:1'
+        ]);
+
+        $barang = Barang::findOrFail($request->barang_id);
+        $barang->pkm = $request->pkm;
+        $barang->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => "PKM {$barang->nama_barang} berhasil diperbarui menjadi {$request->pkm} pcs."
+        ]);
+    }
+
+    public function autoCalculatePkm(Request $request)
+    {
+        $this->checkAdmin($request);
+        $days = (int) $request->input('days', 30);
+        $leadTimeDays = (int) $request->input('lead_time_days', 4);
+
+        $maxDate = DB::table('transaksi')->max('created_at') ?: now();
+        $startDate = Carbon::parse($maxDate)->subDays($days);
+
+        $sales = DB::table('transaksi_detail')
+            ->join('transaksi', 'transaksi_detail.transaksi_id', '=', 'transaksi.transaksi_id')
+            ->where('transaksi.created_at', '>=', $startDate)
+            ->select('transaksi_detail.barang_id', DB::raw('SUM(transaksi_detail.jumlah) as total_sold'))
+            ->groupBy('transaksi_detail.barang_id')
+            ->pluck('total_sold', 'barang_id')
+            ->toArray();
+
+        $updatedCount = DB::transaction(function () use ($sales, $days, $leadTimeDays) {
+            $barangs = Barang::all();
+            $count = 0;
+            foreach ($barangs as $b) {
+                $sold = (int) ($sales[$b->barang_id] ?? 0);
+                $ads = $sold / max(1, $days);
+                $pkm = max(1, (int) ceil($ads * $leadTimeDays));
+                $b->pkm = $pkm;
+                $b->save();
+                $count++;
+            }
+            return $count;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => "Berhasil mengkalkulasi dan menerapkan PKM 4 hari untuk {$updatedCount} produk berdasarkan data penjualan {$days} hari terakhir."
+        ]);
+    }
+
+    public function getLaporanSelisihKasir(Request $request)
+    {
+        $this->checkAdmin($request);
+
+        $handovers = SerahTerimaKasir::with(['kasirFrom', 'kasirTo'])
+            ->where('status', 'approved')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $kasirLosses = [];
+        $detailedLogs = [];
+
+        foreach ($handovers as $st) {
+            $opname = $st->hasil_opname;
+            if (!$opname || !isset($opname['summary'])) continue;
+
+            $totalMinusNominal = (float) ($opname['summary']['totalMinusNominal'] ?? 0);
+            $selisihKas = (float) ($opname['selisih_kas'] ?? 0);
+            $minusKasNominal = $selisihKas < 0 ? abs($selisihKas) : 0;
+            $totalKerugianShift = $totalMinusNominal + $minusKasNominal;
+
+            $fromName = $st->kasirFrom ? $st->kasirFrom->username : "Kasir #{$st->kasir_from}";
+            $fromId = $st->kasir_from;
+
+            if (!isset($kasirLosses[$fromId])) {
+                $kasirLosses[$fromId] = [
+                    'kasir_id' => $fromId,
+                    'kasir_name' => $fromName,
+                    'total_shift_selesai' => 0,
+                    'total_shift_ada_selisih' => 0,
+                    'total_minus_barang_nominal' => 0,
+                    'total_minus_kas_nominal' => 0,
+                    'total_akumulasi_kerugian' => 0,
+                ];
+            }
+
+            $kasirLosses[$fromId]['total_shift_selesai']++;
+            if ($totalKerugianShift > 0) {
+                $kasirLosses[$fromId]['total_shift_ada_selisih']++;
+                $kasirLosses[$fromId]['total_minus_barang_nominal'] += $totalMinusNominal;
+                $kasirLosses[$fromId]['total_minus_kas_nominal'] += $minusKasNominal;
+                $kasirLosses[$fromId]['total_akumulasi_kerugian'] += $totalKerugianShift;
+            }
+
+            $discrepantItems = [];
+            if (isset($opname['items']) && is_array($opname['items'])) {
+                foreach ($opname['items'] as $it) {
+                    if (($it['selisih'] ?? 0) != 0) {
+                        $discrepantItems[] = [
+                            'nama_barang' => $it['nama_barang'] ?? '',
+                            'selisih' => $it['selisih'] ?? 0,
+                            'harga_jual' => $it['harga_jual'] ?? 0,
+                            'selisih_nominal' => $it['selisih_nominal'] ?? 0,
+                        ];
+                    }
+                }
+            }
+
+            $detailedLogs[] = [
+                'serah_id' => $st->serah_id,
+                'kasir_from_name' => $fromName,
+                'kasir_to_name' => $st->kasirTo ? $st->kasirTo->username : "Kasir #{$st->kasir_to}",
+                'created_at' => $st->created_at,
+                'uang_fisik' => (float) ($opname['uang_fisik'] ?? 0),
+                'saldo_kas_sistem' => (float) ($opname['saldo_kas_sistem'] ?? 0),
+                'selisih_kas' => $selisihKas,
+                'total_minus_barang_nominal' => $totalMinusNominal,
+                'total_kerugian_shift' => $totalKerugianShift,
+                'catatan' => $opname['catatan'] ?? '',
+                'discrepant_items' => $discrepantItems,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'rekap_per_kasir' => array_values($kasirLosses),
+                'riwayat_selisih' => $detailedLogs,
+            ]
+        ]);
+    }
+
+    public function getLaporanTarikTunai(Request $request)
+    {
+        $this->checkAdmin($request);
+
+        $tarikList = TarikTunai::with(['anggota', 'kasir', 'transaksi'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $totalNominalTarik = (float) $tarikList->sum('nominal');
+        $totalSalesPenyerta = (float) $tarikList->sum(function ($t) {
+            return $t->transaksi ? $t->transaksi->total_harga : 0;
+        });
+
+        $data = $tarikList->map(function ($t) {
+            return [
+                'tarik_id' => $t->tarik_id,
+                'nama_anggota' => $t->anggota ? $t->anggota->nama_lengkap : 'Anggota',
+                'kasir_name' => $t->kasir ? $t->kasir->username : 'Kasir',
+                'nominal' => (float) $t->nominal,
+                'sumber_dana' => $t->sumber_dana,
+                'transaksi_id' => $t->transaksi_id,
+                'belanja_nominal' => $t->transaksi ? (float) $t->transaksi->total_harga : 0,
+                'persetujuan_shu' => (bool) $t->persetujuan_shu,
+                'keterangan' => $t->keterangan,
+                'created_at' => $t->created_at,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'summary' => [
+                'total_penarikan_count' => $tarikList->count(),
+                'total_nominal_keluar' => $totalNominalTarik,
+                'total_sales_kontribusi' => $totalSalesPenyerta,
+                'rasio_sales_to_tarik' => $totalNominalTarik > 0 ? round(($totalSalesPenyerta / $totalNominalTarik) * 100, 1) : 0,
+            ]
+        ]);
+    }
+
+    public function getShuManagement(Request $request)
+    {
+        $this->checkAdmin($request);
+
+        $totalShu = (float) Anggota::sum('shu');
+        $totalSaldo = (float) Anggota::sum('saldo');
+        $totalHutang = (float) Anggota::sum('hutang');
+        $totalAnggota = Anggota::count();
+        $anggotaConsentCount = Anggota::whereNotNull('persetujuan_shu_master_at')->count();
+
+        $anggotaList = Anggota::orderBy('nama_lengkap', 'asc')->get()->map(function ($a) {
+            return [
+                'anggota_id' => $a->anggota_id,
+                'nama_lengkap' => $a->nama_lengkap,
+                'saldo' => (float) $a->saldo,
+                'shu' => (float) $a->shu,
+                'hutang' => (float) $a->hutang,
+                'has_master_consent' => !is_null($a->persetujuan_shu_master_at),
+                'master_consent_at' => $a->persetujuan_shu_master_at,
+            ];
+        });
+
+        $riwayatKonversi = KonversiShu::with(['anggota', 'admin'])
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get()
+            ->map(function ($k) {
+                return [
+                    'konversi_id' => $k->konversi_id,
+                    'anggota_id' => $k->anggota_id,
+                    'nama_anggota' => $k->anggota ? $k->anggota->nama_lengkap : 'Semua Anggota (Massal)',
+                    'admin_name' => $k->admin ? $k->admin->username : 'Admin',
+                    'nominal' => (float) $k->nominal,
+                    'tipe_konversi' => $k->tipe_konversi,
+                    'keterangan' => $k->keterangan,
+                    'created_at' => $k->created_at,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'summary' => [
+                    'total_shu' => $totalShu,
+                    'total_saldo' => $totalSaldo,
+                    'total_hutang' => $totalHutang,
+                    'total_anggota' => $totalAnggota,
+                    'anggota_consent_count' => $anggotaConsentCount,
+                    'consent_percentage' => $totalAnggota > 0 ? round(($anggotaConsentCount / $totalAnggota) * 100, 1) : 0,
+                ],
+                'anggota' => $anggotaList,
+                'riwayat_konversi' => $riwayatKonversi,
+            ]
+        ]);
+    }
+
+    public function prosesKonversiShu(Request $request)
+    {
+        $adminId = $this->checkAdmin($request);
+        $request->validate([
+            'mode' => 'required|in:individual,pelunasan_hutang,massal_ke_saldo',
+            'anggota_id' => 'nullable|integer|exists:anggota,anggota_id',
+            'nominal' => 'nullable|numeric|min:1',
+            'persentase' => 'nullable|numeric|min:1|max:100',
+            'keterangan' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $mode = $request->mode;
+
+            if ($mode === 'individual') {
+                $anggota = Anggota::lockForUpdate()->find($request->anggota_id);
+                if (!$anggota) throw new \Exception("Data anggota tidak ditemukan.");
+
+                $nominal = (float) $request->nominal;
+                if ($nominal <= 0 || $nominal > $anggota->shu) {
+                    throw new \Exception("Nominal konversi tidak valid atau melebihi saldo SHU (Tersedia: Rp " . number_format($anggota->shu, 0, ',', '.') . ").");
+                }
+
+                $anggota->shu -= $nominal;
+                $anggota->saldo += $nominal;
+                $anggota->save();
+
+                KonversiShu::create([
+                    'anggota_id' => $anggota->anggota_id,
+                    'admin_id' => $adminId,
+                    'nominal' => $nominal,
+                    'tipe_konversi' => 'ke_saldo_belanja',
+                    'keterangan' => $request->keterangan ?: "Konversi SHU ke Saldo Belanja E-Wallet",
+                ]);
+
+                $message = "Berhasil memindahkan SHU sebesar Rp " . number_format($nominal, 0, ',', '.') . " ke Saldo Belanja " . $anggota->nama_lengkap . ".";
+
+            } elseif ($mode === 'pelunasan_hutang') {
+                $anggota = Anggota::lockForUpdate()->find($request->anggota_id);
+                if (!$anggota) throw new \Exception("Data anggota tidak ditemukan.");
+
+                if ($anggota->hutang <= 0) {
+                    throw new \Exception("Anggota tidak memiliki tunggakan hutang.");
+                }
+
+                $maxPotong = min($anggota->shu, $anggota->hutang);
+                $nominal = $request->nominal ? min((float) $request->nominal, $maxPotong) : $maxPotong;
+
+                if ($nominal <= 0) {
+                    throw new \Exception("Saldo SHU tidak mencukupi untuk memotong hutang.");
+                }
+
+                $anggota->shu -= $nominal;
+                $anggota->hutang -= $nominal;
+                $anggota->save();
+
+                KonversiShu::create([
+                    'anggota_id' => $anggota->anggota_id,
+                    'admin_id' => $adminId,
+                    'nominal' => $nominal,
+                    'tipe_konversi' => 'pelunasan_hutang',
+                    'keterangan' => $request->keterangan ?: "Kompensasi Pelunasan Hutang dari Saldo SHU",
+                ]);
+
+                $message = "Berhasil memotong SHU sebesar Rp " . number_format($nominal, 0, ',', '.') . " untuk pelunasan hutang " . $anggota->nama_lengkap . ".";
+
+            } elseif ($mode === 'massal_ke_saldo') {
+                $persentase = (float) ($request->persentase ?: 100);
+                $ratio = $persentase / 100.0;
+                $totalConverted = 0;
+                $countMembers = 0;
+
+                $anggotas = Anggota::lockForUpdate()->where('shu', '>', 0)->get();
+                foreach ($anggotas as $a) {
+                    $nominalToConvert = round($a->shu * $ratio, 2);
+                    if ($nominalToConvert > 0) {
+                        $a->shu -= $nominalToConvert;
+                        $a->saldo += $nominalToConvert;
+                        $a->save();
+
+                        KonversiShu::create([
+                            'anggota_id' => $a->anggota_id,
+                            'admin_id' => $adminId,
+                            'nominal' => $nominalToConvert,
+                            'tipe_konversi' => 'distribusi_hari_raya',
+                            'keterangan' => $request->keterangan ?: "Distribusi Massal SHU ({$persentase}%) ke Saldo Belanja Hari Raya",
+                        ]);
+
+                        $totalConverted += $nominalToConvert;
+                        $countMembers++;
+                    }
+                }
+
+                $message = "Distribusi massal berhasil! Rp " . number_format($totalConverted, 0, ',', '.') . " dipindahkan ke saldo belanja {$countMembers} anggota.";
+            }
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
     }
 }

@@ -27,7 +27,7 @@ export function IosMemberCard({
   anggotaId,
   onShowQR,
 }: IosMemberCardProps) {
-  const pokok = simpananPokok ?? (saldo + hutang > 0 ? saldo + hutang : 400000)
+  const pokok = simpananPokok ?? (saldo + hutang > 0 ? saldo + hutang : 300000)
 
   return (
     <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#0b132b] via-[#1c2541] to-[#0b132b] text-white p-6 shadow-2xl border border-white/20 active:scale-[0.99] transition-transform duration-200">

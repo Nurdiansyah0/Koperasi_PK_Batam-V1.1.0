@@ -23,7 +23,13 @@ import {
   Zap,
   Check,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Coins,
+  HandCoins,
+  CheckCircle2,
+  ShieldAlert,
+  X,
+  Copy
 } from 'lucide-react'
 
 interface CartItem extends Barang {
@@ -34,10 +40,15 @@ export function BelanjaPage() {
   const [barangList, setBarangList] = useState<Barang[]>([])
   const [paketList, setPaketList] = useState<PaketBelanja[]>([])
   const [seringDibeli, setSeringDibeli] = useState<PaketBelanja | null>(null)
+  const [memberData, setMemberData] = useState<any | null>(null)
 
   const [cart, setCart] = useState<CartItem[]>([])
   const [search, setSearch] = useState('')
   const [metodePembayaran, setMetodePembayaran] = useState<'cash' | 'qr' | 'transfer' | 'hutang' | 'ewallet'>('cash')
+  const [sertakanTarikTunai, setSertakanTarikTunai] = useState(false)
+  const [tarikTunaiNominal, setTarikTunaiNominal] = useState<number | ''>('')
+  const [tarikTunaiSumber, setTarikTunaiSumber] = useState<'shu' | 'saldo'>('shu')
+  const [createdTicketModal, setCreatedTicketModal] = useState<any | null>(null)
   const [loading, setLoading] = useState(false)
   const { user } = useAuthStore()
   
@@ -52,13 +63,17 @@ export function BelanjaPage() {
 
   const loadData = async () => {
     try {
-      const [brg, bundles] = await Promise.all([
+      const [brg, bundles, eligibility] = await Promise.all([
         anggotaService.getDataBarang(),
-        anggotaService.getPaketBelanja()
+        anggotaService.getPaketBelanja(),
+        anggotaService.cekKelayakanTarikTunai().catch(() => null)
       ])
       setBarangList(brg)
       setPaketList(bundles.data)
       setSeringDibeli(bundles.sering_dibeli)
+      if (eligibility?.data) {
+        setMemberData(eligibility.data)
+      }
     } catch (e) {
       toast.error('Gagal memuat data katalog')
     }
@@ -182,16 +197,53 @@ export function BelanjaPage() {
   const handleCheckout = async () => {
     if (cart.length === 0) { toast.error('Keranjang belanja kosong'); return }
 
+    if (sertakanTarikTunai) {
+      if ((memberData?.hutang ?? 0) > 0) {
+        toast.error(`Pengajuan gagal: Anda masih memiliki hutang berjalan (${formatRupiah(memberData?.hutang ?? 0)}). Wajib melunasi hutang terlebih dahulu.`)
+        return
+      }
+      if (total < 25000) {
+        toast.error(`Syarat tarik tunai saat belanja: Total pesanan belanja minimal Rp 25.000 (Pesanan saat ini: ${formatRupiah(total)})`)
+        return
+      }
+      const nominalTarik = Number(tarikTunaiNominal) || 0
+      if (nominalTarik < total) {
+        toast.error(`Nominal penarikan minimal harus sebesar nilai belanja (${formatRupiah(total)}) agar belanja dapat dipotong otomatis!`)
+        return
+      }
+      const maxPlafon = Math.min(100000, total * 2)
+      if (nominalTarik > maxPlafon) {
+        toast.error(`Nominal tarik tunai melebihi batas kuota proporsional (${formatRupiah(maxPlafon)})`)
+        return
+      }
+      const available = tarikTunaiSumber === 'shu' ? (memberData?.saldo_shu ?? 0) : (memberData?.saldo_ewallet ?? 0)
+      if (nominalTarik > available) {
+        toast.error(`Saldo ${tarikTunaiSumber.toUpperCase()} Anda tidak mencukupi (${formatRupiah(available)})`)
+        return
+      }
+    }
+
     setLoading(true)
     try {
       const res = await anggotaService.simpanTransaksi({
-        metode_pembayaran: metodePembayaran,
+        metode_pembayaran: sertakanTarikTunai ? 'potong_tarik_tunai' : metodePembayaran,
         items: cart.map(item => ({ barang_id: item.barang_id, qty: item.qty, harga_satuan: item.harga ?? item.harga_jual ?? 0 })),
-        total_harga: total
+        total_harga: total,
+        sertakan_tarik_tunai: sertakanTarikTunai,
+        tarik_tunai_nominal: sertakanTarikTunai && tarikTunaiNominal ? Number(tarikTunaiNominal) : undefined,
+        tarik_tunai_sumber: tarikTunaiSumber,
+        persetujuan_shu: true,
       })
       if (res.success) {
-        toast.success('Pesanan berhasil dibuat! Menunggu konfirmasi kasir.')
+        if (res.tarik_tunai) {
+          setCreatedTicketModal(res.tarik_tunai)
+          toast.success(`🎉 Tiket Tarik Tunai #${res.tarik_tunai.kode_penarikan} Berhasil Dibuat!`, { duration: 6000 })
+        } else {
+          toast.success('Pesanan berhasil dibuat! Menunggu konfirmasi kasir.')
+        }
         setCart([])
+        setSertakanTarikTunai(false)
+        setTarikTunaiNominal('')
         setMetodePembayaran('cash')
         setShowMobileCart(false)
         loadData()
@@ -199,7 +251,7 @@ export function BelanjaPage() {
         toast.error(res.error || 'Gagal membuat pesanan')
       }
     } catch (e: any) {
-      toast.error(e.response?.data?.error || 'Terjadi kesalahan sistem')
+      toast.error(e.response?.data?.message || e.response?.data?.error || 'Terjadi kesalahan sistem')
     } finally {
       setLoading(false)
     }
@@ -464,45 +516,194 @@ export function BelanjaPage() {
               <span className="text-sm font-bold text-blue-700 dark:text-blue-300">{user?.username} (Otomatis)</span>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">Metode Pembayaran</label>
-              <div className="grid grid-cols-2 gap-1.5">
-                {[
-                  { id: 'cash', label: 'Tunai', icon: Banknote },
-                  { id: 'ewallet', label: 'Saldo', icon: Wallet },
-                  { id: 'qr', label: 'QRIS', icon: QrCode },
-                  { id: 'transfer', label: 'Transfer', icon: CreditCard },
-                  { id: 'hutang', label: 'Hutang', icon: CreditCard },
-                ].map(m => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setMetodePembayaran(m.id as any)}
-                    className={`touch-manipulation p-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                      metodePembayaran === m.id
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <m.icon className="w-3.5 h-3.5" />
-                    {m.label}
-                  </button>
-                ))}
+            {/* OPSI TARIK TUNAI SAAT BELANJA (POTONG BELANJA LANGSUNG) */}
+            <div className={`p-3 rounded-2xl border transition-all ${
+              sertakanTarikTunai 
+                ? 'bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border-emerald-500/50 shadow-xs' 
+                : 'bg-slate-50 dark:bg-zinc-800/60 border-slate-200 dark:border-zinc-700'
+            }`}>
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={sertakanTarikTunai}
+                    onChange={(e) => {
+                      setSertakanTarikTunai(e.target.checked)
+                      if (e.target.checked && !tarikTunaiNominal) {
+                        setTarikTunaiNominal(Math.min(100000, Math.max(50000, total * 2)))
+                      }
+                    }}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                  />
+                  <div className="flex items-center gap-1.5">
+                    <Coins className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                      Sertakan Tarik Tunai SHU
+                    </span>
+                  </div>
+                </label>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                  Potong Belanja
+                </span>
               </div>
-              {metodePembayaran === 'hutang' && (
-                <p className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-xl border border-amber-200 dark:border-amber-800/40 mt-1.5 leading-tight">
-                  🛡️ <strong>Jaminan Simpanan Pokok:</strong> Belanja kredit menggunakan pagu jaminan simpanan pokok Anda di koperasi.
-                </p>
+
+              {sertakanTarikTunai && (
+                <div className="mt-3 space-y-3 pt-2.5 border-t border-emerald-200/50 dark:border-emerald-800/50">
+                  {/* Validations */}
+                  {total < 25000 ? (
+                    <div className="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 rounded-xl text-[11px] text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>Minimal belanja <strong>Rp 25.000</strong> (Belanja saat ini: {formatRupiah(total)})</span>
+                    </div>
+                  ) : (memberData?.hutang ?? 0) > 0 ? (
+                    <div className="p-2 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 rounded-xl text-[11px] text-rose-800 dark:text-rose-300 flex items-center gap-1.5">
+                      <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      <span>Anda memiliki hutang <strong>{formatRupiah(memberData?.hutang ?? 0)}</strong>. Wajib lunas dahulu.</span>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Sumber Dana & Nominal */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-slate-600 dark:text-zinc-400">Sumber Dana:</span>
+                          <div className="flex gap-2 text-xs">
+                            <label className="flex items-center gap-1 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="sumberTarik"
+                                checked={tarikTunaiSumber === 'shu'}
+                                onChange={() => setTarikTunaiSumber('shu')}
+                                className="text-emerald-600"
+                              />
+                              <span>SHU ({formatRupiah(memberData?.saldo_shu ?? 0)})</span>
+                            </label>
+                            <label className="flex items-center gap-1 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="sumberTarik"
+                                checked={tarikTunaiSumber === 'saldo'}
+                                onChange={() => setTarikTunaiSumber('saldo')}
+                                className="text-emerald-600"
+                              />
+                              <span>Saldo ({formatRupiah(memberData?.saldo_ewallet ?? 0)})</span>
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-bold text-slate-700 dark:text-zinc-300">Nominal Penarikan:</span>
+                            <span className="text-[10px] text-slate-400">
+                              Plafon: {formatRupiah(Math.min(100000, total * 2))}
+                            </span>
+                          </div>
+                          <input
+                            type="number"
+                            min={total}
+                            max={Math.min(100000, total * 2, (tarikTunaiSumber === 'shu' ? (memberData?.saldo_shu ?? 0) : (memberData?.saldo_ewallet ?? 0)))}
+                            placeholder="0"
+                            value={tarikTunaiNominal}
+                            onChange={(e) => setTarikTunaiNominal(e.target.value === '' ? '' : Number(e.target.value))}
+                            className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-emerald-300 dark:border-emerald-700 rounded-xl text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                          
+                          {/* Quick Amount Buttons */}
+                          <div className="flex gap-1 pt-1 flex-wrap">
+                            {[50000, 75000, 100000].map(amt => (
+                              <button
+                                key={amt}
+                                type="button"
+                                disabled={amt > Math.min(100000, total * 2, (tarikTunaiSumber === 'shu' ? (memberData?.saldo_shu ?? 0) : (memberData?.saldo_ewallet ?? 0)))}
+                                onClick={() => setTarikTunaiNominal(amt)}
+                                className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-white dark:bg-zinc-800 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 disabled:opacity-40"
+                              >
+                                {formatRupiah(amt)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Live Net Cash Settlement Box */}
+                        {Number(tarikTunaiNominal) > 0 && (
+                          <div className="p-3 bg-emerald-500/15 dark:bg-emerald-950/40 rounded-xl border border-emerald-300 dark:border-emerald-800 space-y-1.5 text-xs">
+                            <div className="flex justify-between text-slate-600 dark:text-zinc-300">
+                              <span>🪙 Hak {tarikTunaiSumber.toUpperCase()} Ditarik:</span>
+                              <span className="font-bold">{formatRupiah(Number(tarikTunaiNominal))}</span>
+                            </div>
+                            <div className="flex justify-between text-slate-600 dark:text-zinc-300">
+                              <span>🛍️ Potong Belanja Barang Toko:</span>
+                              <span className="font-bold text-rose-600">-{formatRupiah(total)}</span>
+                            </div>
+                            <div className="pt-1.5 border-t border-emerald-300/60 dark:border-emerald-800/60 flex justify-between items-center font-black">
+                              <span className="text-emerald-900 dark:text-emerald-200">💵 Kas Bersih Diterima di Kasir:</span>
+                              <span className="text-sm text-emerald-700 dark:text-emerald-400">
+                                {formatRupiah(Math.max(0, Number(tarikTunaiNominal) - total))}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </div>
 
+            {/* Metode Pembayaran (Hidden if Tarik Tunai active) */}
+            {!sertakanTarikTunai && (
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700">Metode Pembayaran</label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { id: 'cash', label: 'Tunai', icon: Banknote },
+                    { id: 'ewallet', label: 'Saldo', icon: Wallet },
+                    { id: 'qr', label: 'QRIS', icon: QrCode },
+                    { id: 'transfer', label: 'Transfer', icon: CreditCard },
+                    { id: 'hutang', label: 'Hutang', icon: CreditCard },
+                  ].map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setMetodePembayaran(m.id as any)}
+                      className={`touch-manipulation p-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                        metodePembayaran === m.id
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <m.icon className="w-3.5 h-3.5" />
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+                {metodePembayaran === 'hutang' && (
+                  <p className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-xl border border-amber-200 dark:border-amber-800/40 mt-1.5 leading-tight">
+                    🛡️ <strong>Jaminan Simpanan Pokok:</strong> Belanja kredit menggunakan pagu jaminan simpanan pokok Anda di koperasi.
+                  </p>
+                )}
+              </div>
+            )}
+
             <Button 
-              className="w-full h-12 text-base font-bold shadow-md mt-2" 
+              className={`w-full h-12 text-base font-bold shadow-md mt-2 ${
+                sertakanTarikTunai ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20' : ''
+              }`}
               onClick={handleCheckout} 
               loading={loading} 
-              disabled={cart.length === 0}
+              disabled={
+                cart.length === 0 ||
+                (sertakanTarikTunai && (
+                  (memberData?.hutang ?? 0) > 0 ||
+                  total < 25000 ||
+                  !tarikTunaiNominal ||
+                  Number(tarikTunaiNominal) < total ||
+                  Number(tarikTunaiNominal) > Math.min(100000, total * 2, (tarikTunaiSumber === 'shu' ? (memberData?.saldo_shu ?? 0) : (memberData?.saldo_ewallet ?? 0)))
+                ))
+              }
             >
-              Proses Pembayaran
+              {sertakanTarikTunai
+                ? `Pesan & Ambil Kas ${formatRupiah(Math.max(0, (Number(tarikTunaiNominal) || 0) - total))}`
+                : 'Proses Pembayaran'}
             </Button>
           </div>
         </Card>
@@ -526,6 +727,77 @@ export function BelanjaPage() {
           >
             Lihat Keranjang
           </Button>
+        </div>
+      )}
+
+      {/* Ticket Modal after Successful Tarik Tunai Order */}
+      {createdTicketModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-100 dark:border-zinc-800 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-start">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-lg shadow-xs">
+                  🎉
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">Tiket Tarik Tunai Terbit!</h3>
+                  <p className="text-[11px] text-slate-500">Tunjukkan kode ini ke kasir toko</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCreatedTicketModal(null)}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Token Card */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 text-center space-y-2">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Kode Tiket Penarikan Kasir</div>
+              <div className="text-2xl font-black font-mono tracking-widest text-emerald-600 dark:text-emerald-400 select-all">
+                {createdTicketModal.kode_penarikan}
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(createdTicketModal.kode_penarikan)
+                  toast.success('Kode tiket disalin ke clipboard!')
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-zinc-300 hover:text-emerald-600 transition-colors"
+              >
+                <Copy className="w-3.5 h-3.5" /> Salin Kode
+              </button>
+            </div>
+
+            {/* Breakdown Rincian */}
+            <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-2">
+              <div className="flex justify-between text-slate-600 dark:text-zinc-400">
+                <span>🪙 Hak {createdTicketModal.sumber_dana?.toUpperCase()} Ditarik:</span>
+                <span className="font-bold">{formatRupiah(createdTicketModal.nominal_tarik)}</span>
+              </div>
+              <div className="flex justify-between text-rose-600">
+                <span>🛍️ Biaya Pesanan Belanja:</span>
+                <span className="font-bold">-{formatRupiah(createdTicketModal.potong_belanja)}</span>
+              </div>
+              <div className="pt-2 border-t border-emerald-300/80 dark:border-emerald-700 flex justify-between font-black text-emerald-900 dark:text-emerald-200">
+                <span>💵 Uang Kas yang Anda Terima:</span>
+                <span className="text-base text-emerald-700 dark:text-emerald-400">
+                  {formatRupiah(createdTicketModal.uang_bersih_diserahkan)}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 text-center leading-relaxed">
+              Silakan ambil barang belanjaan Anda dan serah terima uang kas sebesar <strong>{formatRupiah(createdTicketModal.uang_bersih_diserahkan)}</strong> di kasir.
+            </p>
+
+            <Button
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-11 rounded-2xl shadow-md"
+              onClick={() => setCreatedTicketModal(null)}
+            >
+              Saya Mengerti
+            </Button>
+          </div>
         </div>
       )}
     </div>

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
 import { formatRupiah, formatDate } from '@/lib/utils'
-import { ShoppingBag, CheckCircle, XCircle, UserCircle2, CheckSquare, Square, ArrowLeft, CheckCircle2, PackageSearch } from 'lucide-react'
+import { ShoppingBag, CheckCircle, XCircle, UserCircle2, CheckSquare, Square, ArrowLeft, CheckCircle2, PackageSearch, RefreshCw, Coins, HandCoins } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { PesananAnggota } from '@/types'
 
@@ -120,25 +120,31 @@ const PesananAnggotaPage = () => {
   }, [selectedAnggotaId, groupedPesanan])
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 h-auto lg:h-[calc(100vh-7.5rem)] pb-16 md:pb-6">
+    <div className="flex flex-col lg:flex-row gap-6 min-h-[calc(100vh-9.5rem)] lg:h-[calc(100vh-7.5rem)] pb-24 md:pb-6">
       
       {/* Container List Anggota (Hidden on mobile if Detail is shown) */}
       <div className={`flex-1 flex flex-col gap-4 overflow-hidden ${showMobileDetail ? 'hidden lg:flex' : 'flex'}`}>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Pesanan Anggota</h1>
-          <p className="text-sm text-slate-500 mt-1">Antrean pesanan yang menunggu diproses.</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Pesanan Anggota</h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Antrean pesanan belanja yang menunggu persetujuan kasir.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={loadData} loading={loading} className="gap-1.5 h-9 rounded-xl">
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Segarkan</span>
+          </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-3 pr-1 pb-4 mt-2">
+        <div className="flex-1 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-3 pr-1 pb-4 mt-1">
           {loading ? (
-            <div className="col-span-full text-center py-12 text-slate-400">Memuat pesanan...</div>
+            <div className="col-span-full text-center py-16 text-slate-400">Memuat pesanan anggota...</div>
           ) : groupedPesanan.length === 0 ? (
-            <div className="col-span-full flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
+            <div className="col-span-full flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 border-dashed">
               <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4 text-slate-400">
                 <ShoppingBag className="w-8 h-8" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">Tidak Ada Pesanan</h3>
-              <p className="text-sm text-slate-500 mt-1">Antrean kosong.</p>
+              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">Tidak Ada Pesanan Menunggu</h3>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">Semua pesanan anggota telah diproses.</p>
             </div>
           ) : (
             groupedPesanan.map((group) => {
@@ -146,7 +152,7 @@ const PesananAnggotaPage = () => {
               return (
                 <Card 
                   key={group.anggota_id} 
-                  className={`cursor-pointer transition-all hover:shadow-md flex flex-col justify-between ${
+                  className={`cursor-pointer transition-all hover:shadow-md flex flex-col justify-between rounded-2xl ${
                     isActive
                       ? 'border-blue-500/80 bg-blue-50/50 shadow-sm dark:bg-blue-900/10'
                       : 'border-slate-200/80 bg-white hover:border-blue-300 shadow-sm dark:border-slate-800 dark:bg-slate-900'
@@ -155,9 +161,10 @@ const PesananAnggotaPage = () => {
                     setSelectedAnggotaId(group.anggota_id)
                     setSelectedIds(new Set())
                     setShowMobileDetail(true)
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
                   }}
                 >
-                  <CardContent className="p-4 flex flex-col h-full gap-4 justify-between">
+                  <CardContent className="p-4 flex flex-col h-full gap-3 justify-between">
                     <div className="flex items-center gap-3">
                       <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isActive ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-600'}`}>
                         <UserCircle2 className="w-6 h-6" />
@@ -266,6 +273,29 @@ const PesananAnggotaPage = () => {
                           </div>
                         ))}
                       </div>
+
+                      {p.tarik_tunai && (
+                        <div className="ml-8 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs space-y-1">
+                          <div className="flex items-center justify-between font-bold text-emerald-800 dark:text-emerald-300">
+                            <span className="flex items-center gap-1">
+                              <Coins className="w-3.5 h-3.5" /> Tiket Tarik Tunai #{p.tarik_tunai.kode_penarikan}
+                            </span>
+                            <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900 px-1.5 py-0.5 rounded font-bold">
+                              {p.tarik_tunai.sumber_dana?.toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-[11px] text-slate-600 dark:text-zinc-300">
+                            <span>🪙 Tarik Tunai: {formatRupiah(p.tarik_tunai.nominal)}</span>
+                            <span className="text-rose-600">🛍️ Potong Belanja: -{formatRupiah(p.total_harga || p.total || 0)}</span>
+                          </div>
+                          <div className="flex justify-between items-center pt-1 border-t border-emerald-200/80 dark:border-emerald-800/80 text-xs font-black text-emerald-900 dark:text-emerald-200">
+                            <span>💵 Kasir Wajib Serahkan Kas:</span>
+                            <span className="text-sm text-emerald-700 dark:text-emerald-400">
+                              {formatRupiah(p.tarik_tunai.uang_bersih_diserahkan)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/60 pl-8 mt-1">
                         <span className="font-bold text-sm text-slate-900 dark:text-white">

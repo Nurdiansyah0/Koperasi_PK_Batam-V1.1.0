@@ -8,6 +8,7 @@ vi.mock('@/services/kasirService', () => ({
   kasirService: {
     getDataBarang: vi.fn(),
     getAllAnggota: vi.fn(),
+    getPaketBelanja: vi.fn(),
     buatTransaksiKasir: vi.fn(),
   }
 }))
@@ -20,13 +21,15 @@ describe('Fitur Keranjang Kasir (Transaksi POS)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     
+    vi.mocked(kasirService.getPaketBelanja).mockResolvedValue({ data: [], sering_dibeli: null } as any)
+
     vi.mocked(kasirService.getDataBarang).mockResolvedValue([
       { barang_id: 1, nama_barang: 'Kopi Kapal Api', stok: 10, harga_modal: 1000, harga_jual: 2000, harga: 2000 },
       { barang_id: 2, nama_barang: 'Indomie Goreng', stok: 0, harga_modal: 2000, harga_jual: 3000, harga: 3000 }
     ] as any)
     
     vi.mocked(kasirService.getAllAnggota).mockResolvedValue([
-      { anggota_id: 1, nama: 'Budi Santoso', nama_lengkap: 'Budi Santoso', user: { username: 'budi' } }
+      { anggota_id: 1, nama: 'Budi Santoso', nama_lengkap: 'Budi Santoso', saldo: 50000, hutang: 10000, sisa_limit_hutang: 390000, user: { username: 'budi' } }
     ] as any)
   })
 
@@ -57,7 +60,14 @@ describe('Fitur Keranjang Kasir (Transaksi POS)', () => {
     
     await waitFor(() => expect(screen.getByText('Kopi Kapal Api')).toBeInTheDocument())
     
+    // Select Anggota
+    const anggotaInput = screen.getByPlaceholderText('Ketik nama anggota...')
+    await user.type(anggotaInput, 'Budi Santoso')
+    const anggotaOption = await screen.findByText('Budi Santoso')
+    await user.click(anggotaOption)
+
     const checkoutBtn = screen.getByText(/Proses Pembayaran/i)
+    expect(checkoutBtn).toBeDisabled()
     await user.click(checkoutBtn)
     
     expect(kasirService.buatTransaksiKasir).not.toHaveBeenCalled()
@@ -77,12 +87,18 @@ describe('Fitur Keranjang Kasir (Transaksi POS)', () => {
       expect(allText.length).toBeGreaterThan(0)
     })
 
+    // Select Anggota
+    const anggotaInput = screen.getByPlaceholderText('Ketik nama anggota...')
+    await user.type(anggotaInput, 'Budi Santoso')
+    const anggotaOption = await screen.findByText('Budi Santoso')
+    await user.click(anggotaOption)
+
     const checkoutBtn = screen.getByText(/Proses Pembayaran/i)
     await user.click(checkoutBtn)
     
     await waitFor(() => {
       expect(kasirService.buatTransaksiKasir).toHaveBeenCalledWith(expect.objectContaining({
-        anggota_id: null,
+        anggota_id: 1,
         metode_pembayaran: 'cash',
         total: 2000
       }))
@@ -117,5 +133,31 @@ describe('Fitur Keranjang Kasir (Transaksi POS)', () => {
         total: 2000
       }))
     })
+  })
+
+  it('menonaktifkan checkout dan menampilkan peringatan jika plafon hutang tidak mencukupi', async () => {
+    const user = userEvent.setup()
+    // Anggota with 0 remaining debt limit
+    vi.mocked(kasirService.getAllAnggota).mockResolvedValue([
+      { anggota_id: 2, nama: 'Agus Zero Limit', nama_lengkap: 'Agus Zero Limit', saldo: 0, hutang: 400000, sisa_limit_hutang: 0, user: { username: 'agus' } }
+    ] as any)
+
+    render(<TransaksiKasir />)
+    await waitFor(() => expect(screen.getByText('Kopi Kapal Api')).toBeInTheDocument())
+    
+    await user.click(screen.getByText('Kopi Kapal Api'))
+    
+    // Select Anggota
+    const anggotaInput = screen.getByPlaceholderText('Ketik nama anggota...')
+    await user.type(anggotaInput, 'Agus')
+    const anggotaOption = await screen.findByText('Agus Zero Limit')
+    await user.click(anggotaOption)
+    
+    // Select Metode Hutang
+    await user.click(screen.getByText('Hutang'))
+    
+    // Should show Limit warning and disable submit
+    expect(screen.getByText(/Plafon Hutang Melebihi Batas/i)).toBeInTheDocument()
+    expect(screen.getByText(/Limit Hutang Tidak Cukup/i)).toBeDisabled()
   })
 })

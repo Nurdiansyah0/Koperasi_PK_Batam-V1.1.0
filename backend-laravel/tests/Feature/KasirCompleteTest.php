@@ -232,7 +232,7 @@ class KasirCompleteTest extends TestCase
     {
         $barang = Barang::where('stok', '>', 0)->first();
         $this->anggota->saldo = 0;
-        $this->anggota->hutang = 100000;
+        $this->anggota->hutang = 400000;
         $this->anggota->save();
         $payload = [
             'metode_pembayaran' => 'hutang',
@@ -349,11 +349,26 @@ class KasirCompleteTest extends TestCase
     public function test_tarik_tunai_success()
     {
         $this->anggota->saldo = 100000;
+        $this->anggota->hutang = 0;
         $this->anggota->save();
+
+        // Create qualifying purchase of 25.000
+        $trx = Transaksi::create([
+            'anggota_id' => $this->anggota->anggota_id,
+            'kasir_id' => $this->kasir->user_id,
+            'total_harga' => 30000,
+            'total_keuntungan' => 6000,
+            'metode_pembayaran' => 'cash',
+            'status' => 'selesai',
+        ]);
+
         $response = $this->withHeader('Authorization', "Bearer {$this->token}")
                          ->postJson('/laravel/api/kasir/tarik-tunai', [
                              'anggota_id' => $this->anggota->anggota_id,
-                             'nominal' => 50000
+                             'nominal' => 50000,
+                             'sumber_dana' => 'saldo',
+                             'persetujuan_shu' => true,
+                             'transaksi_id' => $trx->transaksi_id,
                          ]);
         $response->assertStatus(200);
     }
@@ -361,10 +376,24 @@ class KasirCompleteTest extends TestCase
     {
         $this->anggota->saldo = 10000;
         $this->anggota->save();
+
+        // Create qualifying purchase of 25.000
+        $trx = Transaksi::create([
+            'anggota_id' => $this->anggota->anggota_id,
+            'kasir_id' => $this->kasir->user_id,
+            'total_harga' => 30000,
+            'total_keuntungan' => 6000,
+            'metode_pembayaran' => 'cash',
+            'status' => 'selesai',
+        ]);
+
         $response = $this->withHeader('Authorization', "Bearer {$this->token}")
                          ->postJson('/laravel/api/kasir/tarik-tunai', [
                              'anggota_id' => $this->anggota->anggota_id,
-                             'nominal' => 50000
+                             'nominal' => 50000,
+                             'sumber_dana' => 'saldo',
+                             'persetujuan_shu' => true,
+                             'transaksi_id' => $trx->transaksi_id,
                          ]);
         $response->assertStatus(400);
     }

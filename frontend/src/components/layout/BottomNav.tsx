@@ -27,10 +27,10 @@ export function BottomNav() {
 
   const kasirNav = [
     { to: '/kasir', icon: LayoutDashboard, label: 'Beranda' },
-    { to: '/kasir/transaksi', icon: Store, label: 'Kasir POS' },
+    { to: '/kasir/transaksi', icon: Store, label: 'POS' },
+    { to: '/kasir/pesanan', icon: ShoppingBag, label: 'Pesanan' },
     { to: '/kasir/hutang', icon: CreditCard, label: 'Hutang' },
     { to: '/kasir/serah-terima', icon: ArrowRightLeft, label: 'Shift' },
-    { to: '/kasir/riwayat', icon: History, label: 'Riwayat' },
   ]
 
   const anggotaNav = [

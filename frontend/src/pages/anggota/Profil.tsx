@@ -89,9 +89,19 @@ export function ProfilPage() {
           value={<span className="font-bold text-blue-600">{formatRupiah(profil?.saldo || 0)}</span>}
         />
         <IosListItem
-          title="Simpanan Pokok"
-          subtitle="Jaminan resmi (collateral) limit kredit"
-          value={<span className="font-bold text-amber-600">{formatRupiah(profil?.simpanan_pokok || (profil ? (profil.saldo + profil.hutang) : 400000))}</span>}
+          title="Simpanan Pokok (Agunan)"
+          subtitle="Modal setoran awal wajib jaminan anggota"
+          value={<span className="font-bold text-amber-600">{formatRupiah(profil?.simpanan_pokok ?? 300000)}</span>}
+        />
+        <IosListItem
+          title="Allowance Koperasi"
+          subtitle="Fasilitas plafon ekstra belanja lancar"
+          value={<span className="font-bold text-blue-600">+{formatRupiah(profil?.allowance_hutang ?? 100000)}</span>}
+        />
+        <IosListItem
+          title="Total Limit Kredit"
+          subtitle="Simpanan pokok (300rb) + allowance (100rb)"
+          value={<span className="font-bold text-slate-800 dark:text-slate-200">{formatRupiah(profil?.limit_hutang ?? 400000)}</span>}
         />
         <IosListItem
           title="Total Hutang"

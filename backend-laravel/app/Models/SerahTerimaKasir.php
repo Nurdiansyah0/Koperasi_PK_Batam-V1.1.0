@@ -19,9 +19,24 @@ class SerahTerimaKasir extends Model
         'created_at'
     ];
 
-    protected $casts = [
-        'hasil_opname' => 'array',
-    ];
+    public function getHasilOpnameAttribute($value)
+    {
+        if (empty($value)) return null;
+        if (is_array($value)) return $value;
+        $decoded = json_decode($value, true);
+        if (!$decoded && is_string($value)) {
+            $decoded = json_decode(stripslashes($value), true);
+            if (!$decoded) {
+                $decoded = json_decode(trim(stripslashes($value), '"'), true);
+            }
+        }
+        return $decoded;
+    }
+
+    public function setHasilOpnameAttribute($value)
+    {
+        $this->attributes['hasil_opname'] = is_array($value) ? json_encode($value) : $value;
+    }
 
     public function kasirFrom()
     {

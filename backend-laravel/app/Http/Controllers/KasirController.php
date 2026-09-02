@@ -24,21 +24,8 @@ class KasirController extends Controller
         return $request->user()->user_id;
     }
 
-        public function getDashboard(Request $request)
+    private function calculateSaldoKasKasir(int $kasirId): float
     {
-        $kasirId = $this->checkKasir($request);
-
-        $penjualanHariIni = Transaksi::where('kasir_id', $kasirId)
-            ->whereDate('created_at', Carbon::today())
-            ->where('status', 'selesai')
-            ->sum('total_harga');
-
-        $transaksiHariIni = Transaksi::where('kasir_id', $kasirId)
-            ->whereDate('created_at', Carbon::today())
-            ->where('status', 'selesai')
-            ->count();
-
-        // Saldo Kas is a running tally of all physical cash held by this Kasir
         $cashInTrx = Transaksi::where('kasir_id', $kasirId)
             ->where('status', 'selesai')
             ->whereIn('metode_pembayaran', ['cash', 'tunai'])
@@ -68,9 +55,32 @@ class KasirController extends Controller
             ->where('kasir_id', $kasirId)
             ->sum('nominal');
 
-        $uangCashMasuk = $cashInTrx + $cashDebtRepay + $cashInSerah - $cashWithdrawals - $cashOutSerah - $cashOutSetor;
+        return (float) ($cashInTrx + $cashDebtRepay + $cashInSerah - $cashWithdrawals - $cashOutSerah - $cashOutSetor);
+    }
+
+    public function getDashboard(Request $request)
+    {
+        $kasirId = $this->checkKasir($request);
+
+        $penjualanHariIni = Transaksi::where('kasir_id', $kasirId)
+            ->whereDate('created_at', Carbon::today())
+            ->where('status', 'selesai')
+            ->sum('total_harga');
+
+        $transaksiHariIni = Transaksi::where('kasir_id', $kasirId)
+            ->whereDate('created_at', Carbon::today())
+            ->where('status', 'selesai')
+            ->count();
+
+        $uangCashMasuk = $this->calculateSaldoKasKasir($kasirId);
 
         $pendingSerahTerima = SerahTerimaKasir::where('kasir_to', $kasirId)
+            ->where('status', 'pending')
+            ->count();
+
+        $pendingPesanan = Transaksi::where('status', 'pending')->count();
+
+        $pendingHutang = \Illuminate\Support\Facades\DB::table('pembayaran_hutang')
             ->where('status', 'pending')
             ->count();
 
@@ -81,6 +91,8 @@ class KasirController extends Controller
                 'total_transaksi_hari_ini' => (int) $transaksiHariIni,
                 'saldo_kas' => (float) $uangCashMasuk,
                 'pending_serah_terima' => (int) $pendingSerahTerima,
+                'pending_pesanan' => (int) $pendingPesanan,
+                'pending_hutang' => (int) $pendingHutang,
                 
                 // Keep old keys just in case
                 'totalPenjualanHariIni' => (float) $penjualanHariIni,
@@ -119,6 +131,12 @@ class KasirController extends Controller
         $barang = Barang::select('barang_id', 'nama_barang', 'harga_jual', 'stok', 'harga_modal')
             ->where('stok', '>', 0)->get();
         return response()->json(['success' => true, 'data' => $barang]);
+    }
+
+    public function getPaketBelanja(Request $request)
+    {
+        $this->checkKasir($request);
+        return (new AnggotaController)->getPaketBelanja($request);
     }
 
         public function tolakPesananAnggota(Request $request)
@@ -162,6 +180,22 @@ class KasirController extends Controller
                         $anggota->saldo += $trx->total_harga;
                         $anggota->save();
                     }
+
+                    // 2b. Restore Tarik Tunai SHU / Saldo if attached
+                    $tarik = TarikTunai::where('transaksi_id', $trx->transaksi_id)->where('status', 'pending')->first();
+                    if ($tarik) {
+                        if ($tarik->sumber_dana === 'shu') {
+                            $anggota->shu += $tarik->nominal;
+                        } else {
+                            $anggota->saldo += $tarik->nominal;
+                        }
+                        $anggota->save();
+
+                        $tarik->status = 'rejected';
+                        $tarik->kasir_id = $kasirId;
+                        $tarik->alasan_tolak = 'Pesanan belanja dibatalkan/ditolak oleh kasir.';
+                        $tarik->save();
+                    }
                 }
 
                 // 3. Update Transaction Status
@@ -171,7 +205,7 @@ class KasirController extends Controller
             }
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Pesanan berhasil dibatalkan']);
+            return response()->json(['success' => true, 'message' => 'Pesanan berhasil dibatalkan dan saldo dikembalikan']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -185,6 +219,7 @@ class KasirController extends Controller
             ->where('status', 'pending')
             ->orderBy('created_at', 'desc')
             ->get()->map(function($t) {
+                $tarik = TarikTunai::where('transaksi_id', $t->transaksi_id)->first();
                 return [
                     'transaksi_id' => $t->transaksi_id,
                     'anggota_id' => $t->anggota_id,
@@ -192,6 +227,13 @@ class KasirController extends Controller
                     'metode_pembayaran' => $t->metode_pembayaran,
                     'total_harga' => (float) $t->total_harga,
                     'created_at' => $t->created_at,
+                    'tarik_tunai' => $tarik ? [
+                        'tarik_id' => $tarik->tarik_id,
+                        'kode_penarikan' => $tarik->kode_penarikan,
+                        'nominal' => (float) $tarik->nominal,
+                        'sumber_dana' => $tarik->sumber_dana,
+                        'uang_bersih_diserahkan' => max(0, (float) $tarik->nominal - (float) $t->total_harga)
+                    ] : null,
                     'items' => $t->details->map(function($d) {
                         return [
                             'barang_id' => $d->barang_id,
@@ -245,6 +287,15 @@ class KasirController extends Controller
                             ]);
                         }
                     }
+
+                    // Complete linked Tarik Tunai ticket if attached
+                    $tarik = TarikTunai::where('transaksi_id', $trx->transaksi_id)->where('status', 'pending')->first();
+                    if ($tarik) {
+                        $tarik->status = 'completed';
+                        $tarik->kasir_id = $kasirId;
+                        $tarik->approved_at = Carbon::now();
+                        $tarik->save();
+                    }
                 }
             }
             DB::commit();
@@ -297,10 +348,15 @@ class KasirController extends Controller
             }
 
             $anggota_id = $request->anggota_id ?: null;
+            if (!$anggota_id) {
+                throw new \Exception("Transaksi belanja wajib memilih Anggota Koperasi (semua transaksi khusus anggota).");
+            }
+            $anggota = Anggota::lockForUpdate()->find($anggota_id);
+            if (!$anggota) {
+                throw new \Exception("Data Anggota Koperasi tidak ditemukan.");
+            }
+
             if ($request->metode_pembayaran === 'ewallet') {
-                if (!$anggota_id) throw new \Exception("Pembayaran dengan saldo (ewallet) harus memilih anggota");
-                $anggota = Anggota::lockForUpdate()->find($anggota_id);
-                if (!$anggota) throw new \Exception("Anggota tidak ditemukan");
                 if ($anggota->hutang > 0) {
                     throw new \Exception("Gagal: Anggota ini masih memiliki tunggakan hutang. Harap lunasi terlebih dahulu.");
                 }
@@ -312,26 +368,106 @@ class KasirController extends Controller
             }
 
             if ($request->metode_pembayaran === 'hutang') {
-                if (!$anggota_id) throw new \Exception("Hutang harus memilih anggota");
-                $anggota = Anggota::lockForUpdate()->find($anggota_id);
-                if (!$anggota) throw new \Exception("Anggota tidak ditemukan");
-                $limit_hutang = $anggota->saldo + 100000; // Saldo + 100k allowance
-                if (($anggota->hutang + $totalHarga) > $limit_hutang) {
-                    $sisa_limit = $limit_hutang - $anggota->hutang;
-                    throw new \Exception("Gagal: Limit hutang Koperasi tidak mencukupi. Sisa limit Anda: Rp " . number_format($sisa_limit, 0, ',', '.'));
+                $sisa_limit = (float) $anggota->sisa_limit_hutang;
+                if ($totalHarga > $sisa_limit) {
+                    throw new \Exception("Gagal: Total belanja Rp " . number_format($totalHarga, 0, ',', '.') . " melebihi sisa limit hutang Rp " . number_format($sisa_limit, 0, ',', '.'));
                 }
                 $anggota->hutang += $totalHarga;
                 $anggota->save();
             }
+
+            $tarikTunaiData = null;
+            if (!empty($request->sertakan_tarik_tunai) && (float) $request->tarik_tunai_nominal > 0) {
+                if (!$anggota_id) throw new \Exception("Tarik tunai saat belanja wajib memilih data anggota.");
+                
+                $anggota = Anggota::lockForUpdate()->find($anggota_id);
+                if (!$anggota) throw new \Exception("Anggota tidak ditemukan");
+
+                // 1. Debt check
+                if ((float) $anggota->hutang > 0) {
+                    throw new \Exception("Gagal: Anggota memiliki tagihan hutang berjalan sebesar Rp " . number_format($anggota->hutang, 0, ',', '.') . ". Wajib lunasi hutang terlebih dahulu.");
+                }
+
+                // 2. Minimum purchase check (>= Rp 25.000)
+                if ($totalHarga < 25000) {
+                    throw new \Exception("Syarat penarikan tunai: Total belanja saat ini minimal Rp 25.000 (Belanja saat ini: Rp " . number_format($totalHarga, 0, ',', '.') . ").");
+                }
+
+                // 3. Proportional limit (Maks 2x Belanja, Plafon Rp 100.000)
+                $maxPlafon = min(100000, $totalHarga * 2);
+                $nominalTarik = (float) $request->tarik_tunai_nominal;
+                if ($nominalTarik > $maxPlafon) {
+                    throw new \Exception("Nominal tarik tunai (Rp " . number_format($nominalTarik, 0, ',', '.') . ") melebihi batas kuota proporsional Rp " . number_format($maxPlafon, 0, ',', '.') . " (Maks. 2x belanja saat ini, Plafon Rp 100.000).");
+                }
+
+                $sumberTarik = $request->tarik_tunai_sumber ?: 'shu';
+                $available = ($sumberTarik === 'shu' ? (float) $anggota->shu : (float) $anggota->saldo);
+                if ($nominalTarik > $available) {
+                    throw new \Exception("Saldo {$sumberTarik} tidak mencukupi (Tersedia: Rp " . number_format($available, 0, ',', '.') . ").");
+                }
+
+                // Master consent check
+                if (!$anggota->persetujuan_shu_master_at && !$request->persetujuan_shu) {
+                    throw new \Exception("Wajib menyetujui ketentuan pemotongan SHU Hari Besar (Master Consent).");
+                }
+
+                if (!$anggota->persetujuan_shu_master_at) {
+                    $anggota->persetujuan_shu_master_at = Carbon::now();
+                    $anggota->persetujuan_shu_version = 'v1.0';
+                }
+
+                // Deduct total nominal from member balance
+                if ($sumberTarik === 'shu') {
+                    $anggota->shu -= $nominalTarik;
+                } else {
+                    $anggota->saldo -= $nominalTarik;
+                }
+                $anggota->save();
+
+                // Net cash handover calculation
+                $uangBersihDiserahkan = max(0, $nominalTarik - $totalHarga);
+
+                $kodePenarikan = 'TRK-' . date('ymd') . '-' . rand(1000, 9999);
+                $tarik = TarikTunai::create([
+                    'kode_penarikan' => $kodePenarikan,
+                    'kasir_id' => $kasirId,
+                    'anggota_id' => $anggota->anggota_id,
+                    'nominal' => $nominalTarik,
+                    'status' => 'completed',
+                    'sumber_dana' => $sumberTarik,
+                    'persetujuan_shu' => true,
+                    'approved_at' => Carbon::now(),
+                    'keterangan' => "Tarik Tunai saat Belanja (Potong Belanja Rp " . number_format($totalHarga, 0, ',', '.') . ", Kas Diserahkan Rp " . number_format($uangBersihDiserahkan, 0, ',', '.') . ")",
+                    'created_at' => Carbon::now()
+                ]);
+
+                $tarikTunaiData = [
+                    'tarik_id' => $tarik->tarik_id,
+                    'kode_penarikan' => $tarik->kode_penarikan,
+                    'nominal_tarik' => $nominalTarik,
+                    'potong_belanja' => $totalHarga,
+                    'uang_bersih_diserahkan' => $uangBersihDiserahkan,
+                    'sumber_dana' => $sumberTarik,
+                    'sisa_shu' => (float) $anggota->shu,
+                    'sisa_saldo' => (float) $anggota->saldo,
+                ];
+            }
+
+            $metodePembayaranFinal = $tarikTunaiData ? 'potong_tarik_tunai' : $request->metode_pembayaran;
 
             $transaksi = Transaksi::create([
                 'anggota_id' => $anggota_id,
                 'kasir_id' => $kasirId,
                 'total_harga' => $totalHarga,
                 'total_keuntungan' => $totalKeuntungan,
-                'metode_pembayaran' => $request->metode_pembayaran,
+                'metode_pembayaran' => $metodePembayaranFinal,
                 'status' => 'selesai',
             ]);
+
+            if ($tarikTunaiData && isset($tarik)) {
+                $tarik->transaksi_id = $transaksi->transaksi_id;
+                $tarik->save();
+            }
 
             foreach ($transaksiItems as $tItem) {
                 $tItem['transaksi_id'] = $transaksi->transaksi_id;
@@ -364,10 +500,13 @@ class KasirController extends Controller
             DB::commit();
             return response()->json([
                 'success' => true,
-                'message' => 'Transaksi berhasil',
+                'message' => $tarikTunaiData 
+                    ? 'Transaksi & Tarik Tunai Berhasil! Serahkan kas bersih sebesar Rp ' . number_format($tarikTunaiData['uang_bersih_diserahkan'], 0, ',', '.') . ' ke pembeli.'
+                    : 'Transaksi berhasil',
                 'transaksi_id' => $transaksi->transaksi_id,
                 'total' => $totalHarga,
-                'total_keuntungan' => $totalKeuntungan
+                'total_keuntungan' => $totalKeuntungan,
+                'tarik_tunai' => $tarikTunaiData
             ]);
 
         } catch (\Exception $e) {
@@ -379,7 +518,11 @@ class KasirController extends Controller
     public function getAllAnggota(Request $request)
     {
         $this->checkKasir($request);
-        $anggota = Anggota::orderBy('nama_lengkap', 'asc')->get();
+        $anggota = Anggota::with('user:user_id,username')->orderBy('nama_lengkap', 'asc')->get()->map(function($a) {
+            $arr = $a->toArray();
+            $arr['username'] = $a->user ? $a->user->username : '';
+            return $arr;
+        });
         return response()->json(['success' => true, 'data' => $anggota]);
     }
 
@@ -530,12 +673,150 @@ class KasirController extends Controller
     }
 
 
+    public function cekKelayakanTarikTunai(Request $request, $anggota_id)
+    {
+        $this->checkKasir($request);
+        $anggota = Anggota::find($anggota_id);
+        if (!$anggota) {
+            return response()->json(['success' => false, 'message' => 'Anggota tidak ditemukan'], 404);
+        }
+
+        // Check recent completed transactions today with min Rp 25.000
+        $todayTransactions = Transaksi::where('anggota_id', $anggota_id)
+            ->where('status', 'selesai')
+            ->where('created_at', '>=', Carbon::today())
+            ->where('total_harga', '>=', 25000)
+            ->orderBy('created_at', 'desc')
+            ->get(['transaksi_id', 'total_harga', 'metode_pembayaran', 'created_at']);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'anggota_id' => $anggota->anggota_id,
+                'nama_lengkap' => $anggota->nama_lengkap,
+                'saldo_ewallet' => (float) $anggota->saldo,
+                'saldo_shu' => (float) $anggota->shu,
+                'transaksi_valid_hari_ini' => $todayTransactions,
+                'has_qualifying_purchase' => $todayTransactions->isNotEmpty(),
+                'min_belanja_required' => 25000,
+            ]
+        ]);
+    }
+
+    public function getAntreanTarikTunai(Request $request)
+    {
+        $this->checkKasir($request);
+
+        $pending = TarikTunai::with(['anggota', 'transaksi'])
+            ->where('status', 'pending')
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function ($t) {
+                return [
+                    'tarik_id' => $t->tarik_id,
+                    'kode_penarikan' => $t->kode_penarikan,
+                    'anggota_id' => $t->anggota_id,
+                    'nama_anggota' => $t->anggota ? $t->anggota->nama_lengkap : 'Anggota',
+                    'nominal' => (float) $t->nominal,
+                    'sumber_dana' => $t->sumber_dana,
+                    'transaksi_id' => $t->transaksi_id,
+                    'belanja_nominal' => $t->transaksi ? (float) $t->transaksi->total_harga : 0,
+                    'keterangan' => $t->keterangan,
+                    'created_at' => $t->created_at,
+                ];
+            });
+
+        return response()->json(['success' => true, 'data' => $pending]);
+    }
+
+    public function prosesTarikTunai(Request $request)
+    {
+        $kasirId = $this->checkKasir($request);
+        $request->validate([
+            'tarik_id' => 'required|integer|exists:tarik_tunai,tarik_id',
+            'action' => 'required|in:approve,reject',
+            'alasan_tolak' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $tarik = TarikTunai::lockForUpdate()->find($request->tarik_id);
+            if (!$tarik || $tarik->status !== 'pending') {
+                throw new \Exception("Tiket penarikan tidak valid atau sudah diproses.");
+            }
+
+            $anggota = Anggota::lockForUpdate()->find($tarik->anggota_id);
+            if (!$anggota) throw new \Exception("Data anggota tidak ditemukan.");
+
+            if ($request->action === 'reject') {
+                $tarik->status = 'rejected';
+                $tarik->kasir_id = $kasirId;
+                $tarik->alasan_tolak = $request->alasan_tolak ?: 'Ditolak oleh kasir toko.';
+                $tarik->save();
+
+                DB::commit();
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Tiket penarikan tunai berhasil ditolak.',
+                ]);
+            }
+
+            // 1. Re-verify debt at approval time
+            if ((float) $anggota->hutang > 0) {
+                throw new \Exception("Penarikan dibatalkan: Anggota masih memiliki saldo hutang belanja sebesar Rp " . number_format($anggota->hutang, 0, ',', '.') . ".");
+            }
+
+            // 2. Deduct funds
+            if ($tarik->sumber_dana === 'shu') {
+                if ($anggota->shu < $tarik->nominal) {
+                    throw new \Exception("Saldo SHU anggota tidak mencukupi (Tersedia: Rp " . number_format($anggota->shu, 0, ',', '.') . ").");
+                }
+                $anggota->shu -= $tarik->nominal;
+            } else {
+                if ($anggota->saldo < $tarik->nominal) {
+                    throw new \Exception("Saldo E-Wallet anggota tidak mencukupi (Tersedia: Rp " . number_format($anggota->saldo, 0, ',', '.') . ").");
+                }
+                $anggota->saldo -= $tarik->nominal;
+            }
+            $anggota->save();
+
+            $tarik->status = 'completed';
+            $tarik->kasir_id = $kasirId;
+            $tarik->approved_at = Carbon::now();
+            $tarik->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Uang tunai sebesar Rp ' . number_format($tarik->nominal, 0, ',', '.') . ' berhasil diserahkan ke ' . $anggota->nama_lengkap . '.',
+                'data' => [
+                    'tarik_id' => $tarik->tarik_id,
+                    'kode_penarikan' => $tarik->kode_penarikan,
+                    'nominal' => (float) $tarik->nominal,
+                    'sisa_shu' => (float) $anggota->shu,
+                    'sisa_saldo' => (float) $anggota->saldo,
+                    'nama_anggota' => $anggota->nama_lengkap,
+                    'transaksi_id' => $tarik->transaksi_id,
+                    'created_at' => $tarik->created_at,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+    }
+
     public function tarikTunai(Request $request)
     {
         $kasirId = $this->checkKasir($request);
         $request->validate([
-            'nominal' => 'required|numeric|min:1',
-            'anggota_id' => 'required|integer'
+            'nominal' => 'required|numeric|min:1000',
+            'anggota_id' => 'required|integer|exists:anggota,anggota_id',
+            'sumber_dana' => 'required|in:shu,saldo',
+            'persetujuan_shu' => 'nullable|boolean',
+            'transaksi_id' => 'nullable|integer|exists:transaksi,transaksi_id',
+            'keterangan' => 'nullable|string'
         ]);
 
         DB::beginTransaction();
@@ -543,25 +824,137 @@ class KasirController extends Controller
             $anggota = Anggota::lockForUpdate()->find($request->anggota_id);
             if (!$anggota) throw new \Exception("Anggota tidak ditemukan");
 
-            if ($anggota->saldo < $request->nominal) throw new \Exception("Saldo tidak mencukupi");
+            // Consent check (Master Consent or Explicit Checkbox)
+            if (!$anggota->persetujuan_shu_master_at && !$request->persetujuan_shu) {
+                return response()->json([
+                    'success' => false, 
+                    'message' => 'Penarikan tunai gagal: Anggota wajib menyetujui ketentuan pemotongan SHU Hari Besar (Master Consent) secara sadar.'
+                ], 422);
+            }
 
-            $anggota->saldo -= $request->nominal;
+            if (!$anggota->persetujuan_shu_master_at && $request->persetujuan_shu) {
+                $anggota->persetujuan_shu_master_at = Carbon::now();
+                $anggota->persetujuan_shu_version = 'v1.0';
+                $anggota->save();
+            }
+
+            // 1. Debt check
+            if ((float) $anggota->hutang > 0) {
+                throw new \Exception("Penarikan tunai ditolak: Anggota masih memiliki tagihan hutang berjalan sebesar Rp " . number_format($anggota->hutang, 0, ',', '.') . ". Wajib melunasi hutang terlebih dahulu.");
+            }
+
+            // 2. Qualifying purchase check (Min Rp 25.000)
+            $transaksiId = $request->transaksi_id;
+            if ($transaksiId) {
+                $trx = Transaksi::where('transaksi_id', $transaksiId)
+                    ->where('anggota_id', $anggota->anggota_id)
+                    ->where('status', 'selesai')
+                    ->first();
+                if (!$trx || $trx->total_harga < 25000) {
+                    throw new \Exception("Transaksi belanja yang ditautkan tidak memenuhi syarat minimal Rp 25.000 (Nilai: Rp " . number_format($trx ? $trx->total_harga : 0, 0, ',', '.') . ")");
+                }
+            } else {
+                $validTrx = Transaksi::where('anggota_id', $anggota->anggota_id)
+                    ->where('status', 'selesai')
+                    ->where('created_at', '>=', Carbon::today())
+                    ->where('total_harga', '>=', 25000)
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+
+                if (!$validTrx) {
+                    throw new \Exception("Syarat penarikan tunai belum terpenuhi: Wajib disertai transaksi belanja produk koperasi minimal Rp 25.000 hari ini.");
+                }
+                $transaksiId = $validTrx->transaksi_id;
+            }
+
+            // 3. Proportional limit check (Maks 2x Belanja Hari Ini, Plafon Rp 100.000)
+            $totalBelanjaHariIni = (float) Transaksi::where('anggota_id', $anggota->anggota_id)
+                ->where('status', 'selesai')
+                ->where('created_at', '>=', Carbon::today())
+                ->where('total_harga', '>=', 25000)
+                ->sum('total_harga');
+
+            $maxPlafon = min(100000, $totalBelanjaHariIni * 2);
+
+            if ($request->nominal > $maxPlafon) {
+                throw new \Exception("Nominal penarikan (Rp " . number_format($request->nominal, 0, ',', '.') . ") melebihi kuota proporsional maksimal Rp " . number_format($maxPlafon, 0, ',', '.') . " (Maks. 2x Belanja Toko, Plafon Rp 100.000/hari).");
+            }
+
+            // 4. Deduct funds
+            $sumber = $request->sumber_dana;
+            if ($sumber === 'shu') {
+                if ($anggota->shu < $request->nominal) {
+                    throw new \Exception("Saldo SHU tidak mencukupi. Saldo SHU saat ini: Rp " . number_format($anggota->shu, 0, ',', '.'));
+                }
+                $anggota->shu -= $request->nominal;
+            } else {
+                if ($anggota->saldo < $request->nominal) {
+                    throw new \Exception("Saldo E-Wallet tidak mencukupi. Saldo saat ini: Rp " . number_format($anggota->saldo, 0, ',', '.'));
+                }
+                $anggota->saldo -= $request->nominal;
+            }
             $anggota->save();
 
-            // Store Tarik Tunai logic if we want to save it, assuming there's a table for it
-            DB::table('tarik_tunai')->insert([
+            $kodePenarikan = 'TRK-' . date('ymd') . '-' . rand(1000, 9999);
+
+            $tarik = TarikTunai::create([
+                'kode_penarikan' => $kodePenarikan,
                 'kasir_id' => $kasirId,
                 'anggota_id' => $anggota->anggota_id,
                 'nominal' => $request->nominal,
+                'status' => 'completed',
+                'sumber_dana' => $sumber,
+                'transaksi_id' => $transaksiId,
+                'persetujuan_shu' => true,
+                'approved_at' => Carbon::now(),
+                'keterangan' => $request->keterangan ?: "Tarik Tunai dari {$sumber} (Disertai Belanja Trx #{$transaksiId})",
                 'created_at' => Carbon::now()
             ]);
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Tarik tunai berhasil diproses']);
+            return response()->json([
+                'success' => true, 
+                'message' => 'Tarik tunai sebesar Rp ' . number_format($request->nominal, 0, ',', '.') . ' berhasil diproses.',
+                'data' => [
+                    'tarik_id' => $tarik->tarik_id,
+                    'kode_penarikan' => $tarik->kode_penarikan,
+                    'nominal' => (float) $tarik->nominal,
+                    'sisa_shu' => (float) $anggota->shu,
+                    'sisa_saldo' => (float) $anggota->saldo,
+                    'nama_anggota' => $anggota->nama_lengkap,
+                    'transaksi_id' => $transaksiId,
+                    'created_at' => $tarik->created_at,
+                ]
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
+    }
+
+    public function getRiwayatTarikTunaiKasir(Request $request)
+    {
+        $kasirId = $this->checkKasir($request);
+        $data = TarikTunai::with(['anggota', 'transaksi'])
+            ->where('kasir_id', $kasirId)
+            ->orderBy('created_at', 'desc')
+            ->take(50)
+            ->get()
+            ->map(function ($t) {
+                return [
+                    'tarik_id' => $t->tarik_id,
+                    'anggota_id' => $t->anggota_id,
+                    'nama_anggota' => $t->anggota ? $t->anggota->nama_lengkap : 'Anggota',
+                    'nominal' => (float) $t->nominal,
+                    'sumber_dana' => $t->sumber_dana,
+                    'transaksi_id' => $t->transaksi_id,
+                    'belanja_nominal' => $t->transaksi ? (float) $t->transaksi->total_harga : 0,
+                    'keterangan' => $t->keterangan,
+                    'created_at' => $t->created_at,
+                ];
+            });
+
+        return response()->json(['success' => true, 'data' => $data]);
     }
 
     public function getDaftarKasir(Request $request)
@@ -606,12 +999,16 @@ class KasirController extends Controller
         $paginator->getCollection()->transform(function($s) {
             return [
                 'serah_id' => $s->serah_id,
+                'serah_terima_id' => $s->serah_id,
                 'kasir_from' => $s->kasir_from,
                 'kasir_to' => $s->kasir_to,
-                'kasir_from_name' => $s->kasirFrom ? $s->kasirFrom->username : '',
+                'kasir_from_name' => $s->kasirFrom ? ($s->kasirFrom->nama_lengkap ?: $s->kasirFrom->username) : '',
+                'kasir_from_username' => $s->kasirFrom ? $s->kasirFrom->username : '',
+                'kasir_to_name' => $s->kasirTo ? ($s->kasirTo->nama_lengkap ?: $s->kasirTo->username) : '',
                 'kasir_to_username' => $s->kasirTo ? $s->kasirTo->username : '',
-                'hasil_opname' => $s->hasil_opname,
+                'hasil_opname' => $this->parseHasilOpname($s->hasil_opname),
                 'status' => $s->status,
+                'alasan_penolakan' => $s->alasan_penolakan,
                 'created_at' => $s->created_at,
             ];
         });
@@ -619,17 +1016,113 @@ class KasirController extends Controller
         return response()->json(['success' => true, 'data' => $paginator]);
     }
 
+    private function parseHasilOpname($raw)
+    {
+        if (empty($raw)) return null;
+        if (is_array($raw)) {
+            $decoded = $raw;
+        } else {
+            $decoded = json_decode($raw, true);
+            if (!$decoded && is_string($raw)) {
+                $decoded = json_decode(stripslashes($raw), true);
+                if (!$decoded) {
+                    $decoded = json_decode(trim(stripslashes($raw), '"'), true);
+                }
+            }
+        }
+
+        if (!is_array($decoded)) return null;
+
+        // Auto-enrich items with harga_jual, selisih_nominal, risk_badge, and summary stats
+        if (isset($decoded['items']) && is_array($decoded['items'])) {
+            $itemIds = array_filter(array_column($decoded['items'], 'barang_id'));
+            $barangs = !empty($itemIds) ? Barang::whereIn('barang_id', $itemIds)->get()->keyBy('barang_id') : collect();
+
+            $totalMinusNominal = 0;
+            $barangSelisih = 0;
+
+            foreach ($decoded['items'] as &$it) {
+                $bId = $it['barang_id'] ?? null;
+                $b = $bId ? $barangs->get($bId) : null;
+                if (!isset($it['harga_jual']) || $it['harga_jual'] == 0) {
+                    $it['harga_jual'] = $b ? (float)$b->harga_jual : 0;
+                }
+                if (!isset($it['risk_badge'])) {
+                    $nameLower = strtolower($it['nama_barang'] ?? '');
+                    if (str_contains($nameLower, 'rokok') || str_contains($nameLower, 'samsu') || str_contains($nameLower, 'surya') || str_contains($nameLower, 'mild') || str_contains($nameLower, 'sampoerna') || str_contains($nameLower, 'camel') || str_contains($nameLower, 'djarum')) {
+                        $it['risk_badge'] = 'Rokok';
+                    } elseif (($it['selisih'] ?? 0) != 0) {
+                        $it['risk_badge'] = 'Riwayat Minus';
+                    } else {
+                        $it['risk_badge'] = 'Cycle Count';
+                    }
+                }
+                $selisih = $it['selisih'] ?? 0;
+                if ($selisih != 0) {
+                    $barangSelisih++;
+                }
+                $it['selisih_nominal'] = $selisih * ($it['harga_jual'] ?? 0);
+                if ($selisih < 0) {
+                    $totalMinusNominal += abs($it['selisih_nominal']);
+                }
+            }
+            unset($it);
+
+            if (!isset($decoded['summary']) || !is_array($decoded['summary'])) {
+                $decoded['summary'] = [];
+            }
+            $decoded['summary']['barangSelisih'] = $barangSelisih;
+            $decoded['summary']['totalMinusNominal'] = $totalMinusNominal;
+        }
+
+        return $decoded;
+    }
+
     public function getSerahTerimaDraft(Request $request)
     {
         $kasirId = $this->checkKasir($request);
-        $kasirList = User::where('role', 'kasir')->where('user_id', '!=', $kasirId)->select('user_id', 'username')->get();
-        $highValueItems = Barang::orderBy('harga_jual', 'desc')->take(20)->get();
-        $randomItems = $highValueItems->count() > 5 ? $highValueItems->random(5)->values() : $highValueItems;
+        $kasirList = User::where('role', 'kasir')
+            ->where('user_id', '!=', $kasirId)
+            ->select('user_id', 'username')
+            ->get();
+
+        // Load all active items in the store for cycle count
+        $allItems = Barang::orderBy('nama_barang', 'asc')->get();
+
+        $rokokKeywords = ['rokok', 'sampoerna', 'surya', 'marlboro', 'gudang garam', 'magnum', 'djarum', 'camel', 'esse', 'filter', 'kretek', 'mild', 'samsu'];
+
+        foreach ($allItems as $item) {
+            $nameLower = strtolower($item->nama_barang);
+            $isRokok = false;
+            foreach ($rokokKeywords as $kw) {
+                if (str_contains($nameLower, $kw)) {
+                    $isRokok = true;
+                    break;
+                }
+            }
+
+            $pkmValue = (int) ($item->pkm ?: 1);
+            if ($isRokok) {
+                $item->risk_badge = 'Rokok';
+                $item->audit_reason = "PKM Toko: {$pkmValue} pcs (Risiko Rokok)";
+            } elseif ($item->stok < $pkmValue) {
+                $item->risk_badge = 'Perlu Restock';
+                $item->audit_reason = "PKM Toko: {$pkmValue} pcs (Stok < PKM)";
+            } else {
+                $item->risk_badge = 'Display Toko';
+                $item->audit_reason = "PKM Toko 4 Hari: {$pkmValue} pcs";
+            }
+        }
+
+        // Calculate theoretical drawer cash in system
+        $saldoKasSistem = $this->calculateSaldoKasKasir($kasirId);
+
         return response()->json([
             'success' => true,
             'data' => [
                 'kasir_list' => $kasirList,
-                'cycle_count_items' => $randomItems
+                'saldo_kas_sistem' => (float) $saldoKasSistem,
+                'cycle_count_items' => $allItems
             ]
         ]);
     }
@@ -659,25 +1152,105 @@ class KasirController extends Controller
     public function approveSerahTerima(Request $request)
     {
         $kasirId = $this->checkKasir($request);
-        $st = SerahTerimaKasir::where('serah_id', $request->serah_id)->where('kasir_to', $kasirId)->first();
-        if (!$st || $st->status !== 'pending') {
-            return response()->json(['success' => false, 'message' => 'Data tidak valid'], 400);
+
+        DB::beginTransaction();
+        try {
+            $st = SerahTerimaKasir::where('serah_id', $request->serah_id)
+                ->where('kasir_to', $kasirId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$st || $st->status !== 'pending') {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Data tidak valid atau sudah diproses'], 400);
+            }
+
+            $st->status = 'approved';
+            $st->save();
+
+            // Auto-sync physical inventory stock to reflect verified count
+            $opname = $this->parseHasilOpname($st->hasil_opname);
+            if (isset($opname['items']) && is_array($opname['items'])) {
+                foreach ($opname['items'] as $item) {
+                    if (isset($item['barang_id']) && isset($item['stok_aktual'])) {
+                        $barang = Barang::where('barang_id', $item['barang_id'])->lockForUpdate()->first();
+                        if ($barang) {
+                            $barang->stok = max(0, (int)$item['stok_aktual']);
+                            $barang->save();
+                        }
+                    }
+                }
+            }
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => 'Shift operasional disetujui dan stok fisik berhasil disinkronkan ke sistem'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Gagal menyetujui shift: ' . $e->getMessage()], 500);
         }
-        $st->status = 'approved';
-        $st->save();
-        return response()->json(['success' => true, 'message' => 'Opname disetujui']);
     }
 
     public function rejectSerahTerima(Request $request)
     {
         $kasirId = $this->checkKasir($request);
-        $st = SerahTerimaKasir::where('serah_id', $request->serah_id)->where('kasir_to', $kasirId)->first();
-        if (!$st || $st->status !== 'pending') {
-            return response()->json(['success' => false, 'message' => 'Data tidak valid'], 400);
+
+        DB::beginTransaction();
+        try {
+            $st = SerahTerimaKasir::where('serah_id', $request->serah_id)
+                ->where('kasir_to', $kasirId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$st || $st->status !== 'pending') {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Data tidak valid atau sudah diproses'], 400);
+            }
+
+            $st->status = 'rejected';
+            $st->alasan_penolakan = $request->alasan;
+            $st->save();
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Serah terima shift berhasil ditolak']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Gagal menolak shift: ' . $e->getMessage()], 500);
         }
-        $st->status = 'rejected';
-        $st->alasan_penolakan = $request->alasan;
-        $st->save();
-        return response()->json(['success' => true, 'message' => 'Opname ditolak']);
+    }
+
+    public function getActiveShiftInfo(Request $request)
+    {
+        $kasirId = $this->checkKasir($request);
+
+        // Find latest approved handover where current user is the receiver
+        $latestHandover = SerahTerimaKasir::with(['kasirFrom', 'kasirTo'])
+            ->where('kasir_to', $kasirId)
+            ->where('status', 'approved')
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        // Also check if current user has an unapproved outgoing handover
+        $pendingOutgoing = SerahTerimaKasir::where('kasir_from', $kasirId)
+            ->where('status', 'pending')
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'latest_incoming' => $latestHandover ? [
+                    'serah_id' => $latestHandover->serah_id,
+                    'kasir_from_name' => $latestHandover->kasirFrom ? ($latestHandover->kasirFrom->nama_lengkap ?: $latestHandover->kasirFrom->username) : 'Kasir',
+                    'kasir_from_username' => $latestHandover->kasirFrom ? $latestHandover->kasirFrom->username : '',
+                    'kasir_to_name' => $latestHandover->kasirTo ? ($latestHandover->kasirTo->nama_lengkap ?: $latestHandover->kasirTo->username) : 'Anda',
+                    'kasir_to_username' => $latestHandover->kasirTo ? $latestHandover->kasirTo->username : '',
+                    'hasil_opname' => $this->parseHasilOpname($latestHandover->hasil_opname),
+                    'created_at' => $latestHandover->created_at,
+                ] : null,
+                'has_pending_outgoing' => $pendingOutgoing ? true : false,
+            ]
+        ]);
     }
 }

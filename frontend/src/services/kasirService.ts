@@ -11,7 +11,8 @@ import type {
   DaftarKasir,
   ApiResponse,
   TransaksiItem,
-  MetodePembayaran
+  MetodePembayaran,
+  PaketBelanja
 } from '@/types'
 
 export const kasirService = {
@@ -30,15 +31,23 @@ export const kasirService = {
     return data.data ?? []
   },
 
+  getPaketBelanja: async (): Promise<{ data: PaketBelanja[]; sering_dibeli: PaketBelanja | null }> => {
+    const { data } = await api.get('/laravel/api/kasir/paket-belanja')
+    return data
+  },
+
   buatTransaksiKasir: async (payload: {
     items: { barang_id: number; jumlah: number; harga_satuan?: number }[]
     anggota_id?: number | null
-    metode_pembayaran: MetodePembayaran
+    metode_pembayaran: MetodePembayaran | 'potong_tarik_tunai'
     total: number
-  }): Promise<ApiResponse & { transaksi_id?: number, total?: number, total_keuntungan?: number }> => {
+    sertakan_tarik_tunai?: boolean
+    tarik_tunai_nominal?: number
+    tarik_tunai_sumber?: 'shu' | 'saldo'
+    persetujuan_shu?: boolean
+  }): Promise<ApiResponse & { transaksi_id?: number, total?: number, total_keuntungan?: number, tarik_tunai?: any }> => {
     const transformedPayload = {
       ...payload,
-      // No mapping needed if payload already has jumlah
     }
     const { data } = await api.post('/laravel/api/kasir/buat-transaksi', transformedPayload)
     return data
@@ -104,11 +113,6 @@ export const kasirService = {
     return data
   },
 
-  tarikTunai: async (nominal: number, anggota_id: number): Promise<ApiResponse> => {
-    const { data } = await api.post('/laravel/api/kasir/tarik-tunai', { nominal, anggota_id })
-    return data
-  },
-
   getDaftarKasir: async (): Promise<DaftarKasir[]> => {
     const { data } = await api.get('/laravel/api/kasir/daftar-kasir')
     return data.data ?? []
@@ -124,6 +128,11 @@ export const kasirService = {
     return { data: data.data?.data ?? [], current_page: data.data?.current_page ?? 1, last_page: data.data?.last_page ?? 1 }
   },
 
+  getActiveShiftInfo: async (): Promise<ApiResponse<{ latest_incoming: any, has_pending_outgoing: boolean }>> => {
+    const { data } = await api.get('/laravel/api/kasir/active-shift-info')
+    return data
+  },
+
 
   createSetoranKasir: async (nominal: number): Promise<ApiResponse> => {
     const { data } = await api.post('/laravel/api/kasir/setor-admin', { nominal })
@@ -131,6 +140,37 @@ export const kasirService = {
   },
   getRiwayatSetoran: async (): Promise<any[]> => {
     const { data } = await api.get('/laravel/api/kasir/setoran-history')
+    return data.data || []
+  },
+  cekKelayakanTarikTunai: async (anggota_id: number): Promise<ApiResponse<any>> => {
+    const { data } = await api.get(`/laravel/api/kasir/cek-kelayakan-tarik-tunai/${anggota_id}`)
+    return data
+  },
+  tarikTunai: async (payload: {
+    anggota_id: number
+    nominal: number
+    sumber_dana: 'shu' | 'saldo'
+    persetujuan_shu: boolean
+    transaksi_id?: number
+    keterangan?: string
+  }): Promise<ApiResponse<any>> => {
+    const { data } = await api.post('/laravel/api/kasir/tarik-tunai', payload)
+    return data
+  },
+  getAntreanTarikTunai: async (): Promise<any[]> => {
+    const { data } = await api.get('/laravel/api/kasir/antrean-tarik-tunai')
+    return data.data || []
+  },
+  prosesTarikTunai: async (payload: {
+    tarik_id: number
+    action: 'approve' | 'reject'
+    alasan_tolak?: string
+  }): Promise<ApiResponse<any>> => {
+    const { data } = await api.post('/laravel/api/kasir/proses-tarik-tunai', payload)
+    return data
+  },
+  getRiwayatTarikTunaiKasir: async (): Promise<any[]> => {
+    const { data } = await api.get('/laravel/api/kasir/riwayat-tarik-tunai')
     return data.data || []
   },
   createSerahTerima: async (kasir_to: number, hasil_opname: any): Promise<ApiResponse> => {

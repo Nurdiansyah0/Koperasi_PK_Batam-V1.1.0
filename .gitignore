@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Environment and Keys
+.env
+.env.*
+!.env.example
+*.key
+
+# Database and SQLite Cache
+*.sqlite
+*.sqlite-journal
+
+# Test and Framework Caches
+.phpunit.result.cache
+.phpunit.cache
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+
+# OS and Editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

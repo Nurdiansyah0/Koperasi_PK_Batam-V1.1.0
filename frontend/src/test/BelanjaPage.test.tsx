@@ -9,6 +9,7 @@ vi.mock('@/services/anggotaService', () => ({
     getDataBarang: vi.fn(),
     getPaketBelanja: vi.fn(),
     simpanTransaksi: vi.fn(),
+    cekKelayakanTarikTunai: vi.fn().mockResolvedValue({ success: true, data: { saldo_shu: 100000, saldo_ewallet: 50000, hutang: 0 } }),
   }
 }))
 

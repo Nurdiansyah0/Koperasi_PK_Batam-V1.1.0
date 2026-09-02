@@ -75,7 +75,7 @@ export function BayarHutangPage() {
   }
 
   const totalHutang = profil?.hutang || 0
-  const simpananPokok = profil?.simpanan_pokok ?? (profil ? Math.max(400000, (profil.saldo || 0) + (profil.hutang || 0)) : 400000)
+  const simpananPokok = profil?.simpanan_pokok ?? (profil ? Math.max(300000, (profil.saldo || 0) + (profil.hutang || 0)) : 300000)
   const limitHutang = profil?.limit_hutang ?? simpananPokok
   const sisaLimitHutang = profil?.sisa_limit_hutang ?? Math.max(0, limitHutang - totalHutang)
   const persentaseTerpakai = Math.min(100, Math.round((totalHutang / limitHutang) * 100))

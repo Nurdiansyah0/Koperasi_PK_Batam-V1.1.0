@@ -5,7 +5,7 @@ import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
 import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt'
 import { useAuthStore } from '@/store/authStore'
-import { LogOut } from 'lucide-react'
+import { LogOut, Menu } from 'lucide-react'
 
 export function AppLayout() {
   const { user, isAuthenticated, logout } = useAuthStore()
@@ -28,8 +28,16 @@ export function AppLayout() {
       
       <div className="flex-1 flex flex-col min-w-0">
         {/* iOS Native Navigation Bar Header */}
-        <header className="sticky top-0 z-30 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-zinc-800/50 h-14 flex items-center justify-between px-4 sm:px-6 pt-safe">
-          <div className="flex items-center gap-2.5">
+        <header className="sticky top-0 z-30 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-zinc-800/50 h-14 flex items-center justify-between px-3 sm:px-6 pt-safe">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-zinc-800 md:hidden active:scale-95 transition-transform"
+              aria-label="Buka Menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
             <div className="flex items-center gap-2">
               <img src="/Logo.svg" alt="Logo" className="w-7 h-7 rounded-lg shadow-2xs" />
               <div className="flex flex-col">

@@ -3,6 +3,7 @@ import { useAuthStore } from '@/store/authStore'
 import {
   LayoutDashboard,
   Package,
+  Layers,
   Users,
   FileText, Wallet,
   ShoppingCart,
@@ -11,7 +12,9 @@ import {
   UserCircle,
   ArrowRightLeft,
   X,
-  ShoppingBag
+  ShoppingBag,
+  Banknote,
+  Coins
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -25,8 +28,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const adminLinks = [
     { to: '/admin', icon: LayoutDashboard, label: 'Dashboard Admin' },
     { to: '/admin/barang', icon: Package, label: 'Data Barang' },
+    { to: '/admin/pkm', icon: Layers, label: 'Manajemen PKM' },
     { to: '/admin/anggota', icon: Users, label: 'Data Anggota' },
+    { to: '/admin/shu', icon: Coins, label: 'Manajemen SHU' },
     { to: '/admin/laporan', icon: FileText, label: 'Laporan Transaksi' },
+    { to: '/admin/tarik-tunai', icon: Banknote, label: 'Laporan Tarik Tunai' },
     { to: '/admin/setoran-kasir', icon: Wallet, label: 'Persetujuan Setoran' },
     { to: '/kasir/transaksi', icon: ShoppingCart, label: 'Buka POS Kasir' },
   ]
@@ -34,6 +40,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const kasirLinks = [
     { to: '/kasir', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/kasir/transaksi', icon: ShoppingCart, label: 'Kasir POS' },
+    { to: '/kasir/tarik-tunai', icon: Banknote, label: 'Tarik Tunai & SHU' },
     { to: '/kasir/pesanan', icon: ShoppingBag, label: 'Pesanan Anggota' },
     { to: '/kasir/hutang', icon: CreditCard, label: 'Persetujuan Hutang' },
     { to: '/kasir/serah-terima', icon: ArrowRightLeft, label: 'Operasional Shift' },
@@ -43,6 +50,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const anggotaLinks = [
     { to: '/anggota', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/anggota/belanja', icon: ShoppingCart, label: 'Katalog Belanja' },
+    { to: '/anggota/tarik-tunai', icon: Banknote, label: 'Tarik Tunai / SHU' },
     { to: '/anggota/bayar-hutang', icon: CreditCard, label: 'Bayar Hutang' },
     { to: '/anggota/riwayat', icon: History, label: 'Riwayat Transaksi' },
     { to: '/anggota/profil', icon: UserCircle, label: 'Profil Saya' },

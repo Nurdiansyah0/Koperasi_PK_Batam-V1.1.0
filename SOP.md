@@ -1,0 +1,213 @@
+# STANDAR OPERASIONAL PROSEDUR (SOP)
+## OPERASIONAL SERAH TERIMA SHIFT & REKONSILIASI KASIR
+**KOPERASI KARYAWAN PT. PEMBINA KARYA PERDANA (PKPPK) BATAM**
+*Dokumen Resmi Operasional Kasir — Versi 2.1 (Terintegrasi POS & Sistem PKM)*
+
+---
+
+## 1. TUJUAN & RUANG LINGKUP
+SOP ini bertujuan untuk:
+1. Memastikan **kelancaran transisi pergantian shift kasir** yang cepat (target: 3–5 menit) tanpa menghambat antrean transaksi pembeli.
+2. Mencegah terjadinya **kehilangan barang (*shrinkage*)** dan **selisih uang kas laci** melalui mekanisme pengawasan silang (*dual verification*).
+3. Menerapkan prinsip **Blind Stock Count (Audit Buta)** dan **Teori PKM (Penetapan Kuantitas Maksimum 4 Hari)** agar kasir tidak terbebani menghitung stok berlebih saat pergantian shift.
+4. Memberikan kepastian hukum dan pertanggungjawaban finansial yang jelas dan transparan atas setiap selisih yang terjadi (baik selisih kurang/minus maupun selisih lebih/plus).
+
+---
+
+## 2. PRINSIP DASAR & KONTROL SISTEM
+
+### A. Teori PKM (Penetapan Kuantitas Maksimum Display Toko 4 Hari)
+* **Konsep:** Barang yang ditata di meja/etalase kasir dibatasi sesuai kuantitas penjualan 4 hari:
+  $$\text{PKM Toko} = \max(1, \lceil \text{Average Daily Sales (ADS)} \times 4 \text{ Hari} \rceil)$$
+* **Tujuan:** Kasir hanya bertanggung jawab menghitung barang yang berada di area etalase/meja toko sesuai batas PKM. Barang cadangan tetap berada di gudang tertutup.
+
+### B. Blind Stock Count (Audit Buta Kasir)
+* Saat kasir keluar mengisi formulir serah terima, **angka stok sistem disembunyikan**.
+* Kasir pengirim wajib menginput jumlah fisik riil dengan mata dan tangan sendiri. Hal ini mencegah kasir menyamakan angka fiktif untuk menutupi kehilangan barang.
+
+### C. Exception Verification (Verifikasi Cepat Berbasis Pengecualian)
+* Kasir penerima **TIDAK PERLU menghitung ulang semua barang yang sudah cocok**.
+* Kasir penerima hanya memverifikasi:
+  1. **Uang Fisik Kas Laci (Rp)**
+  2. **Barang Kategori Rokok (High Risk)**
+  3. **Barang yang Mengalami Selisih (Ditandai Merah/Biru oleh Sistem)**
+
+---
+
+## 3. ALUR OPERASIONAL SERAH TERIMA SHIFT (5 LANGKAH)
+
+```mermaid
+flowchart TD
+    A["1. Selesaikan Antrean Kasir"] --> B["2. Hitung Uang Kas Laci & Rak Rokok Bersama"]
+    B --> C["3. Kasir Pengirim Input Blind Count di POS & Kirim"]
+    C --> D["4. Kasir Penerima Buka 'Tugas Masuk' & Validasi Pengecualian"]
+    D --> E{"Apakah Uang & Rokok Sesuai?"}
+    E -- "Ya (Sesuai)" --> F["Klik 'Terima & Sinkronkan Shift' (Shift Baru Dimulai)"]
+    E -- "Tidak (Ada Kejanggalan)" --> G["Klik 'Tolak Shift' & Beri Alasan"]
+    G --> H["Langkah 3.B: Kasir Pengirim Ajukan Revisi dengan Angka Riil"]
+    H --> F
+```
+
+### Langkah 1: Persiapan & Cut-off Shift (Kasir Pengirim)
+1. 5 menit sebelum jam pergantian shift, Kasir Pengirim menyelesaikan pembayaran seluruh anggota yang sedang mengantre di kasir.
+2. Kasir Pengirim membuka menu **Operasional Shift ➔ Formulir Serah Terima Shift** di aplikasi POS ([/kasir/serah-terima/buat](http://localhost:5173/kasir/serah-terima/buat)).
+
+### Langkah 2: Audit Bersama di Meja Kasir (3 Menit)
+1. **Kasir Pengirim** dan **Kasir Penerima** berdiri bersama di meja kasir.
+2. Kasir Pengirim menghitung uang tunai kas di laci kasir disaksikan langsung oleh Kasir Penerima.
+3. Kasir Pengirim dan Penerima bersama-sama memeriksa fisik barang di rak rokok dan etalase PKM.
+
+### Langkah 3: Penginputan Formulir Blind Count (Kasir Pengirim)
+1. Pilih nama **Kasir Penerima Shift**.
+2. Masukkan **Jumlah Uang Fisik Kas Laci (Rp)** yang baru saja dihitung bersama.
+3. Masukkan **Hitungan Fisik Riil** untuk seluruh item etalase toko.
+4. Tulis catatan kasir bila ada (misal: titipan uang receh koin, barang retur, dll.).
+5. Klik **"Kirim Serah Terima Shift"**.
+
+### Langkah 4: Validasi & Approval Instan (Kasir Penerima)
+1. Kasir Penerima membuka menu **Operasional Shift ➔ Tab Tugas Masuk** di akun kasirnya ([/kasir/serah-terima](http://localhost:5173/kasir/serah-terima)).
+2. Klik tombol **"Lihat & Validasi Rincian →"** pada tugas serah terima yang masuk.
+3. Periksa layar ringkasan:
+   * Cocokkan nominal uang kas laci.
+   * Periksa bagian item yang memiliki tanda **Selisih (Merah/Biru)** atau **Rokok**.
+4. Jika fisik di meja kasir sesuai dengan angka yang diajukan:
+   * Klik **"Terima & Sinkronkan Shift"**.
+   * Stok sistem otomatis diselaraskan dan shift kasir baru resmi dimulai.
+5. Jika Kasir Pengirim menginput angka yang tidak sesuai dengan fisik di meja kasir:
+   * Kasir Penerima klik **"Tolak Shift"** dan ketik alasan penolakan secara spesifik (Contoh: *"Fisik Samsu di etalase hanya 5 bungkus, bukan 10 bungkus"*).
+   * **Stok database TIDAK disinkronkan**, dan tanggung jawab selisih tetap terkunci pada Kasir Pengirim.
+
+### B. Prosedur Penyelesaian Pasca Penolakan Shift (Agar Shift Baru Bersih):
+Setelah shift ditolak, Kasir Pengirim **TIDAK BOLEH meninggalkan meja kasir**. Wajib diselesaikan melalui salah satu dari 2 jalur:
+
+1. **Jalur Normal (Revisi & Ajukan Ulang / Re-submit):**
+   * Kasir Pengirim dan Kasir Penerima melakukan hitung ulang bersama.
+   * Kasir Pengirim mengakui kondisi riil dan membuka kembali formulir serah terima, menginput angka fisik riil yang sebenarnya (Contoh: `Samsu = 5`).
+   * Sistem akan otomatis mencatat selisih minus ($-5\text{ pcs}$ / senilai kerugian Rp 110.000) **atas nama Kasir Pengirim**.
+   * Kasir Penerima menyetujui (*Approve*) pengajuan revisi tersebut.
+   * **Hasil:** Stok database otomatis disinkronkan menjadi 5 pcs. Kerugian tercatat atas nama Kasir Pengirim, dan **Kasir Penerima memulai shift barunya dengan modal stok bersih (5 pcs)** tanpa risiko terbebani selisih kasir sebelumnya!
+
+2. **Jalur Eskalasi ke Admin (Jika Terjadi Sengketa / Kasir Tidak Mengakui):**
+   * Jika Kasir Pengirim menolak mengakui kekurangan barang/uang, laporkan langsung ke Admin/Pengurus Koperasi.
+   * Admin memeriksa rekaman riwayat transaksi/CCTV dan melakukan penyesuaian stok melalui menu Admin Opname, serta menerbitkan Berita Acara Selisih Kasir untuk membebankan kerugian ke Kasir Pengirim.
+
+---
+
+## 4. PENANGANAN TRANSAKSI MASUK SAAT SERAH TERIMA
+
+Jika ada anggota yang mendesak ingin berbelanja saat proses serah terima sedang berlangsung:
+
+| Situasi | Prosedur Operasional |
+| :--- | :--- |
+| **Antrean Normal (1–2 Menit Sebelum Serah Terima)** | Kasir Pengirim menuntaskan transaksi sebelum menekan tombol formulir serah terima. |
+| **Transaksi Mendadak Saat Hitung Bersama** | Transaksi langsung diproses menggunakan **Akun Kasir Penerima (Kasir Baru)**. Uang pembayaran dan pengurangan stok otomatis masuk ke buku shift Kasir Baru sehingga tidak mengganggu audit shift Kasir Pengirim. |
+
+---
+
+## 5. PERTANGGUNGJAWABAN & PENYELESAIAN SELISIH (VARIANCE)
+
+Setiap selisih (*variance*) yang timbul pada saat serah terima shift diklasifikasikan dan diselesaikan sebagai berikut:
+
+### A. Selisih Uang Kas Laci Minus (Cash Shortage / Kurang Uang)
+* **Kewajiban:** Kasir Pengirim wajib **mengganti tunai kekurangan kas laci seketika** sebelum meninggalkan meja kasir agar modal kas awal untuk Kasir Penerima tetap utuh.
+
+### B. Selisih Uang Kas Laci Lebih (Cash Overage / Kas Lebih)
+* **Penyebab:** Kasir lupa menginput transaksi tunai ke POS, salah memberi uang kembalian (kurang kembalian ke pembeli), atau uang pribadi/receh titipan.
+* **Perlakuan Akuntansi:** 
+  1. **Dilarang Keras:** Kasir **DILARANG mengambil uang lebih** untuk kepentingan pribadi.
+  2. Seluruh uang fisik lebih wajib diserahkan kepada Kasir Penerima dan tercatat di sistem sebagai `+Rp X (Kas Lebih)`.
+  3. Uang lebih akan disetorkan ke Admin saat Setoran Kas dan diakui sebagai pos **Pendapatan Selisih Kas / Pendapatan Lain-Lain Koperasi**.
+
+### C. Selisih Barang Hilang / Minus (Kategori Rokok & Nilai Tinggi)
+* **Penyebab:** Kelalaian kasir saat melayani transaksi (misal: barang terambil tapi tidak ter-scan di POS).
+* **Konsekuensi:** 
+  1. Riwayat minus permanen tercatat di log database atas nama `kasir_from`.
+  2. Admin akan merekap akumulasi minus bulanan melalui menu **Laporan Selisih Kasir** untuk diberlakukan **Potongan Selisih Kasir** (*Payroll Deduction*).
+
+### D. Selisih Barang Surplus / Lebih (Stock Overage)
+* **Penyebab:** 
+  * *Salah Scan / Cross-Scanning:* Pembeli membeli Rasa Cokelat tapi kasir men-scan Rasa Stroberi (sehingga Cokelat minus 1, Stroberi plus 1).
+  * *Barang Masuk Belum Tercatat:* Admin/Gudang menaruh barang ke etalase toko sebelum meng-input restock di sistem.
+* **Penyelesaian:**
+  1. Sistem otomatis memperbarui stok sistem menjadi sesuai stok fisik aktual (`stok = stok_aktual`) agar kasir tidak terhalang menjual barang tersebut di POS.
+  2. Nilai surplus dicatat sebagai **Penyesuaian Persediaan Surplus (*Inventory Gain*)**.
+  3. Jika terjadi *Cross-Scanning* (varian sejenis satu plus, satu minus dengan harga sama), Admin dapat melakukan kompensasi selisih silang tanpa membebani kasir.
+
+### E. Barang Rusak / Kadaluarsa / Telur Pecah (Penyusutan Wajar)
+* **Prosedur:**
+  1. Kasir Pengirim menuliskan keterangan pada kolom catatan (Contoh: *"2 butir telur pecah saat penataan"* atau *"1 botol susu bocor kemasan"*).
+  2. Fisik barang yang rusak wajib disimpan sebagai bukti fisik verifikasi.
+  3. Admin Koperasi akan menyetujui penghapusan persediaan sebagai pos **Biaya Penyusutan Persediaan (*Inventory Shrinkage Write-off*) Koperasi**, bukan dibebankan ke kasir pribadi.
+
+---
+
+## 6. PROSEDUR PENARIKAN TUNAI & SALDO SHU KASIR
+
+Untuk menjaga likuiditas kas toko dan memastikan keadilan pembagian SHU tahunan (*Win-Win Solution*), layanan penarikan tunai di kasir POS diatur sebagai berikut:
+
+### A. Syarat Mutlak Kontribusi Belanja & Bebas Hutang (4-Layer Protection)
+1. **Bebas Hutang:** Anggota dengan saldo hutang berjalan (`hutang > 0`) **dilarang tarik tunai**. Saldo SHU hanya dapat digunakan untuk melunasi tagihan hutang.
+2. **Syarat Belanja:** Penarikan tunai kasir **wajib disertai dengan transaksi belanja produk toko minimal Rp 25.000** pada hari yang sama.
+3. **Plafon Proporsional:** Maksimal nominal penarikan kasir adalah **$2 \times$ nilai belanja hari ini** (Plafon Maksimal Rp 100.000/hari di kasir POS).
+4. **Pre-Verification Otomatis:** Sistem memverifikasi seluruh syarat di akun anggota sebelum tiket penarikan (`#TRK-ID`) diterbitkan untuk diproses di kasir.
+
+### B. Kebijakan Pakta Integritas / Master Consent SHU 1x di Awal (Opsi 2)
+1. Anggota menandatangani/menyetujui **Pakta Integritas Persetujuan Sadar Pengurangan SHU (Master Consent)** cukup **1 kali saja di awal** melalui aplikasi anggota.
+2. Setelah Master Consent tercatat di sistem (`persetujuan_shu_master_at`), penarikan berikutnya langsung diproses otomatis tanpa perlu mencentang ulang setiap kali transaksi.
+3. Penarikan SHU tercatat permanen di audit trail dan otomatis mengurangi jatah hak dividen pada saat pembagian SHU **Hari Raya / RAT Tahunan**.
+
+### C. Prosedur Konversi & Distribusi SHU ke Saldo Belanja Toko oleh Admin (Closed-Loop Economy)
+1. **Distribusi Massal Hari Raya:** Menjelang Idul Fitri / Natal / RAT, Admin Koperasi dapat mendistribusikan jatah SHU (misal 50% atau 100%) langsung ke **Saldo E-Wallet Belanja** seluruh anggota secara serentak.
+2. **Keuntungan Kas Koperasi:** Dana SHU tidak terkuras keluar dari koperasi, melainkan langsung dibelanjakan kembali oleh anggota untuk sembako dan produk toko koperasi (*Closed-Loop Circulation*).
+3. **Kompensasi Hutang Otomatis:** Admin dapat mengeksekusi pemotongan saldo SHU anggota untuk melunasi tagihan hutang yang menunggak secara otomatis.
+
+### D. Mekanisme Penarikan Berulang & Potong Belanja Langsung (Net Cash Handover)
+1. **Belanja Menyertai Setiap Penarikan:** Jika anggota ingin melakukan penarikan tunai lebih dari satu kali dalam sehari, setiap penarikan **wajib disertai dengan transaksi belanja baru minimal Rp 25.000**.
+2. **Potong Belanja Otomatis di Kasir (Cashback Model):**
+   * Transaksi belanja langsung dipotong dari saldo penarikan SHU anggota.
+   * Kasir hanya mengeluarkan dan menyerahkan uang kas fisik bersih ke tangan anggota:
+     $$\mathbf{\text{Uang Fisik Diserahkan}} = \mathbf{\text{Nominal Tarik SHU}} - \mathbf{\text{Total Tagihan Belanja Toko}}$$
+   * *Contoh:* Anggota belanja Rp 30.000 dan menarik SHU Rp 100.000 $\rightarrow$ Saldo SHU anggota terpotong Rp 100.000, Belanja lunas Rp 30.000, Kasir hanya menyerahkan uang tunai Rp 70.000. Laci kasir toko tetap aman dari *cash drain*.
+
+### E. Penanganan Pengajuan Gagal / Penolakan Otomatis & Pembatalan Kasir (Auto-Rejection & Full Refund)
+1. **Pencatatan Otomatis Pengajuan Gagal (Auto-Rejection Log):**
+   * Jika anggota mengajukan penarikan mandiri namun tidak memenuhi salah satu dari verifikasi 4-tahap (misal masih ada hutang atau belum belanja), sistem **tetap mencatat transaksi** tersebut di tabel database `tarik_tunai` dengan status **`rejected`** dan mengisi **`alasan_tolak`** otomatis dari sistem.
+   * Hal ini memastikan seluruh upaya penarikan terekam transparan pada riwayat anggota dan laporan audit pengurus koperasi.
+2. **Mekanisme Pembatalan oleh Kasir (100% Refund & Stock Recovery):**
+   * Jika kasir menolak pesanan belanja yang menyertakan tarik tunai (karena stok fisik toko habis, laci kasir kurang kas, atau pembatalan anggota):
+     - Stok barang toko **otomatis dikembalikan ke rak** (`stok += jumlah`).
+     - Saldo SHU / E-Wallet anggota yang dipotong **langsung dikembalikan 100% utuh** ke akun anggota.
+     - Status transaksi diubah menjadi `batal` dan status tiket penarikan menjadi `rejected`.
+
+### F. Kebijakan Belanja Khusus Anggota & Struktur Plafon Kredit (Member-Only & Credit Allowance)
+1. **Belanja 100% Khusus Anggota Koperasi (Member-Only):**
+   * Seluruh transaksi kasir toko (Tunai, QRIS, Transfer, Saldo E-Wallet, maupun Hutang) **wajib dikaitkan dengan Anggota Koperasi resmi terdaftar**.
+   * Opsi pembeli non-anggota/umum telah dihapus permanen dari sistem POS demi akurasi pencatatan SHU dan integritas tata kelola koperasi.
+2. **Struktur Agunan & Allowance Fasilitas Kredit:**
+   * **Simpanan Pokok (Agunan Dasar):** **Rp 300.000** (Modal setoran awal wajib anggota sebagai agunan resmi fasilitas kasbon).
+   * **Allowance Koperasi:** **+ Rp 100.000** (Plafon ekstra yang diberikan koperasi secara otomatis bagi anggota aktif dengan riwayat pembayaran lancar).
+   * **Total Plafon Kredit Maksimal:** **Rp 400.000** ($\text{Simpanan Pokok } 300.000 + \text{Allowance } 100.000$).
+   * **Sisa Pagu Kredit Tersedia:** $\max(0, \text{Total Plafon} - \text{Hutang Berjalan})$. Kasir dan sistem POS secara otomatis menolak transaksi kasbon baru jika tagihan melebihi sisa pagu kredit.
+
+---
+
+## 7. PANDUAN PRAKTIS KASIR (DO'S & DON'TS)
+
+### ✅ YANG WAJIB DILAKUKAN (DO'S):
+1. **Wajib hadir 5 menit sebelum pergantian shift** untuk melakukan hitung bersama di meja kasir.
+2. **Wajib menginput hitungan fisik riil** tanpa menebak-nebak atau memperkirakan angka.
+3. **Wajib menjaga kerapian etalase rokok** sesuai urutan agar proses hitung berlangsung cepat (< 1 menit).
+4. **Wajib memeriksa uang palsu** saat menerima pembayaran tunai dari pembeli.
+
+### ❌ YANG DILARANG KERAS (DON'TS):
+1. **Dilarang melakukan serah terima secara sepihak** tanpa kehadiran kasir penerima di meja kasir.
+2. **Dilarang meminjamkan akun login kasir** kepada kasir lain.
+3. **Dilarang mengambil uang lebih kas laci** untuk keperluan pribadi.
+4. **Dilarang menerima shift jika terdapat selisih uang/rokok** yang belum disepakati atau belum diganti oleh kasir sebelumnya.
+5. **Dilarang menyimpan uang pribadi** di dalam laci kasir koperasi.
+
+---
+
+**Disahkan oleh:**  
+*Pengurus & Manajemen Koperasi Karyawan PKPPK Batam*  
+*Tanggal Efektif: September 2026*

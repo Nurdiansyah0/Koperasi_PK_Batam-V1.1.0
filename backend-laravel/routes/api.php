@@ -28,6 +28,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/bayar-hutang', [AnggotaController::class, 'getHistoriBayarHutang']);
         Route::post('/update-profile', [AnggotaController::class, 'updateProfile']);
         Route::post('/change-password', [AnggotaController::class, 'changePassword']);
+        Route::get('/cek-kelayakan-tarik-tunai', [AnggotaController::class, 'cekKelayakanTarikTunai']);
+        Route::post('/setujui-master-consent-shu', [AnggotaController::class, 'setujuiMasterConsentShu']);
+        Route::post('/ajukan-tarik-tunai', [AnggotaController::class, 'ajukanTarikTunai']);
+        Route::get('/riwayat-tarik-tunai', [AnggotaController::class, 'getRiwayatTarikTunai']);
     });
 
     // Kasir Module
@@ -35,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard', [KasirController::class, 'getDashboard']);
         Route::get('/transaksi-terbaru', [KasirController::class, 'getTransaksiTerbaru']);
         Route::get('/barang-belanja', [KasirController::class, 'getDataBarangBelanjaKasir']);
+        Route::get('/paket-belanja', [KasirController::class, 'getPaketBelanja']);
         Route::get('/pesanan-anggota', [KasirController::class, 'getPesananAnggota']);
         Route::post('/tolak-pesanan-anggota', [KasirController::class, 'tolakPesananAnggota']);
         Route::post('/simpan-transaksi-kasir', [KasirController::class, 'simpanTransaksiKasir']);
@@ -47,9 +52,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/setor-admin', [KasirController::class, 'setorAdmin']);
         Route::get('/setoran-history', [KasirController::class, 'getRiwayatSetoran']);
         Route::post('/tarik-tunai', [KasirController::class, 'tarikTunai']);
+        Route::get('/antrean-tarik-tunai', [KasirController::class, 'getAntreanTarikTunai']);
+        Route::post('/proses-tarik-tunai', [KasirController::class, 'prosesTarikTunai']);
+        Route::get('/cek-kelayakan-tarik-tunai/{anggota_id}', [KasirController::class, 'cekKelayakanTarikTunai']);
+        Route::get('/riwayat-tarik-tunai', [KasirController::class, 'getRiwayatTarikTunaiKasir']);
         Route::get('/daftar-kasir', [KasirController::class, 'getDaftarKasir']);
         Route::get('/serah-terima-for-me', [KasirController::class, 'getSerahTerimaForMe']);
         Route::get('/serah-terima-draft', [KasirController::class, 'getSerahTerimaDraft']);
+        Route::get('/active-shift-info', [KasirController::class, 'getActiveShiftInfo']);
         Route::post('/create-serah-terima', [KasirController::class, 'createSerahTerima']);
         Route::post('/approve-serah-terima', [KasirController::class, 'approveSerahTerima']);
         Route::post('/reject-serah-terima', [KasirController::class, 'rejectSerahTerima']);
@@ -76,6 +86,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/data-kasir', [AdminController::class, 'getDataKasir']);
         Route::post('/restock-barang', [AdminController::class, 'restockBarang']);
         Route::get('/riwayat-restock', [AdminController::class, 'getRiwayatRestock']);
+        Route::get('/pkm-analysis', [AdminController::class, 'getPkmAnalysis']);
+        Route::post('/update-pkm', [AdminController::class, 'updatePkm']);
+        Route::post('/auto-calculate-pkm', [AdminController::class, 'autoCalculatePkm']);
+        Route::get('/laporan-selisih-kasir', [AdminController::class, 'getLaporanSelisihKasir']);
+        Route::get('/laporan-tarik-tunai', [AdminController::class, 'getLaporanTarikTunai']);
+        Route::get('/shu-management', [AdminController::class, 'getShuManagement']);
+        Route::post('/konversi-shu', [AdminController::class, 'prosesKonversiShu']);
     });
 
     // AI & Gemini Integration Module

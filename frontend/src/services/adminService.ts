@@ -127,5 +127,46 @@ export const adminService = {
   getRiwayatRestock: async (): Promise<any> => {
     const { data } = await api.get('/laravel/api/admin/barang/restock')
     return data
+  },
+
+  getPkmAnalysis: async (params?: { days?: number, lead_time_days?: number, search?: string }) => {
+    const { data } = await api.get('/laravel/api/admin/pkm-analysis', { params })
+    return data
+  },
+
+  updatePkm: async (barang_id: number, pkm: number): Promise<ApiResponse> => {
+    const { data } = await api.post('/laravel/api/admin/update-pkm', { barang_id, pkm })
+    return data
+  },
+
+  autoCalculatePkm: async (days: number = 30, lead_time_days: number = 4): Promise<ApiResponse> => {
+    const { data } = await api.post('/laravel/api/admin/auto-calculate-pkm', { days, lead_time_days })
+    return data
+  },
+
+  getLaporanSelisihKasir: async (): Promise<any> => {
+    const { data } = await api.get('/laravel/api/admin/laporan-selisih-kasir')
+    return data
+  },
+
+  getLaporanTarikTunai: async (): Promise<any> => {
+    const { data } = await api.get('/laravel/api/admin/laporan-tarik-tunai')
+    return data
+  },
+
+  getShuManagement: async (): Promise<any> => {
+    const { data } = await api.get('/laravel/api/admin/shu-management')
+    return data
+  },
+
+  prosesKonversiShu: async (payload: {
+    mode: 'individual' | 'pelunasan_hutang' | 'massal_ke_saldo'
+    anggota_id?: number
+    nominal?: number
+    persentase?: number
+    keterangan?: string
+  }): Promise<ApiResponse<any>> => {
+    const { data } = await api.post('/laravel/api/admin/konversi-shu', payload)
+    return data
   }
 }

@@ -49,16 +49,21 @@ export const anggotaService = {
 
   simpanTransaksi: async (payload: {
     items: { barang_id: number; qty: number; harga_satuan: number }[]
-    metode_pembayaran: MetodePembayaran
+    metode_pembayaran: MetodePembayaran | 'potong_tarik_tunai'
     total_harga?: number
-  }): Promise<ApiResponse & { transaksi_id?: number }> => {
+    sertakan_tarik_tunai?: boolean
+    tarik_tunai_nominal?: number
+    tarik_tunai_sumber?: 'shu' | 'saldo'
+    persetujuan_shu?: boolean
+  }): Promise<ApiResponse & { transaksi_id?: number, tarik_tunai?: any }> => {
     // Moved to Laravel Endpoint
-    // Laravel expects 'jumlah' instead of 'qty'
-    const transformedPayload = {
+    const { data } = await api.post('/laravel/api/anggota/transaksi', {
       ...payload,
-      items: payload.items.map(item => ({ ...item, jumlah: item.qty }))
-    }
-    const { data } = await api.post('/laravel/api/anggota/transaksi', transformedPayload)
+      items: payload.items.map(item => ({
+        barang_id: item.barang_id,
+        jumlah: item.qty
+      }))
+    })
     return data
   },
 
@@ -82,6 +87,33 @@ export const anggotaService = {
   getHistoriBayarHutang: async (): Promise<HistoriBayarHutang[]> => {
     // Moved to Laravel Endpoint
     const { data } = await api.get('/laravel/api/anggota/bayar-hutang')
+    return data.data ?? []
+  },
+
+  // ─── Tarik Tunai & SHU ──────────────────────────────────────
+  cekKelayakanTarikTunai: async (): Promise<ApiResponse<any>> => {
+    const { data } = await api.get('/laravel/api/anggota/cek-kelayakan-tarik-tunai')
+    return data
+  },
+
+  setujuiMasterConsentShu: async (): Promise<ApiResponse<any>> => {
+    const { data } = await api.post('/laravel/api/anggota/setujui-master-consent-shu')
+    return data
+  },
+
+  ajukanTarikTunai: async (payload: {
+    nominal: number
+    sumber_dana: 'shu' | 'saldo'
+    persetujuan_shu?: boolean
+    transaksi_id?: number
+    keterangan?: string
+  }): Promise<ApiResponse<any>> => {
+    const { data } = await api.post('/laravel/api/anggota/ajukan-tarik-tunai', payload)
+    return data
+  },
+
+  getRiwayatTarikTunai: async (): Promise<any[]> => {
+    const { data } = await api.get('/laravel/api/anggota/riwayat-tarik-tunai')
     return data.data ?? []
   }
 }

@@ -51,7 +51,9 @@ class KasirTest extends TestCase
         $initialStock = $barang->stok;
         $qty = 2;
 
+        $anggota = Anggota::firstOrFail();
         $payload = [
+            'anggota_id' => $anggota->anggota_id,
             'metode_pembayaran' => 'cash',
             'items' => [
                 [
@@ -161,5 +163,28 @@ class KasirTest extends TestCase
         // 3. Assert: Transaction should fail
         $response->assertStatus(400);
         $this->assertStringContainsString('Stok tidak mencukupi', $response->getContent());
+    }
+
+    /** @test */
+    public function kasir_can_get_paket_belanja()
+    {
+        $response = $this->withHeader('Authorization', "Bearer {$this->token}")
+                         ->getJson('/laravel/api/kasir/paket-belanja');
+
+        $response->assertStatus(200)
+                 ->assertJsonStructure([
+                     'success',
+                     'data' => [
+                         '*' => [
+                             'id',
+                             'nama_paket',
+                             'deskripsi',
+                             'tag',
+                             'total_harga',
+                             'items',
+                             'is_available',
+                         ]
+                     ]
+                 ]);
     }
 }

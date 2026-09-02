@@ -29,15 +29,32 @@ export interface ApiResponse<T = unknown> {
   data?: T
 }
 
-// ─── Barang ─────────────────────────────────────────────────
 export interface Barang {
   barang_id: number
   nama_barang: string
   stok: number
+  pkm?: number
   harga_modal?: number
   harga_jual?: number
   harga?: number // Normalized selling price (fallback: harga_jual)
   satuan?: string
+  risk_badge?: string
+  audit_reason?: string
+}
+
+export interface PkmItem {
+  barang_id: number
+  nama_barang: string
+  stok: number
+  harga_modal: number
+  harga_jual: number
+  sales_period_days: number
+  total_sold: number
+  ads: number
+  lead_time_days: number
+  recommended_pkm: number
+  pkm: number
+  status_pkm: string
 }
 
 export type BarangKasir = Barang
@@ -74,7 +91,10 @@ export interface Anggota {
   email?: string
   saldo: number
   simpanan_pokok?: number
+  allowance_hutang?: number
   simpanan_wajib?: number
+  limit_hutang?: number
+  sisa_limit_hutang?: number
   hutang: number
   shu: number
   created_at?: string
@@ -111,6 +131,13 @@ export interface Transaksi {
   created_at: string
   tanggal?: string
   items?: TransaksiItem[]
+  tarik_tunai?: {
+    tarik_id: number
+    kode_penarikan: string
+    nominal: number
+    sumber_dana: string
+    uang_bersih_diserahkan: number
+  } | null
 }
 
 export type TransaksiKasir = Transaksi
@@ -124,6 +151,8 @@ export interface DashboardKasir {
   total_pendapatan_hari_ini: number
   saldo_kas: number
   pending_serah_terima: number
+  pending_pesanan?: number
+  pending_hutang?: number
   totalPenjualanHariIni?: number
   totalTransaksiHariIni?: number
   hutangBelumLunas?: number
@@ -186,11 +215,13 @@ export interface SerahTerima {
   kasir_from_username?: string
   kasir_from_name?: string
   kasir_to_username?: string
+  kasir_to_name?: string
   hasil_opname?: any
   jumlah?: number
   nominal?: number
   catatan?: string
   status: 'pending' | 'approved' | 'rejected'
+  alasan_penolakan?: string
   created_at: string
   items?: any[]
 }
@@ -235,6 +266,7 @@ export interface ProfilAnggota {
   username?: string
   saldo: number
   simpanan_pokok?: number
+  allowance_hutang?: number
   limit_hutang?: number
   sisa_limit_hutang?: number
   hutang: number
@@ -251,4 +283,48 @@ export interface HistoriBayarHutang {
   status: 'pending' | 'approved' | 'rejected'
   approved_at?: string | null
   created_at: string
+}
+
+// ─── Tarik Tunai & SHU ───────────────────────────────────────
+export interface TarikTunaiItem {
+  tarik_id: number
+  kode_penarikan?: string
+  status?: string
+  anggota_id?: number
+  nama_anggota?: string
+  kasir_name?: string
+  nominal: number
+  sumber_dana: 'shu' | 'saldo'
+  transaksi_id?: number | null
+  belanja_nominal?: number
+  persetujuan_shu?: boolean
+  alasan_tolak?: string | null
+  approved_at?: string | null
+  keterangan?: string
+  created_at: string
+}
+
+export interface KelayakanTarikTunai {
+  anggota_id: number
+  nama_lengkap: string
+  saldo_ewallet: number
+  saldo_shu: number
+  transaksi_valid_hari_ini: {
+    transaksi_id: number
+    total_harga: number
+    metode_pembayaran?: string
+    created_at: string
+  }[]
+  has_qualifying_purchase: boolean
+  min_belanja_required: number
+}
+
+export interface LaporanTarikTunaiData {
+  data: TarikTunaiItem[]
+  summary: {
+    total_penarikan_count: number
+    total_nominal_keluar: number
+    total_sales_kontribusi: number
+    rasio_sales_to_tarik: number
+  }
 }

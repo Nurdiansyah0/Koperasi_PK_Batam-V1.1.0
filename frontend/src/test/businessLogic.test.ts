@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import type { Barang, MetodePembayaran } from '@/types'
 
 function isPaymentAllowed(method: MetodePembayaran, anggotaId: number | null): boolean {
-  return method !== 'hutang' || anggotaId !== null
+  // Semua transaksi belanja khusus anggota koperasi
+  return anggotaId !== null
 }
 
 describe('Business Logic & Cart Validation', () => {
@@ -60,14 +61,13 @@ describe('Business Logic & Cart Validation', () => {
   })
 
   describe('Payment Method Business Rules', () => {
-    it('should require a registered anggota for hutang payment method', () => {
+    it('should require a registered anggota for all payment methods (khusus anggota)', () => {
       expect(isPaymentAllowed('hutang', null)).toBe(false)
       expect(isPaymentAllowed('hutang', 12)).toBe(true)
-    })
-
-    it('should allow cash payments for non-members (Umum)', () => {
-      expect(isPaymentAllowed('cash', null)).toBe(true)
+      expect(isPaymentAllowed('cash', null)).toBe(false)
       expect(isPaymentAllowed('cash', 15)).toBe(true)
+      expect(isPaymentAllowed('ewallet', null)).toBe(false)
+      expect(isPaymentAllowed('ewallet', 15)).toBe(true)
     })
   })
 })

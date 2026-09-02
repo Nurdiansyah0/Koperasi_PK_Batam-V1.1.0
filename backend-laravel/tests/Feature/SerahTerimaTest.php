@@ -43,7 +43,9 @@ class SerahTerimaTest extends TestCase
                  ]);
         
         $this->assertTrue($response->json('success'));
-        $this->assertLessThanOrEqual(5, count($response->json('data.cycle_count_items')));
+        $this->assertGreaterThan(0, count($response->json('data.cycle_count_items')));
+        $firstItem = $response->json('data.cycle_count_items.0');
+        $this->assertArrayHasKey('pkm', $firstItem);
     }
 
     /** @test */
