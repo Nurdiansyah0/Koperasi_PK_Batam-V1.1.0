@@ -14,9 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'admin' => \App\Http\Middleware\CheckAdmin::class,
-            'kasir' => \App\Http\Middleware\CheckKasir::class,
-            'role'  => \App\Http\Middleware\CheckRole::class,
+            'admin'   => \App\Http\Middleware\CheckAdmin::class,
+            'kasir'   => \App\Http\Middleware\CheckKasir::class,
+            'role'    => \App\Http\Middleware\CheckRole::class,
+            'api_key' => \App\Http\Middleware\ApiKeyMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AnggotaController;
 use App\Http\Controllers\KasirController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ExternalApiController;
 
 // Public routes with rate limiting
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
@@ -105,5 +106,28 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/jabatan', [AdminController::class, 'getDaftarJabatan']);
         Route::post('/jabatan/assign', [AdminController::class, 'assignJabatan']);
         Route::post('/jabatan/revoke', [AdminController::class, 'revokeJabatan']);
+
+        // API Key Management for External Integrations
+        Route::get('/api-keys', [ExternalApiController::class, 'listApiKeys']);
+        Route::post('/api-keys', [ExternalApiController::class, 'createApiKey']);
+        Route::put('/api-keys/{id}/toggle', [ExternalApiController::class, 'toggleApiKey']);
+        Route::delete('/api-keys/{id}', [ExternalApiController::class, 'deleteApiKey']);
     });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EXTERNAL INTEGRATION GATEWAY (AUTHENTICATED VIA X-API-KEY / QUERY API_KEY)
+// ══════════════════════════════════════════════════════════════════════════════
+Route::prefix('v1')->middleware('api_key')->group(function () {
+    Route::match(['GET', 'OPTIONS'], '/ping', [ExternalApiController::class, 'ping']);
+    Route::match(['GET', 'OPTIONS'], '/summary', [ExternalApiController::class, 'getSummary']);
+    Route::match(['GET', 'OPTIONS'], '/katalog', [ExternalApiController::class, 'getCatalog']);
+    Route::match(['GET', 'OPTIONS'], '/barang', [ExternalApiController::class, 'getCatalog']);
+    Route::match(['GET', 'OPTIONS'], '/anggota', [ExternalApiController::class, 'getMembers']);
+    Route::match(['GET', 'OPTIONS'], '/anggota/{id}', [ExternalApiController::class, 'getMemberDetail']);
+    Route::match(['GET', 'POST', 'OPTIONS'], '/laporan', [ExternalApiController::class, 'getFinancialReport']);
+    Route::match(['GET', 'OPTIONS'], '/transaksi', [ExternalApiController::class, 'getTransactions']);
+    Route::match(['GET', 'OPTIONS'], '/assets', [ExternalApiController::class, 'getAssets']);
+    Route::match(['GET', 'OPTIONS'], '/ui/widget-data', [ExternalApiController::class, 'getWidgetData']);
+});
+

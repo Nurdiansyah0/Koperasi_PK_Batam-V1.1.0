@@ -20,6 +20,7 @@ import ManajemenPkmPage from './pages/admin/ManajemenPkm'
 import LaporanTarikTunaiPage from './pages/admin/LaporanTarikTunai'
 import ManajemenShuPage from './pages/admin/ManajemenShu'
 import { ManajemenJabatan } from './pages/admin/ManajemenJabatan'
+import { ApiIntegration } from './pages/admin/ApiIntegration'
 
 // Kasir Pages
 import { KasirDashboard } from './pages/kasir/Dashboard'
@@ -76,6 +77,7 @@ export function App() {
           <Route path="laporan-selisih" element={<LaporanSelisihKasir />} />
           <Route path="tarik-tunai" element={<LaporanTarikTunaiPage />} />
           <Route path="setoran-kasir" element={<PersetujuanSetoranPage />} />
+          <Route path="integrasi-api" element={<ApiIntegration />} />
         </Route>
 
         {/* Kasir Routes */}

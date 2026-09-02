@@ -18,7 +18,8 @@ import {
   Coins,
   ShieldCheck,
   Scale,
-  ClipboardCheck
+  ClipboardCheck,
+  KeyRound
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -60,6 +61,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         { to: '/admin/laporan-selisih', icon: Scale, label: 'Laporan Selisih Kasir' },
         { to: '/admin/tarik-tunai', icon: Banknote, label: 'Laporan Tarik Tunai' },
         { to: '/admin/setoran-kasir', icon: Wallet, label: 'Persetujuan Setoran' },
+      ]
+    },
+    {
+      title: 'Integrasi & Gateway',
+      items: [
+        { to: '/admin/integrasi-api', icon: KeyRound, label: 'Integrasi API & Web' },
       ]
     }
   ]
