@@ -205,5 +205,15 @@ export const adminService = {
   autoRefillDisplay: async (): Promise<ApiResponse<any>> => {
     const { data } = await api.post('/laravel/api/admin/auto-refill-display')
     return data
+  },
+
+  writeOffExpired: async (payload: {
+    barang_id: number
+    lokasi: 'toko' | 'gudang' | 'semua'
+    jumlah: number
+    alasan?: string
+  }): Promise<ApiResponse<any>> => {
+    const { data } = await api.post('/laravel/api/admin/write-off-expired', payload)
+    return data
   }
 }

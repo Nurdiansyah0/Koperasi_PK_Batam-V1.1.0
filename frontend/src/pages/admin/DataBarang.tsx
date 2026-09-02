@@ -11,7 +11,8 @@ import { InputRupiah } from '@/components/ui/InputRupiah'
 import {
   Plus, Edit, Trash2, ShoppingCart, History,
   Search, Box, Store, Warehouse, ArrowRightLeft,
-  Zap, RefreshCw, AlertTriangle, Layers
+  Zap, AlertTriangle, AlertCircle, Calendar,
+  ShieldAlert, Sparkles, Filter
 } from 'lucide-react'
 
 const ITEMS_PER_PAGE = 12
@@ -20,6 +21,7 @@ export function DataBarang() {
   const [barang, setBarang] = useState<Barang[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [filterTab, setFilterTab] = useState<'all' | 'expired' | 'near_expiry' | 'refill'>('all')
   const [page, setPage] = useState(1)
   const [isAutoRefilling, setIsAutoRefilling] = useState(false)
 
@@ -37,6 +39,7 @@ export function DataBarang() {
     harga_beli_satuan: 0,
     sumber_dana: 'kas_koperasi',
     alokasi: 'gudang' as 'gudang' | 'toko' | 'auto',
+    tanggal_kadaluarsa: '',
     catatan: ''
   })
 
@@ -47,6 +50,15 @@ export function DataBarang() {
     tipe: 'gudang_ke_toko' as 'gudang_ke_toko' | 'toko_ke_gudang',
     jumlah: 1,
     catatan: ''
+  })
+
+  // Write-Off Expired State
+  const [isWriteOffModalOpen, setIsWriteOffModalOpen] = useState(false)
+  const [selectedWriteOffBarang, setSelectedWriteOffBarang] = useState<Barang | null>(null)
+  const [writeOffForm, setWriteOffForm] = useState({
+    lokasi: 'toko' as 'toko' | 'gudang' | 'semua',
+    jumlah: 1,
+    alasan: 'Barang kadaluarsa / rusak'
   })
   
   // History State
@@ -69,19 +81,41 @@ export function DataBarang() {
 
   useEffect(() => { loadData() }, [])
 
+  // Expiry & Refill Counters
+  const expiredCount = useMemo(() => {
+    return barang.filter(b => (b.status_kadaluarsa_toko === 'expired' && (b.stok_toko || 0) > 0) || (b.status_kadaluarsa_gudang === 'expired' && (b.stok_gudang || 0) > 0)).length
+  }, [barang])
+
+  const nearExpiryCount = useMemo(() => {
+    return barang.filter(b => (b.status_kadaluarsa_toko === 'near_expiry' && (b.stok_toko || 0) > 0) || (b.status_kadaluarsa_gudang === 'near_expiry' && (b.stok_gudang || 0) > 0)).length
+  }, [barang])
+
+  const refillNeededCount = useMemo(() => {
+    return barang.filter(b => (b.stok_toko ?? Math.min(b.stok, b.pkm || 1)) < (b.pkm || 1)).length
+  }, [barang])
+
   const filteredBarang = useMemo(() => {
     let result = barang
     if (search.trim()) {
       const q = search.toLowerCase()
       result = result.filter(b => b.nama_barang.toLowerCase().includes(q))
     }
+
+    if (filterTab === 'expired') {
+      result = result.filter(b => (b.status_kadaluarsa_toko === 'expired' && (b.stok_toko || 0) > 0) || (b.status_kadaluarsa_gudang === 'expired' && (b.stok_gudang || 0) > 0))
+    } else if (filterTab === 'near_expiry') {
+      result = result.filter(b => (b.status_kadaluarsa_toko === 'near_expiry' && (b.stok_toko || 0) > 0) || (b.status_kadaluarsa_gudang === 'near_expiry' && (b.stok_gudang || 0) > 0))
+    } else if (filterTab === 'refill') {
+      result = result.filter(b => (b.stok_toko ?? Math.min(b.stok, b.pkm || 1)) < (b.pkm || 1))
+    }
+
     return result
-  }, [barang, search])
+  }, [barang, search, filterTab])
 
   const totalPages = Math.ceil(filteredBarang.length / ITEMS_PER_PAGE) || 1
   const paginatedBarang = filteredBarang.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
 
-  useEffect(() => { setPage(1) }, [search])
+  useEffect(() => { setPage(1) }, [search, filterTab])
 
   const handleOpenModal = (item?: Barang) => {
     if (item) {
@@ -89,11 +123,23 @@ export function DataBarang() {
         ...item,
         stok_toko: item.stok_toko ?? Math.min(item.stok, item.pkm || 1),
         stok_gudang: item.stok_gudang ?? Math.max(0, item.stok - (item.pkm || 1)),
-        pkm: item.pkm || 1
+        pkm: item.pkm || 1,
+        tgl_kadaluarsa_toko: item.tgl_kadaluarsa_toko ? item.tgl_kadaluarsa_toko.split('T')[0] : '',
+        tgl_kadaluarsa_gudang: item.tgl_kadaluarsa_gudang ? item.tgl_kadaluarsa_gudang.split('T')[0] : ''
       })
       setIsEditing(true)
     } else {
-      setFormData({ nama_barang: '', harga_modal: 0, harga_jual: 0, stok: 0, stok_toko: 0, stok_gudang: 0, pkm: 4 })
+      setFormData({
+        nama_barang: '',
+        harga_modal: 0,
+        harga_jual: 0,
+        stok: 0,
+        stok_toko: 0,
+        stok_gudang: 0,
+        pkm: 4,
+        tgl_kadaluarsa_toko: '',
+        tgl_kadaluarsa_gudang: ''
+      })
       setIsEditing(false)
     }
     setIsModalOpen(true)
@@ -106,6 +152,7 @@ export function DataBarang() {
       harga_beli_satuan: item.harga_modal || 0,
       sumber_dana: 'kas_koperasi',
       alokasi: 'gudang',
+      tanggal_kadaluarsa: item.tgl_kadaluarsa_gudang ? item.tgl_kadaluarsa_gudang.split('T')[0] : '',
       catatan: ''
     })
     setIsRestockModalOpen(true)
@@ -119,6 +166,17 @@ export function DataBarang() {
       catatan: ''
     })
     setIsMutasiModalOpen(true)
+  }
+
+  const handleOpenWriteOff = (item: Barang) => {
+    setSelectedWriteOffBarang(item)
+    const isTokoExpired = item.status_kadaluarsa_toko === 'expired'
+    setWriteOffForm({
+      lokasi: isTokoExpired ? 'toko' : 'gudang',
+      jumlah: isTokoExpired ? (item.stok_toko || 1) : (item.stok_gudang || 1),
+      alasan: 'Pemusnahan barang kadaluarsa'
+    })
+    setIsWriteOffModalOpen(true)
   }
 
   const handleOpenHistory = async () => {
@@ -167,7 +225,7 @@ export function DataBarang() {
       toast.success(isEditing ? 'Barang berhasil diupdate!' : 'Barang berhasil ditambahkan!')
       setIsModalOpen(false)
       loadData()
-    } catch (error: any) {
+    } catch {
       toast.error('Gagal menyimpan barang')
     } finally {
       setSaving(false)
@@ -218,6 +276,31 @@ export function DataBarang() {
     }
   }
 
+  const handleWriteOffSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedWriteOffBarang) return
+    setSaving(true)
+    try {
+      const res = await adminService.writeOffExpired({
+        barang_id: selectedWriteOffBarang.barang_id,
+        lokasi: writeOffForm.lokasi,
+        jumlah: Number(writeOffForm.jumlah),
+        alasan: writeOffForm.alasan
+      })
+      if (res.success) {
+        toast.success(res.message || 'Pemusnahan stok berhasil dicatat!')
+        setIsWriteOffModalOpen(false)
+        loadData()
+      } else {
+        toast.error(res.message || 'Gagal memproses write-off')
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Terjadi kesalahan write-off')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleDelete = async (id: number) => {
     toast.loading('Menghapus barang...', { id: 'delete' })
     try {
@@ -232,7 +315,7 @@ export function DataBarang() {
   if (loading) return (
     <div className="p-8 text-center text-slate-500">
       <div className="w-8 h-8 mx-auto mb-2 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
-      Memuat katalog inventori 2-Tier...
+      Memuat katalog inventori & catatan expired...
     </div>
   )
 
@@ -241,8 +324,8 @@ export function DataBarang() {
       {/* Header section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shrink-0">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Katalog Inventori 2-Tier</h1>
-          <p className="text-xs text-slate-500">Pemisahan Stok Etalase Toko vs Stok Gudang Cadangan</p>
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Katalog & Expired Radar</h1>
+          <p className="text-xs text-slate-500">Pemisahan Stok Toko & Gudang dengan Kontrol Kadaluarsa (FEFO)</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <Button 
@@ -262,14 +345,65 @@ export function DataBarang() {
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="relative shrink-0">
+      {/* Filter Tabs & Search Bar */}
+      <div className="space-y-2.5 shrink-0">
+        {/* Quick Filter Badges */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+          <button
+            onClick={() => setFilterTab('all')}
+            className={`px-3 py-1.5 rounded-full font-bold transition-all shrink-0 ${
+              filterTab === 'all'
+                ? 'bg-slate-900 text-white dark:bg-white dark:text-black shadow-xs'
+                : 'bg-white dark:bg-zinc-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-zinc-700'
+            }`}
+          >
+            Semua ({barang.length})
+          </button>
+
+          <button
+            onClick={() => setFilterTab('expired')}
+            className={`px-3 py-1.5 rounded-full font-bold transition-all shrink-0 flex items-center gap-1 ${
+              filterTab === 'expired'
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900'
+            }`}
+          >
+            <AlertCircle className="w-3 h-3" />
+            🔴 Kadaluarsa ({expiredCount})
+          </button>
+
+          <button
+            onClick={() => setFilterTab('near_expiry')}
+            className={`px-3 py-1.5 rounded-full font-bold transition-all shrink-0 flex items-center gap-1 ${
+              filterTab === 'near_expiry'
+                ? 'bg-orange-600 text-white shadow-xs'
+                : 'bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-900'
+            }`}
+          >
+            <Calendar className="w-3 h-3" />
+            🟠 Kritis &le;30H ({nearExpiryCount})
+          </button>
+
+          <button
+            onClick={() => setFilterTab('refill')}
+            className={`px-3 py-1.5 rounded-full font-bold transition-all shrink-0 flex items-center gap-1 ${
+              filterTab === 'refill'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900'
+            }`}
+          >
+            <Zap className="w-3 h-3" />
+            ⚡ Butuh Refill ({refillNeededCount})
+          </button>
+        </div>
+
+        {/* Search Bar */}
         <div className="w-full p-2.5 sm:p-3 border border-slate-200 rounded-2xl bg-white text-sm font-medium text-slate-800 focus-within:ring-2 focus-within:ring-blue-500/20 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 flex items-center shadow-2xs">
           <Search className="w-4 h-4 text-slate-400 mr-2.5 shrink-0" />
           <input
             type="text"
             className="w-full bg-transparent outline-none placeholder:text-slate-400 text-xs sm:text-sm"
-            placeholder="Cari nama barang atau rokok..."
+            placeholder="Cari nama barang, rokok, atau sembako..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -280,7 +414,7 @@ export function DataBarang() {
       <div className="flex-1 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 pr-1 pb-4">
         {paginatedBarang.length === 0 ? (
           <div className="col-span-full text-center py-12 text-slate-400 text-sm">
-            Barang tidak ditemukan
+            Tidak ada barang pada kategori ini
           </div>
         ) : (
           paginatedBarang.map(item => {
@@ -289,11 +423,22 @@ export function DataBarang() {
             const pkmDisplay = item.pkm || 1
             const isTokoUnderPkm = stokToko < pkmDisplay
 
+            const isTokoExpired = item.status_kadaluarsa_toko === 'expired' && stokToko > 0
+            const isGudangExpired = item.status_kadaluarsa_gudang === 'expired' && stokGudang > 0
+            const isAnyExpired = isTokoExpired || isGudangExpired
+
+            const isTokoNear = item.status_kadaluarsa_toko === 'near_expiry' && stokToko > 0
+            const isGudangNear = item.status_kadaluarsa_gudang === 'near_expiry' && stokGudang > 0
+
             return (
               <Card 
                 key={item.barang_id} 
                 className={`group flex flex-col justify-between rounded-3xl transition-all ${
-                  isTokoUnderPkm 
+                  isAnyExpired
+                    ? 'border-rose-400 dark:border-rose-900 bg-rose-50/30 dark:bg-rose-950/20'
+                    : isTokoNear || isGudangNear
+                    ? 'border-orange-300 dark:border-orange-900 bg-orange-50/20 dark:bg-orange-950/10'
+                    : isTokoUnderPkm 
                     ? 'border-amber-300 dark:border-amber-800/60 bg-amber-50/20 dark:bg-amber-950/10' 
                     : 'border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900'
                 }`}
@@ -304,11 +449,23 @@ export function DataBarang() {
                     <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                       ID: #{item.barang_id}
                     </span>
-                    {isTokoUnderPkm && (
-                      <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <AlertTriangle className="w-2.5 h-2.5" /> Butuh Refill
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {isAnyExpired && (
+                        <span className="bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
+                          <AlertCircle className="w-2.5 h-2.5" /> KADALUARSA
+                        </span>
+                      )}
+                      {!isAnyExpired && (isTokoNear || isGudangNear) && (
+                        <span className="bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Calendar className="w-2.5 h-2.5" /> &le;30 Hari
+                        </span>
+                      )}
+                      {isTokoUnderPkm && (
+                        <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <AlertTriangle className="w-2.5 h-2.5" /> Refill
+                        </span>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Item Info */}
@@ -317,26 +474,49 @@ export function DataBarang() {
                       {item.nama_barang}
                     </h4>
                     
-                    {/* 2-Tier Stock Breakdown */}
-                    <div className="p-2.5 bg-slate-50 dark:bg-zinc-800/70 rounded-2xl border border-slate-100 dark:border-zinc-700/60 space-y-1.5 mb-2.5">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-medium">
-                          <Store className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> Display Toko:
-                        </span>
-                        <span className={`font-black ${isTokoUnderPkm ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                          {stokToko} <span className="text-[10px] text-slate-400 font-normal">/ PKM {pkmDisplay}</span>
-                        </span>
+                    {/* 2-Tier Stock Breakdown with Expiry Dates */}
+                    <div className="p-2.5 bg-slate-50 dark:bg-zinc-800/70 rounded-2xl border border-slate-100 dark:border-zinc-700/60 space-y-2 mb-2.5">
+                      {/* Toko Tier */}
+                      <div className="space-y-0.5">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-medium">
+                            <Store className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> Display Toko:
+                          </span>
+                          <span className={`font-black ${isTokoUnderPkm ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                            {stokToko} <span className="text-[10px] text-slate-400 font-normal">/ PKM {pkmDisplay}</span>
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-slate-400 pl-4.5">
+                          <span>Expired Rak:</span>
+                          <span className={`font-bold ${
+                            isTokoExpired ? 'text-rose-600' : isTokoNear ? 'text-orange-600' : 'text-slate-600 dark:text-slate-300'
+                          }`}>
+                            {item.tgl_kadaluarsa_toko ? `${item.tgl_kadaluarsa_toko.split('T')[0]} (${item.hari_kadaluarsa_toko ?? 0}h)` : 'Belum diisi'}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-medium">
-                          <Warehouse className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> Cadangan Gudang:
-                        </span>
-                        <span className="font-bold text-slate-700 dark:text-slate-200">
-                          {stokGudang} pcs
-                        </span>
+                      {/* Gudang Tier */}
+                      <div className="space-y-0.5 pt-1 border-t border-slate-200/50 dark:border-zinc-700/50">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-medium">
+                            <Warehouse className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> Cadangan Gudang:
+                          </span>
+                          <span className="font-bold text-slate-700 dark:text-slate-200">
+                            {stokGudang} pcs
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-slate-400 pl-4.5">
+                          <span>Expired Gudang:</span>
+                          <span className={`font-bold ${
+                            isGudangExpired ? 'text-rose-600' : isGudangNear ? 'text-orange-600' : 'text-slate-600 dark:text-slate-300'
+                          }`}>
+                            {item.tgl_kadaluarsa_gudang ? `${item.tgl_kadaluarsa_gudang.split('T')[0]} (${item.hari_kadaluarsa_gudang ?? 0}h)` : 'Belum diisi'}
+                          </span>
+                        </div>
                       </div>
 
+                      {/* Total Persediaan */}
                       <div className="flex justify-between items-center pt-1.5 border-t border-slate-200/60 dark:border-zinc-700/60 text-xs">
                         <span className="text-[11px] font-semibold text-slate-400">Total Persediaan:</span>
                         <span className="font-black text-slate-900 dark:text-white">
@@ -360,14 +540,25 @@ export function DataBarang() {
 
                   {/* Admin Actions */}
                   <div className="flex gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800 mt-1">
-                    <Button 
-                      variant="secondary" 
-                      className="flex-1 h-8.5 text-xs font-bold px-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/60 hover:bg-blue-100" 
-                      onClick={() => handleOpenMutasi(item)}
-                      title="Pindahkan stok antara toko dan gudang"
-                    >
-                      <ArrowRightLeft className="w-3 h-3 mr-1" /> Pindah Rak
-                    </Button>
+                    {isAnyExpired ? (
+                      <Button 
+                        variant="secondary" 
+                        className="flex-1 h-8.5 text-xs font-black px-1.5 rounded-xl bg-rose-600 text-white hover:bg-rose-700" 
+                        onClick={() => handleOpenWriteOff(item)}
+                        title="Tarik / musnahkan barang kadaluarsa"
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" /> Tarik Expired
+                      </Button>
+                    ) : (
+                      <Button 
+                        variant="secondary" 
+                        className="flex-1 h-8.5 text-xs font-bold px-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/60 hover:bg-blue-100" 
+                        onClick={() => handleOpenMutasi(item)}
+                        title="Pindahkan stok antara toko dan gudang"
+                      >
+                        <ArrowRightLeft className="w-3 h-3 mr-1" /> Pindah Rak
+                      </Button>
+                    )}
                     <Button 
                       variant="secondary" 
                       className="flex-1 h-8.5 text-xs font-bold px-1.5 rounded-xl bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200" 
@@ -415,6 +606,65 @@ export function DataBarang() {
           </div>
         </div>
       )}
+
+      {/* MODAL TARIK / WRITE-OFF BARANG EXPIRED */}
+      <Modal isOpen={isWriteOffModalOpen} onClose={() => setIsWriteOffModalOpen(false)} title="🔴 Pemusnahan / Tarik Barang Expired">
+        {selectedWriteOffBarang && (
+          <form onSubmit={handleWriteOffSubmit} className="space-y-4">
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 rounded-2xl border border-rose-200 dark:border-rose-900 text-xs text-rose-800 dark:text-rose-200">
+              Barang yang kadaluarsa akan dipotong langsung dari sistem agar tidak terjual di kasir POS dan dicatat sebagai kerugian penyusutan (*Waste*).
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700">
+              <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mb-2">{selectedWriteOffBarang.nama_barang}</h4>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-slate-400 block">Stok Display Toko:</span>
+                  <span className="font-bold text-blue-600">{selectedWriteOffBarang.stok_toko ?? 0} pcs</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Stok Cadangan Gudang:</span>
+                  <span className="font-bold text-amber-600">{selectedWriteOffBarang.stok_gudang ?? 0} pcs</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Lokasi Penarikan</label>
+              <select 
+                className="w-full px-3 py-2 border rounded-xl text-xs bg-white dark:bg-zinc-800 font-semibold focus:ring-2 focus:ring-rose-500 outline-none"
+                value={writeOffForm.lokasi}
+                onChange={e => setWriteOffForm({...writeOffForm, lokasi: e.target.value as any})}
+              >
+                <option value="toko">🏪 Tarik dari Display Toko</option>
+                <option value="gudang">📦 Tarik dari Cadangan Gudang</option>
+                <option value="semua">💥 Tarik dari Seluruh Lokasi (Toko + Gudang)</option>
+              </select>
+            </div>
+
+            <Input 
+              label="Jumlah yang Ditarik (Pcs)" 
+              type="number" min="1" 
+              value={writeOffForm.jumlah} 
+              onChange={e => setWriteOffForm({ ...writeOffForm, jumlah: Math.max(1, Number(e.target.value)) })} 
+              required 
+            />
+
+            <Input 
+              label="Alasan Penarikan / Keterangan" 
+              value={writeOffForm.alasan} 
+              onChange={e => setWriteOffForm({ ...writeOffForm, alasan: e.target.value })} 
+              placeholder="Contoh: Melewati tanggal kadaluarsa kemasan"
+              required
+            />
+
+            <div className="flex justify-end gap-2 pt-3 border-t">
+              <Button type="button" variant="ghost" onClick={() => setIsWriteOffModalOpen(false)}>Batal</Button>
+              <Button type="submit" loading={saving} className="bg-rose-600 hover:bg-rose-700 text-white font-bold">Eksekusi Penarikan</Button>
+            </div>
+          </form>
+        )}
+      </Modal>
 
       {/* MODAL PINDAH RAK (MUTASI STOK TOKO <-> GUDANG) */}
       <Modal isOpen={isMutasiModalOpen} onClose={() => setIsMutasiModalOpen(false)} title="⇄ Mutasi Stok Internal (Pindah Rak)">
@@ -490,7 +740,7 @@ export function DataBarang() {
       </Modal>
 
       {/* MODAL CRUD BARANG */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={isEditing ? 'Edit Barang 2-Tier' : 'Tambah Barang 2-Tier'}>
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={isEditing ? 'Edit Barang & Expired' : 'Tambah Barang & Expired'}>
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <Input label="Nama Barang" value={formData.nama_barang || ''} onChange={e => setFormData({ ...formData, nama_barang: e.target.value })} required />
           <div className="grid grid-cols-2 gap-3">
@@ -527,6 +777,27 @@ export function DataBarang() {
               />
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Expired Display Toko</label>
+              <input
+                type="date"
+                className="w-full px-2.5 py-1.5 border rounded-xl text-xs bg-white dark:bg-zinc-900 font-semibold"
+                value={formData.tgl_kadaluarsa_toko || ''}
+                onChange={e => setFormData({ ...formData, tgl_kadaluarsa_toko: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Expired Cadangan Gudang</label>
+              <input
+                type="date"
+                className="w-full px-2.5 py-1.5 border rounded-xl text-xs bg-white dark:bg-zinc-900 font-semibold"
+                value={formData.tgl_kadaluarsa_gudang || ''}
+                onChange={e => setFormData({ ...formData, tgl_kadaluarsa_gudang: e.target.value })}
+              />
+            </div>
+          </div>
           
           <div className="flex justify-end gap-2 pt-3">
             <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>Batal</Button>
@@ -536,10 +807,10 @@ export function DataBarang() {
       </Modal>
 
       {/* MODAL RESTOCK / KULAKAN */}
-      <Modal isOpen={isRestockModalOpen} onClose={() => setIsRestockModalOpen(false)} title="🛒 Restock / Pembelian Pengadaan">
+      <Modal isOpen={isRestockModalOpen} onClose={() => setIsRestockModalOpen(false)} title="🛒 Restock & Tanggal Kadaluarsa">
         <form onSubmit={handleRestockSubmit} className="space-y-3.5">
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-900 text-xs text-blue-800 dark:text-blue-300">
-            Penambahan stok akan otomatis memperbarui harga modal dasar dan mencatat buku pengeluaran kas.
+            Penambahan stok akan otomatis memperbarui harga modal dasar, mencatat buku pengeluaran kas, dan menyinkronkan tanggal expired batch baru.
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -558,17 +829,29 @@ export function DataBarang() {
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Alokasi Stok Baru Masuk</label>
-            <select 
-              className="w-full px-3 py-2 border rounded-xl text-xs bg-white dark:bg-zinc-800 font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-              value={restockData.alokasi}
-              onChange={e => setRestockData({...restockData, alokasi: e.target.value as any})}
-            >
-              <option value="gudang">📦 Masuk ke Gudang Cadangan (Direkomendasikan)</option>
-              <option value="toko">🏪 Langsung ke Display Toko / Etalase</option>
-              <option value="auto">⚡ Auto-Refill (Penuhi Toko sesuai PKM, sisanya ke Gudang)</option>
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Alokasi Stok Masuk</label>
+              <select 
+                className="w-full px-3 py-2 border rounded-xl text-xs bg-white dark:bg-zinc-800 font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                value={restockData.alokasi}
+                onChange={e => setRestockData({...restockData, alokasi: e.target.value as any})}
+              >
+                <option value="gudang">📦 Masuk ke Gudang</option>
+                <option value="toko">🏪 Langsung ke Display Toko</option>
+                <option value="auto">⚡ Auto-Refill PKM</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Tanggal Kadaluarsa Batch</label>
+              <input
+                type="date"
+                className="w-full px-3 py-2 border rounded-xl text-xs bg-white dark:bg-zinc-800 font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                value={restockData.tanggal_kadaluarsa}
+                onChange={e => setRestockData({...restockData, tanggal_kadaluarsa: e.target.value})}
+              />
+            </div>
           </div>
 
           <div>
@@ -593,7 +876,7 @@ export function DataBarang() {
             label="Catatan Pembelian (Opsional)" 
             value={restockData.catatan} 
             onChange={e => setRestockData({ ...restockData, catatan: e.target.value })} 
-            placeholder="Contoh: Grosir PT. Surya Makmur Batam"
+            placeholder="Contoh: Faktur Grosir PT. Surya Makmur Batam"
           />
           
           <div className="flex justify-end gap-2 pt-3">
@@ -627,6 +910,11 @@ export function DataBarang() {
                     <span>+{h.jumlah_tambah} pcs @ {formatRupiah(h.harga_beli_satuan)}</span>
                     <span className="font-black text-rose-600">-{formatRupiah(h.total_biaya)}</span>
                   </div>
+                  {h.tanggal_kadaluarsa && (
+                    <div className="text-[10px] text-orange-600 dark:text-orange-400 flex items-center gap-1 font-semibold">
+                      <Calendar className="w-2.5 h-2.5" /> Expired: {h.tanggal_kadaluarsa}
+                    </div>
+                  )}
                   <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-zinc-700 flex justify-between">
                     <span>Admin: {h.nama_admin}</span>
                     <span className="capitalize">{h.sumber_dana.replace('_', ' ')}</span>

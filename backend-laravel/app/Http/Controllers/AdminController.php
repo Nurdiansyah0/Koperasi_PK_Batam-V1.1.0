@@ -71,6 +71,26 @@ class AdminController extends Controller
             ->whereYear('created_at', Carbon::now()->year)
             ->sum('total_biaya') ?? 0);
 
+        // E. Expiry Tracking Telemetry (FEFO & Waste Risk)
+        $today = Carbon::today()->toDateString();
+        $in30Days = Carbon::today()->addDays(30)->toDateString();
+
+        $expired_count = \App\Models\Barang::where(function($q) use ($today) {
+            $q->where(function($sq) use ($today) {
+                $sq->whereNotNull('tgl_kadaluarsa_toko')->where('tgl_kadaluarsa_toko', '<', $today)->where('stok_toko', '>', 0);
+            })->orWhere(function($sq) use ($today) {
+                $sq->whereNotNull('tgl_kadaluarsa_gudang')->where('tgl_kadaluarsa_gudang', '<', $today)->where('stok_gudang', '>', 0);
+            });
+        })->count();
+
+        $near_expiry_count = \App\Models\Barang::where(function($q) use ($today, $in30Days) {
+            $q->where(function($sq) use ($today, $in30Days) {
+                $sq->whereNotNull('tgl_kadaluarsa_toko')->whereBetween('tgl_kadaluarsa_toko', [$today, $in30Days])->where('stok_toko', '>', 0);
+            })->orWhere(function($sq) use ($today, $in30Days) {
+                $sq->whereNotNull('tgl_kadaluarsa_gudang')->whereBetween('tgl_kadaluarsa_gudang', [$today, $in30Days])->where('stok_gudang', '>', 0);
+            });
+        })->count();
+
         return response()->json([
             'success' => true,
             'total_anggota' => (int) $total_anggota,
@@ -89,6 +109,8 @@ class AdminController extends Controller
             'setoran_pending_nominal' => (float) $setoran_pending_nominal,
             'anggota_limit_kritis_count' => (int) $anggota_limit_kritis_count,
             'total_restock_bulan_ini' => (float) $total_restock_bulan_ini,
+            'expired_count' => (int) $expired_count,
+            'near_expiry_count' => (int) $near_expiry_count,
         ]);
     }
 
@@ -107,6 +129,8 @@ class AdminController extends Controller
             'stok' => 'nullable|integer',
             'stok_toko' => 'nullable|integer|min:0',
             'stok_gudang' => 'nullable|integer|min:0',
+            'tgl_kadaluarsa_toko' => 'nullable|date',
+            'tgl_kadaluarsa_gudang' => 'nullable|date',
             'pkm' => 'nullable|integer|min:1',
             'harga_modal' => 'required|numeric',
             'harga_jual' => 'required|numeric',
@@ -123,6 +147,8 @@ class AdminController extends Controller
             'stok' => $totalStok,
             'stok_toko' => $stokToko,
             'stok_gudang' => $stokGudang,
+            'tgl_kadaluarsa_toko' => $request->tgl_kadaluarsa_toko ?: null,
+            'tgl_kadaluarsa_gudang' => $request->tgl_kadaluarsa_gudang ?: null,
             'pkm' => $pkm,
             'harga_modal' => $request->harga_modal,
             'harga_jual' => $request->harga_jual,
@@ -152,6 +178,9 @@ class AdminController extends Controller
         $data['stok_toko'] = $stokToko;
         $data['stok_gudang'] = $stokGudang;
         $data['stok'] = $totalStok;
+        if ($request->has('tgl_kadaluarsa_toko')) $data['tgl_kadaluarsa_toko'] = $request->tgl_kadaluarsa_toko ?: null;
+        if ($request->has('tgl_kadaluarsa_gudang')) $data['tgl_kadaluarsa_gudang'] = $request->tgl_kadaluarsa_gudang ?: null;
+
         $barang->update($data);
 
         return response()->json(['success' => true, 'message' => 'Barang berhasil diupdate']);
@@ -173,6 +202,7 @@ class AdminController extends Controller
             'harga_beli_satuan' => 'required|numeric|min:0',
             'sumber_dana' => 'required|string',
             'alokasi' => 'nullable|string|in:gudang,toko,auto',
+            'tanggal_kadaluarsa' => 'nullable|date',
             'catatan' => 'nullable|string'
         ]);
 
@@ -184,6 +214,7 @@ class AdminController extends Controller
             $totalBiaya = $request->jumlah_tambah * $request->harga_beli_satuan;
             $alokasi = $request->input('alokasi', 'gudang');
             $jumlahTambah = (int) $request->jumlah_tambah;
+            $tglExpired = $request->tanggal_kadaluarsa ?: null;
 
             RiwayatRestock::create([
                 'barang_id' => $barang->barang_id,
@@ -192,21 +223,28 @@ class AdminController extends Controller
                 'harga_beli_satuan' => $request->harga_beli_satuan,
                 'total_biaya' => $totalBiaya,
                 'sumber_dana' => $request->sumber_dana,
+                'tanggal_kadaluarsa' => $tglExpired,
                 'catatan' => $request->catatan ? ($request->catatan . " [Alokasi: {$alokasi}]") : "Alokasi: {$alokasi}"
             ]);
 
-            // 2-Tier allocation
+            // 2-Tier allocation & Expiry Sync
             if ($alokasi === 'toko') {
                 $barang->stok_toko += $jumlahTambah;
+                if ($tglExpired) $barang->tgl_kadaluarsa_toko = $tglExpired;
             } elseif ($alokasi === 'auto') {
                 $pkm = (int) ($barang->pkm ?: 1);
                 $neededForDisplay = max(0, $pkm - ((int) $barang->stok_toko));
                 $fillToko = min($jumlahTambah, $neededForDisplay);
                 $barang->stok_toko += $fillToko;
                 $barang->stok_gudang += ($jumlahTambah - $fillToko);
+                if ($tglExpired) {
+                    if ($fillToko > 0 && !$barang->tgl_kadaluarsa_toko) $barang->tgl_kadaluarsa_toko = $tglExpired;
+                    $barang->tgl_kadaluarsa_gudang = $tglExpired;
+                }
             } else {
                 // Default to warehouse stock
                 $barang->stok_gudang += $jumlahTambah;
+                if ($tglExpired) $barang->tgl_kadaluarsa_gudang = $tglExpired;
             }
 
             $barang->stok = $barang->stok_toko + $barang->stok_gudang;
@@ -221,12 +259,69 @@ class AdminController extends Controller
                     'barang_id' => $barang->barang_id,
                     'stok_toko' => $barang->stok_toko,
                     'stok_gudang' => $barang->stok_gudang,
+                    'tgl_kadaluarsa_toko' => $barang->tgl_kadaluarsa_toko,
+                    'tgl_kadaluarsa_gudang' => $barang->tgl_kadaluarsa_gudang,
                     'total_stok' => $barang->stok
                 ]
             ]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function writeOffExpired(Request $request)
+    {
+        $adminId = $this->checkAdmin($request);
+        $request->validate([
+            'barang_id' => 'required|integer|exists:barang,barang_id',
+            'lokasi' => 'required|in:toko,gudang,semua',
+            'jumlah' => 'required|integer|min:1',
+            'alasan' => 'nullable|string'
+        ]);
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $barang = Barang::where('barang_id', $request->barang_id)->lockForUpdate()->first();
+            if (!$barang) throw new \Exception("Barang tidak ditemukan");
+
+            $jumlah = (int) $request->jumlah;
+            $lokasi = $request->lokasi;
+
+            if ($lokasi === 'toko') {
+                if ($barang->stok_toko < $jumlah) throw new \Exception("Stok toko ({$barang->stok_toko} pcs) kurang dari jumlah write-off ({$jumlah} pcs)");
+                $barang->stok_toko -= $jumlah;
+            } elseif ($lokasi === 'gudang') {
+                if ($barang->stok_gudang < $jumlah) throw new \Exception("Stok gudang ({$barang->stok_gudang} pcs) kurang dari jumlah write-off ({$jumlah} pcs)");
+                $barang->stok_gudang -= $jumlah;
+            } else {
+                if ($barang->stok < $jumlah) throw new \Exception("Total stok ({$barang->stok} pcs) kurang dari jumlah write-off ({$jumlah} pcs)");
+                if ($barang->stok_toko >= $jumlah) {
+                    $barang->stok_toko -= $jumlah;
+                } else {
+                    $rem = $jumlah - $barang->stok_toko;
+                    $barang->stok_toko = 0;
+                    $barang->stok_gudang = max(0, $barang->stok_gudang - $rem);
+                }
+            }
+
+            $barang->stok = $barang->stok_toko + $barang->stok_gudang;
+            $barang->save();
+
+            \Illuminate\Support\Facades\DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => "Pemusnahan/Tarik barang kadaluarsa {$barang->nama_barang} ({$jumlah} pcs dari {$lokasi}) berhasil dicatat!",
+                'data' => [
+                    'barang_id' => $barang->barang_id,
+                    'stok_toko' => $barang->stok_toko,
+                    'stok_gudang' => $barang->stok_gudang,
+                    'total_stok' => $barang->stok
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
     }
 

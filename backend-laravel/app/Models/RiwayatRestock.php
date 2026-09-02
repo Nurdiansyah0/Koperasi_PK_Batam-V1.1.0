@@ -19,6 +19,7 @@ class RiwayatRestock extends Model
         'harga_beli_satuan',
         'total_biaya',
         'sumber_dana',
+        'tanggal_kadaluarsa',
         'catatan'
     ];
 

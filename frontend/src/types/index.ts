@@ -39,6 +39,12 @@ export interface Barang {
   stok: number
   stok_toko?: number
   stok_gudang?: number
+  tgl_kadaluarsa_toko?: string | null
+  tgl_kadaluarsa_gudang?: string | null
+  hari_kadaluarsa_toko?: number | null
+  status_kadaluarsa_toko?: 'expired' | 'near_expiry' | 'aman' | 'tidak_ada'
+  hari_kadaluarsa_gudang?: number | null
+  status_kadaluarsa_gudang?: 'expired' | 'near_expiry' | 'aman' | 'tidak_ada'
   pkm?: number
   harga_modal?: number
   harga_jual?: number
@@ -260,6 +266,8 @@ export interface DashboardAdmin {
   setoran_pending_nominal?: number
   anggota_limit_kritis_count?: number
   total_restock_bulan_ini?: number
+  expired_count?: number
+  near_expiry_count?: number
 }
 
 // ─── Laporan Transaksi ───────────────────────────────────────

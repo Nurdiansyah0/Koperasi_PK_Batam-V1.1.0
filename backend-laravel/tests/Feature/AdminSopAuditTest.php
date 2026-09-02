@@ -475,4 +475,47 @@ class AdminSopAuditTest extends TestCase
         $this->assertEquals(24, $barang->stok_gudang); // 14 + 10
         $this->assertEquals(30, $barang->stok);
     }
+
+    /** @test */
+    public function audit_13_expiry_tracking_and_write_off()
+    {
+        // 1. Create an item with expired date on display toko
+        $yesterday = \Carbon\Carbon::yesterday()->toDateString();
+        $in15Days = \Carbon\Carbon::today()->addDays(15)->toDateString();
+
+        $barang = Barang::create([
+            'nama_barang' => 'Roti Tawar Manis Expired',
+            'stok' => 10,
+            'stok_toko' => 4,
+            'stok_gudang' => 6,
+            'tgl_kadaluarsa_toko' => $yesterday,
+            'tgl_kadaluarsa_gudang' => $in15Days,
+            'pkm' => 4,
+            'harga_modal' => 10000,
+            'harga_jual' => 12000
+        ]);
+
+        $this->assertEquals('expired', $barang->status_kadaluarsa_toko);
+        $this->assertEquals('near_expiry', $barang->status_kadaluarsa_gudang);
+
+        // 2. Check Dashboard Stats reflects expired and near-expiry count
+        $resDash = $this->authGet('/laravel/api/admin/dashboard-stats');
+        $resDash->assertStatus(200);
+        $this->assertGreaterThanOrEqual(1, $resDash->json('expired_count'));
+        $this->assertGreaterThanOrEqual(1, $resDash->json('near_expiry_count'));
+
+        // 3. Test Write-Off Expired from Toko
+        $resWriteOff = $this->authPost('/laravel/api/admin/write-off-expired', [
+            'barang_id' => $barang->barang_id,
+            'lokasi' => 'toko',
+            'jumlah' => 4,
+            'alasan' => 'Pemusnahan roti jamuran lewat tanggal'
+        ]);
+        $resWriteOff->assertStatus(200)->assertJson(['success' => true]);
+
+        $barang->refresh();
+        $this->assertEquals(0, $barang->stok_toko);
+        $this->assertEquals(6, $barang->stok_gudang);
+        $this->assertEquals(6, $barang->stok);
+    }
 }

@@ -190,6 +190,50 @@ export function AdminDashboard() {
       </div>
 
       {/* ── Operational Radars & Critical Alerts ── */}
+      {((data.expired_count || 0) > 0) && (
+        <div 
+          onClick={() => navigate('/admin/barang')}
+          className="p-4 rounded-3xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] transition-transform"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-rose-500/20 text-rose-600 dark:text-rose-400 shrink-0">
+              <AlertCircle className="w-5 h-5 animate-pulse text-rose-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-xs text-rose-900 dark:text-rose-200">
+                Waspada Kadaluarsa: {data.expired_count} Barang Sudah Lewat Tanggal!
+              </h3>
+              <p className="text-[11px] text-rose-700 dark:text-rose-400 mt-0.5">
+                Segera lakukan penarikan / pemusnahan (write-off) dari rak toko dan gudang.
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-rose-600 shrink-0" />
+        </div>
+      )}
+
+      {((data.near_expiry_count || 0) > 0) && (
+        <div 
+          onClick={() => navigate('/admin/barang')}
+          className="p-4 rounded-3xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] transition-transform"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-orange-500/20 text-orange-600 dark:text-orange-400 shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-xs text-orange-900 dark:text-orange-200">
+                Near Expiry: {data.near_expiry_count} Barang Mendekati Kadaluarsa (&le; 30 Hari)
+              </h3>
+              <p className="text-[11px] text-orange-700 dark:text-orange-400 mt-0.5">
+                Prioritaskan rotasi FEFO di etalase atau aktifkan program diskon cuci gudang.
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-orange-600 shrink-0" />
+        </div>
+      )}
+
       {stokKritisCount > 0 && (
         <div 
           onClick={() => navigate('/admin/pkm')}

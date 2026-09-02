@@ -17,10 +17,54 @@ class Barang extends Model
         'stok',
         'stok_toko',
         'stok_gudang',
+        'tgl_kadaluarsa_toko',
+        'tgl_kadaluarsa_gudang',
         'pkm',
         'harga_modal',
         'harga_jual',
     ];
+
+    protected $casts = [
+        'tgl_kadaluarsa_toko' => 'date',
+        'tgl_kadaluarsa_gudang' => 'date',
+    ];
+
+    protected $appends = [
+        'hari_kadaluarsa_toko',
+        'status_kadaluarsa_toko',
+        'hari_kadaluarsa_gudang',
+        'status_kadaluarsa_gudang',
+    ];
+
+    public function getHariKadaluarsaTokoAttribute()
+    {
+        if (!$this->tgl_kadaluarsa_toko) return null;
+        return (int) \Carbon\Carbon::today()->diffInDays(\Carbon\Carbon::parse($this->tgl_kadaluarsa_toko), false);
+    }
+
+    public function getStatusKadaluarsaTokoAttribute()
+    {
+        $days = $this->hari_kadaluarsa_toko;
+        if ($days === null) return 'tidak_ada';
+        if ($days < 0) return 'expired';
+        if ($days <= 30) return 'near_expiry';
+        return 'aman';
+    }
+
+    public function getHariKadaluarsaGudangAttribute()
+    {
+        if (!$this->tgl_kadaluarsa_gudang) return null;
+        return (int) \Carbon\Carbon::today()->diffInDays(\Carbon\Carbon::parse($this->tgl_kadaluarsa_gudang), false);
+    }
+
+    public function getStatusKadaluarsaGudangAttribute()
+    {
+        $days = $this->hari_kadaluarsa_gudang;
+        if ($days === null) return 'tidak_ada';
+        if ($days < 0) return 'expired';
+        if ($days <= 30) return 'near_expiry';
+        return 'aman';
+    }
 
     public static function boot()
     {

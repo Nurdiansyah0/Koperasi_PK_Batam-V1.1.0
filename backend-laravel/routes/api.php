@@ -95,6 +95,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/konversi-shu', [AdminController::class, 'prosesKonversiShu']);
         Route::post('/mutasi-stok', [AdminController::class, 'mutasiStok']);
         Route::post('/auto-refill-display', [AdminController::class, 'autoRefillDisplay']);
+        Route::post('/write-off-expired', [AdminController::class, 'writeOffExpired']);
         Route::get('/jabatan', [AdminController::class, 'getDaftarJabatan']);
         Route::post('/jabatan/assign', [AdminController::class, 'assignJabatan']);
         Route::post('/jabatan/revoke', [AdminController::class, 'revokeJabatan']);
