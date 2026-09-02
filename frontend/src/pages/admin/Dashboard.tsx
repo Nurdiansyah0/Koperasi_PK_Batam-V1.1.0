@@ -7,30 +7,59 @@ import { IosBottomSheet } from '@/components/ios/IosBottomSheet'
 import {
   TrendingUp, ArrowUpRight, ShoppingBag,
   CreditCard, Wallet, Package, Gift, Users,
-  AlertCircle, CheckCircle2, ChevronRight
+  AlertCircle, CheckCircle2, ChevronRight,
+  Zap, ArrowRightLeft, Layers, Scale,
+  AlertTriangle, RefreshCw, Plus, Store
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export function AdminDashboard() {
   const [data, setData] = useState<DashboardAdmin | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isApplyingPkm, setIsApplyingPkm] = useState(false)
   const [activeSheet, setActiveSheet] = useState<string | null>(null)
   const navigate = useNavigate()
 
-  useEffect(() => {
+  const loadDashboard = () => {
+    setLoading(true)
     adminService.getDashboard().then((res) => {
       setData(res as any)
       setLoading(false)
     }).catch(() => {
-      toast.error('Gagal memuat dashboard')
+      toast.error('Gagal memuat dashboard admin')
       setLoading(false)
     })
+  }
+
+  useEffect(() => {
+    loadDashboard()
   }, [])
+
+  const handleAutoPkm = async () => {
+    if (isApplyingPkm) return
+    setIsApplyingPkm(true)
+    try {
+      const res = await adminService.autoCalculatePkm(30, 4)
+      if (res.success) {
+        toast.success(res.message || 'PKM 4 hari berhasil diterapkan ke seluruh produk!')
+        loadDashboard()
+      } else {
+        toast.error(res.message || 'Gagal menerapkan kalkulasi PKM')
+      }
+    } catch {
+      toast.error('Terjadi kesalahan saat memproses PKM')
+    } finally {
+      setIsApplyingPkm(false)
+    }
+  }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-9 h-9 rounded-full border-3 border-blue-600 border-t-transparent animate-spin" />
+          <p className="text-xs font-semibold text-slate-500">Menghubungkan Otak Syaraf Koperasi...</p>
+        </div>
       </div>
     )
   }
@@ -38,34 +67,47 @@ export function AdminDashboard() {
   if (!data) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-slate-400">
       <AlertCircle className="w-10 h-10" />
-      <p className="text-sm font-medium">Gagal memuat dashboard</p>
+      <p className="text-sm font-medium">Gagal memuat data syaraf operasional</p>
     </div>
   )
 
   const realHutangRatio = data.total_saldo_anggota > 0
     ? Math.round((data.total_hutang_beredar / data.total_saldo_anggota) * 100)
     : 0
-  const hutangRatio = Math.min(100, realHutangRatio)
+
+  const stokKritisCount = data.stok_kritis_count || 0
+  const setoranPendingCount = data.setoran_pending_count || 0
+  const setoranPendingNominal = data.setoran_pending_nominal || 0
+  const anggotaKritisCount = data.anggota_limit_kritis_count || 0
 
   return (
-    <div className="space-y-5 pb-24 max-w-lg md:max-w-4xl mx-auto">
+    <div className="space-y-4 sm:space-y-5 pb-24 max-w-lg md:max-w-4xl mx-auto">
 
       {/* ── Header ── */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-          Dashboard Admin
-        </h1>
-        <p className="text-xs text-slate-500 mt-0.5">Ringkasan operasional Koperasi Karyawan PKPPK BTH</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            Dashboard Eksekutif
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">Pusat Kendali & Tata Kelola Operasional Koperasi</p>
+        </div>
+        <button
+          onClick={loadDashboard}
+          className="p-2 rounded-xl bg-white dark:bg-zinc-800 border border-slate-200/80 dark:border-zinc-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 active:scale-95 transition-transform"
+          title="Segarkan Metrik"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* ── Hero: Pendapatan Hari Ini (full width) ── */}
+      {/* ── Hero: Pendapatan & Laba Hari Ini (Full Width) ── */}
       <div 
         onClick={() => setActiveSheet('pendapatan')}
-        className="rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 p-5 text-white shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-transform cursor-pointer"
+        className="rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 p-5 text-white shadow-lg shadow-blue-500/20 active:scale-[0.99] transition-transform cursor-pointer"
       >
         <div className="flex items-start justify-between mb-3">
           <div>
-            <p className="text-xs font-semibold text-blue-200 uppercase tracking-widest">Pendapatan Hari Ini</p>
+            <p className="text-xs font-semibold text-blue-200 uppercase tracking-widest">Penjualan Toko Hari Ini</p>
             <h2 className="text-3xl font-black mt-1 tracking-tight">
               {formatRupiah(data.total_pendapatan_hari_ini)}
             </h2>
@@ -78,18 +120,121 @@ export function AdminDashboard() {
           <div className="flex items-center gap-1.5">
             <ShoppingBag className="w-3.5 h-3.5 text-blue-200" />
             <span className="text-sm font-bold">{data.total_transaksi_hari_ini}</span>
-            <span className="text-xs text-blue-200">transaksi</span>
+            <span className="text-xs text-blue-200">struk selesai</span>
           </div>
           <div className="w-px h-4 bg-white/20" />
           <div className="flex items-center gap-1.5">
             <ArrowUpRight className="w-3.5 h-3.5 text-blue-200" />
             <span className="text-sm font-bold">{formatRupiah(data.total_keuntungan_hari_ini)}</span>
-            <span className="text-xs text-blue-200">keuntungan</span>
+            <span className="text-xs text-blue-200">laba bersih</span>
           </div>
         </div>
       </div>
 
-      {/* ── 2-col grid: Anggota + Aset Barang ── */}
+      {/* ── Executive Quick Action Hub (Pusat Aksi Cepat 1-Sentuh) ── */}
+      <div className="p-3 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/80 dark:border-zinc-800 shadow-xs">
+        <div className="flex items-center justify-between px-2 mb-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Aksi Cepat Admin</span>
+          <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">1-Sentuhan</span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <button
+            onClick={handleAutoPkm}
+            disabled={isApplyingPkm}
+            className="p-3 rounded-2xl bg-slate-50 dark:bg-zinc-800/80 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-slate-100 dark:border-zinc-700/60 flex flex-col items-center text-center gap-1.5 active:scale-95 transition-all text-slate-700 dark:text-slate-200"
+          >
+            <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
+              <Zap className={`w-4 h-4 ${isApplyingPkm ? 'animate-spin' : ''}`} />
+            </div>
+            <span className="text-xs font-bold leading-tight">Auto-PKM 4H</span>
+            <span className="text-[10px] text-slate-400">Tuning display</span>
+          </button>
+
+          <button
+            onClick={() => navigate('/admin/setoran-kasir')}
+            className="p-3 rounded-2xl bg-slate-50 dark:bg-zinc-800/80 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-slate-100 dark:border-zinc-700/60 flex flex-col items-center text-center gap-1.5 active:scale-95 transition-all text-slate-700 dark:text-slate-200"
+          >
+            <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 relative">
+              <Wallet className="w-4 h-4" />
+              {setoranPendingCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white" />
+              )}
+            </div>
+            <span className="text-xs font-bold leading-tight">Terima Setor</span>
+            <span className="text-[10px] text-slate-400">{setoranPendingCount} antrean</span>
+          </button>
+
+          <button
+            onClick={() => navigate('/admin/barang')}
+            className="p-3 rounded-2xl bg-slate-50 dark:bg-zinc-800/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-slate-100 dark:border-zinc-700/60 flex flex-col items-center text-center gap-1.5 active:scale-95 transition-all text-slate-700 dark:text-slate-200"
+          >
+            <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
+              <Plus className="w-4 h-4" />
+            </div>
+            <span className="text-xs font-bold leading-tight">Kulakan Masuk</span>
+            <span className="text-[10px] text-slate-400">Restock stok</span>
+          </button>
+
+          <button
+            onClick={() => navigate('/admin/laporan-selisih')}
+            className="p-3 rounded-2xl bg-slate-50 dark:bg-zinc-800/80 hover:bg-purple-50 dark:hover:bg-purple-950/40 border border-slate-100 dark:border-zinc-700/60 flex flex-col items-center text-center gap-1.5 active:scale-95 transition-all text-slate-700 dark:text-slate-200"
+          >
+            <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400">
+              <Scale className="w-4 h-4" />
+            </div>
+            <span className="text-xs font-bold leading-tight">Audit Selisih</span>
+            <span className="text-[10px] text-slate-400">Payroll kasir</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Operational Radars & Critical Alerts ── */}
+      {stokKritisCount > 0 && (
+        <div 
+          onClick={() => navigate('/admin/pkm')}
+          className="p-4 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] transition-transform"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+              <AlertTriangle className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="font-bold text-xs text-amber-900 dark:text-amber-200">
+                Peringatan Restock: {stokKritisCount} Barang Kritis (&lt; PKM 4 Hari)
+              </h3>
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+                Segera lakukan kulakan pengadaan untuk mencegah kehabisan stok display toko.
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-amber-600 shrink-0" />
+        </div>
+      )}
+
+      {setoranPendingCount > 0 && (
+        <div 
+          onClick={() => navigate('/admin/setoran-kasir')}
+          className="p-4 rounded-3xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] transition-transform"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-blue-500/20 text-blue-600 dark:text-blue-400 shrink-0">
+              <Wallet className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-xs text-blue-900 dark:text-blue-200">
+                Uang Kasir Tertahan: {formatRupiah(setoranPendingNominal)}
+              </h3>
+              <p className="text-[11px] text-blue-700 dark:text-blue-400 mt-0.5">
+                {setoranPendingCount} setoran kasir menunggu validasi penerimaan fisik ke brankas.
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-blue-600 shrink-0" />
+        </div>
+      )}
+
+      {/* ── 2-Col Grid: Anggota + Aset Barang ── */}
       <div className="grid grid-cols-2 gap-3">
         <div 
           onClick={() => setActiveSheet('anggota')}
@@ -126,7 +271,7 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      {/* ── 2-col grid: Simpanan + SHU ── */}
+      {/* ── 2-Col Grid: Simpanan + SHU ── */}
       <div className="grid grid-cols-2 gap-3">
         <div 
           onClick={() => setActiveSheet('simpanan')}
@@ -165,7 +310,7 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      {/* ── Piutang Card (full width with risk indicator) ── */}
+      {/* ── Piutang Card (Full Width with Credit Risk Indicator) ── */}
       <div 
         onClick={() => setActiveSheet('piutang')}
         className={`rounded-3xl p-4 shadow-xs border cursor-pointer active:scale-[0.98] transition-transform ${
@@ -190,7 +335,7 @@ export function AdminDashboard() {
         {/* Progress bar: Hutang vs Simpanan ratio */}
         <div>
           <div className="flex justify-between text-[10px] text-slate-400 mb-1">
-            <span>Rasio Piutang/Simpanan</span>
+            <span>Rasio Piutang / Simpanan Pokok</span>
             <span className={`font-bold ${realHutangRatio > 80 ? 'text-rose-600' : realHutangRatio > 50 ? 'text-amber-600' : 'text-emerald-600'}`}>
               {realHutangRatio}%
             </span>
@@ -200,7 +345,7 @@ export function AdminDashboard() {
               className={`h-full rounded-full transition-all ${
                 realHutangRatio > 80 ? 'bg-rose-500' : realHutangRatio > 50 ? 'bg-amber-500' : 'bg-emerald-500'
               }`}
-              style={{ width: `${realHutangRatio}%` }}
+              style={{ width: `${Math.min(100, realHutangRatio)}%` }}
             />
           </div>
           <div className="flex items-center justify-between mt-1.5">
@@ -210,7 +355,7 @@ export function AdminDashboard() {
               ) : realHutangRatio > 50 ? (
                 <><AlertCircle className="w-3 h-3 text-amber-500" /><span className="text-[10px] text-amber-500 font-semibold">Perlu perhatian</span></>
               ) : (
-                <><CheckCircle2 className="w-3 h-3 text-emerald-500" /><span className="text-[10px] text-emerald-500 font-semibold">Kondisi sehat</span></>
+                <><CheckCircle2 className="w-3 h-3 text-emerald-500" /><span className="text-[10px] text-emerald-500 font-semibold">Likuiditas sehat</span></>
               )}
             </div>
             <ChevronRight className="w-3 h-3 text-slate-400" />
@@ -218,7 +363,7 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      {/* --- Detail Matrix Bottom Sheets --- */}
+      {/* ── Detail Matrix Bottom Sheets ── */}
       
       {/* Pendapatan Sheet */}
       <IosBottomSheet isOpen={activeSheet === 'pendapatan'} onClose={() => setActiveSheet(null)} title="Matriks Pendapatan">
@@ -233,19 +378,18 @@ export function AdminDashboard() {
               <span className="font-bold text-emerald-600">{formatRupiah(data.total_keuntungan_hari_ini)}</span>
             </div>
             <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-zinc-600">
-              <span className="text-sm text-slate-500">Total Transaksi</span>
-              <span className="font-bold">{data.total_transaksi_hari_ini} trx</span>
+              <span className="text-sm text-slate-500">Total Transaksi Selesai</span>
+              <span className="font-bold">{data.total_transaksi_hari_ini} Struk</span>
             </div>
           </div>
-          <p className="text-xs text-slate-500 text-center">Matriks ini menghitung semua transaksi berstatus 'selesai' pada hari ini.</p>
-          <button onClick={() => navigate('/admin/laporan')} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
-            Lihat Laporan Transaksi
+          <button onClick={() => { setActiveSheet(null); navigate('/admin/laporan') }} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
+            Buka Laporan Transaksi Lengkap
           </button>
         </div>
       </IosBottomSheet>
 
       {/* Anggota Sheet */}
-      <IosBottomSheet isOpen={activeSheet === 'anggota'} onClose={() => setActiveSheet(null)} title="Matriks Anggota">
+      <IosBottomSheet isOpen={activeSheet === 'anggota'} onClose={() => setActiveSheet(null)} title="Matriks Keanggotaan">
         <div className="p-4 space-y-4">
           <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700">
              <div className="flex justify-between items-center text-lg">
@@ -253,9 +397,8 @@ export function AdminDashboard() {
               <span className="font-black text-blue-600">{data.total_anggota} Orang</span>
             </div>
           </div>
-          <p className="text-xs text-slate-500 text-center">Data anggota koperasi yang memiliki akun aktif di sistem.</p>
-          <button onClick={() => navigate('/admin/anggota')} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
-            Kelola Data Anggota
+          <button onClick={() => { setActiveSheet(null); navigate('/admin/anggota') }} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
+            Kelola Master Data Anggota
           </button>
         </div>
       </IosBottomSheet>
@@ -270,15 +413,14 @@ export function AdminDashboard() {
             </div>
              <p className="text-[10px] text-slate-400 mt-2">Dihitung dari: &Sigma; (Stok Fisik &times; Harga Modal Dasar)</p>
           </div>
-          <p className="text-xs text-slate-500 text-center">Angka ini merepresentasikan total modal Koperasi yang sedang tertahan dalam bentuk barang di gudang/toko.</p>
-          <button onClick={() => navigate('/admin/barang')} className="w-full py-3 bg-amber-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
-            Lihat Inventori Barang
+          <button onClick={() => { setActiveSheet(null); navigate('/admin/barang') }} className="w-full py-3 bg-amber-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
+            Lihat Katalog Inventori
           </button>
         </div>
       </IosBottomSheet>
 
       {/* Simpanan Sheet */}
-      <IosBottomSheet isOpen={activeSheet === 'simpanan'} onClose={() => setActiveSheet(null)} title="Matriks Simpanan">
+      <IosBottomSheet isOpen={activeSheet === 'simpanan'} onClose={() => setActiveSheet(null)} title="Matriks Simpanan E-Wallet">
         <div className="p-4 space-y-4">
           <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700">
              <div className="flex justify-between items-center">
@@ -286,27 +428,26 @@ export function AdminDashboard() {
               <span className="font-bold text-indigo-600">{formatRupiah(data.total_saldo_anggota)}</span>
             </div>
           </div>
-          <p className="text-xs text-slate-500 text-center">Likuiditas kas digital Koperasi yang berasal dari top-up atau simpanan anggota aktif.</p>
-          <button onClick={() => navigate('/admin/anggota')} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
+          <button onClick={() => { setActiveSheet(null); navigate('/admin/anggota') }} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
             Cek Saldo Anggota
           </button>
         </div>
       </IosBottomSheet>
 
       {/* SHU Sheet */}
-      <IosBottomSheet isOpen={activeSheet === 'shu'} onClose={() => setActiveSheet(null)} title="Matriks SHU">
+      <IosBottomSheet isOpen={activeSheet === 'shu'} onClose={() => setActiveSheet(null)} title="Matriks Distribusi SHU">
         <div className="p-4 space-y-4">
           <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 space-y-3">
              <div className="flex justify-between items-center">
               <div>
                 <span className="text-sm text-slate-500 block">SHU Anggota (60%)</span>
-                <span className="text-[10px] text-slate-400">Belum dicairkan ke saldo</span>
+                <span className="text-[10px] text-slate-400">Hak bagi hasil anggota</span>
               </div>
               <span className="font-bold text-pink-600">{formatRupiah(data.total_shu_tersedia)}</span>
             </div>
             
             <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-zinc-700">
-              <span className="text-sm text-slate-500">Operasional Koperasi (30%)</span>
+              <span className="text-sm text-slate-500">Cadangan Koperasi (30%)</span>
               <span className="font-bold text-amber-600">{formatRupiah(data.total_shu_koperasi)}</span>
             </div>
 
@@ -315,15 +456,14 @@ export function AdminDashboard() {
               <span className="font-bold text-blue-600">{formatRupiah(data.total_shu_pengurus)}</span>
             </div>
           </div>
-          <p className="text-xs text-slate-500 text-center">Dana ini adalah hak milik anggota yang belum dicairkan ke saldo e-wallet mereka.</p>
-          <button onClick={() => navigate('/admin/anggota')} className="w-full py-3 bg-pink-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
-            Kelola Distribusi SHU
+          <button onClick={() => { setActiveSheet(null); navigate('/admin/shu') }} className="w-full py-3 bg-pink-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
+            Buka Manajemen SHU
           </button>
         </div>
       </IosBottomSheet>
 
       {/* Piutang Sheet */}
-      <IosBottomSheet isOpen={activeSheet === 'piutang'} onClose={() => setActiveSheet(null)} title="Matriks Piutang (Kredit)">
+      <IosBottomSheet isOpen={activeSheet === 'piutang'} onClose={() => setActiveSheet(null)} title="Matriks Piutang & Plafon Kredit">
         <div className="p-4 space-y-4">
           <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700">
              <div className="flex justify-between items-center mb-2">
@@ -331,13 +471,13 @@ export function AdminDashboard() {
               <span className="font-bold text-rose-600">{formatRupiah(data.total_hutang_beredar)}</span>
             </div>
             <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-zinc-600">
-              <span className="text-sm text-slate-500">Tingkat Risiko Rasio</span>
+              <span className="text-sm text-slate-500">Rasio Risiko Piutang</span>
               <span className={`font-bold ${realHutangRatio > 80 ? 'text-rose-600' : realHutangRatio > 50 ? 'text-amber-600' : 'text-emerald-600'}`}>{realHutangRatio}%</span>
             </div>
           </div>
-          <p className="text-xs text-slate-500 text-center">Total pinjaman/belanja kredit yang sedang berjalan dan belum disetorkan ke kasir.</p>
-          <button onClick={() => navigate('/admin/anggota')} className="w-full py-3 bg-rose-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
-            Pantau Hutang Anggota
+          <p className="text-xs text-slate-500 text-center">Setiap anggota dibatasi plafon maksimal Rp 400.000 dengan agunan simpanan pokok Rp 300.000.</p>
+          <button onClick={() => { setActiveSheet(null); navigate('/admin/anggota') }} className="w-full py-3 bg-rose-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
+            Pantau Piutang Anggota
           </button>
         </div>
       </IosBottomSheet>

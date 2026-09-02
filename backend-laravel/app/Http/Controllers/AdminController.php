@@ -51,6 +51,26 @@ class AdminController extends Controller
         // Nilai Aset Barang (Total Inventory Value = Stok * Harga Modal)
         $total_aset_barang = \App\Models\Barang::sum(\Illuminate\Support\Facades\DB::raw('stok * harga_modal'));
 
+        // 3. Operational Central Nervous System Telemetry
+        // A. Critical Restock (< PKM or stock <= 2)
+        $stok_kritis_query = \App\Models\Barang::where(function($q) {
+            $q->whereRaw('stok < COALESCE(pkm, 1)')->orWhere('stok', '<=', 2);
+        });
+        $stok_kritis_count = $stok_kritis_query->count();
+        $stok_kritis_items = $stok_kritis_query->orderBy('stok', 'asc')->limit(5)->get(['barang_id', 'nama_barang', 'stok', 'pkm', 'harga_modal']);
+
+        // B. Pending Setoran Kasir (Cash-in-Transit waiting for safe deposit)
+        $setoran_pending_count = \App\Models\SetoranKasir::where('status', 'pending')->count();
+        $setoran_pending_nominal = (float) (\App\Models\SetoranKasir::where('status', 'pending')->sum('nominal') ?? 0);
+
+        // C. Credit Risk Monitoring (Anggota with debt >= Rp 300.000, max limit is 400.000)
+        $anggota_limit_kritis_count = \App\Models\Anggota::where('hutang', '>=', 300000)->count();
+
+        // D. Monthly Restock Expenditure
+        $total_restock_bulan_ini = (float) (\App\Models\RiwayatRestock::whereMonth('created_at', Carbon::now()->month)
+            ->whereYear('created_at', Carbon::now()->year)
+            ->sum('total_biaya') ?? 0);
+
         return response()->json([
             'success' => true,
             'total_anggota' => (int) $total_anggota,
@@ -62,7 +82,13 @@ class AdminController extends Controller
             'total_shu_tersedia' => (float) $total_shu_tersedia,
             'total_shu_pengurus' => (float) $total_shu_pengurus,
             'total_shu_koperasi' => (float) $total_shu_koperasi,
-            'total_aset_barang' => (float) $total_aset_barang
+            'total_aset_barang' => (float) $total_aset_barang,
+            'stok_kritis_count' => (int) $stok_kritis_count,
+            'stok_kritis_items' => $stok_kritis_items,
+            'setoran_pending_count' => (int) $setoran_pending_count,
+            'setoran_pending_nominal' => (float) $setoran_pending_nominal,
+            'anggota_limit_kritis_count' => (int) $anggota_limit_kritis_count,
+            'total_restock_bulan_ini' => (float) $total_restock_bulan_ini,
         ]);
     }
 

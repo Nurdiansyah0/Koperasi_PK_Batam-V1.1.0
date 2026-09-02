@@ -246,6 +246,18 @@ export interface DashboardAdmin {
   total_shu_pengurus: number
   total_shu_koperasi: number
   total_aset_barang: number
+  stok_kritis_count?: number
+  stok_kritis_items?: Array<{
+    barang_id: number
+    nama_barang: string
+    stok: number
+    pkm?: number
+    harga_modal: number
+  }>
+  setoran_pending_count?: number
+  setoran_pending_nominal?: number
+  anggota_limit_kritis_count?: number
+  total_restock_bulan_ini?: number
 }
 
 // ─── Laporan Transaksi ───────────────────────────────────────
