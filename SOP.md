@@ -300,7 +300,33 @@ flowchart TD
 
 ---
 
+### E. Siklus Lengkap Pengadaan Kulakan (*Closed-Loop Procurement Workflow*)
+
+```mermaid
+flowchart LR
+    A["1. Generate Struk Belanja (/admin/pkm)"] --> B["2. Salin WA / Bawa ke Pasar Grosir"]
+    B --> C["3. Beli Fisik & Terima Nota/Faktur Distributor"]
+    C --> D["4. Klik 'Catat Faktur Masuk' di Sistem"]
+    D --> E["5. Verifikasi Kuantitas, Harga Modal & Expired Batch"]
+    E --> F["6. Simpan: Stok Bertambah & Buku Kas Tercatat Otomatis"]
+```
+
+1. **Fase 1 — Sebelum Belanja (Perencanaan):**
+   * Petugas membuka menu **Struk Rencana Kulakan Belanja** ([/admin/pkm](http://localhost:5173/admin/pkm)).
+   * Memilih basis penjualan (3, 7, 14, atau 30 hari) dan target buffer persediaan.
+   * Menekan **`[ 📋 Salin WA ]`** atau **`[ 🖨️ Cetak ]`** untuk membawa struk belanja di layar HP saat menuju grosir/distributor.
+2. **Fase 2 — Saat di Pasar Grosir (Pembelian Fisik):**
+   * Petugas membeli barang fisik sesuai daftar dan menerima faktur/nota fisik pembelian dari toko grosir.
+3. **Fase 3 — Pasca Belanja / Penerimaan Barang Masuk (*Inbound Receiving*):**
+   * Setelah tiba di koperasi, petugas membuka kembali menu Struk Belanja dan menekan tombol **`[ 📥 Catat Faktur Masuk ]`**.
+   * **Data Otomatis Terisi (Pre-filled):** Seluruh item yang tadi direncanakan otomatis terdaftar di tabel faktur masuk.
+   * **Penyesuaian Realistis:** Petugas tinggal mencocokkan nomor faktur fisik, nama supplier, mengedit kuantitas riil yang terbeli, harga modal baru jika ada kenaikan/penurunan harga dari grosir, dan tanggal kadaluarsa batch terbaru.
+   * **Eksekusi 1-Klik:** Klik **"Simpan Faktur Masuk"** ➔ Stok sistem langsung bertambah, harga modal otomatis ter-update, tanggal expired tercatat, dan buku pengeluaran kas koperasi langsung tersinkronkan seketika tanpa perlu input manual satu per satu!
+
+---
+
 **Disahkan oleh:**  
 *Pengurus & Manajemen Koperasi Karyawan PKPPK Batam*  
-*Tanggal Efektif: September 2026 (Revisi 2.2 - 2-Tier Inventory & FEFO Expiry)*
+*Tanggal Efektif: September 2026 (Revisi 2.3 - Closed-Loop Inbound Procurement)*
+
 
