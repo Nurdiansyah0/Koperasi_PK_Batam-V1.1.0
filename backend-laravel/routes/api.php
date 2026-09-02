@@ -86,6 +86,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/data-kasir', [AdminController::class, 'getDataKasir']);
         Route::post('/restock-barang', [AdminController::class, 'restockBarang']);
         Route::get('/riwayat-restock', [AdminController::class, 'getRiwayatRestock']);
+        Route::post('/barang/restock', [AdminController::class, 'restockBarang']);
+        Route::get('/barang/restock', [AdminController::class, 'getRiwayatRestock']);
         Route::get('/pkm-analysis', [AdminController::class, 'getPkmAnalysis']);
         Route::post('/update-pkm', [AdminController::class, 'updatePkm']);
         Route::post('/auto-calculate-pkm', [AdminController::class, 'autoCalculatePkm']);
