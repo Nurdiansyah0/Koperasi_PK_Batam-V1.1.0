@@ -300,85 +300,118 @@ export function ManajemenPkmPage() {
           }
         }
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 12mm 15mm;
+          }
           body * {
-            visibility: hidden;
+            visibility: hidden !important;
           }
           #printable-shopping-sheet, #printable-shopping-sheet * {
-            visibility: visible;
+            visibility: visible !important;
           }
           #printable-shopping-sheet {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            background: white !important;
-            color: black !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            background: #ffffff !important;
+            color: #000000 !important;
             display: block !important;
-            padding: 24px;
-            font-family: Arial, sans-serif;
+            padding: 0 !important;
+            margin: 0 !important;
+            font-family: Arial, sans-serif !important;
           }
         }
       `}} />
 
-      {/* DEDICATED PRINTABLE A4 SHOPPING SHEET (CLEAN BLACK & WHITE FOR PRINTING) */}
+      {/* DEDICATED PRINTABLE A4 SHOPPING SHEET (KOP SURAT RESMI TANPA REDUNDANSI) */}
       <div id="printable-shopping-sheet" className="text-black bg-white">
-        {/* Header */}
-        <div className="border-b-2 border-black pb-3 mb-4 text-center">
-          <h1 className="text-xl font-black uppercase tracking-wider">KOPERASI KARYAWAN PKPPK BTH</h1>
-          <h2 className="text-sm font-bold mt-0.5">LEMBAR RENCANA KULAKAN BELANJA TOKO</h2>
-          <div className="flex justify-between text-[11px] mt-2 text-slate-700">
-            <span><strong>Tanggal Cetak:</strong> {new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })}</span>
-            <span><strong>Dasar Analisis:</strong> Penjualan {days} Hari Terakhir (Buffer {leadTime} Hari)</span>
+        {/* OFFICIAL LETTERHEAD (KOP SURAT) */}
+        <div className="border-b-4 border-double border-black pb-3 mb-5">
+          <div className="flex items-center justify-between gap-4">
+            {/* Logo / Lambang Koperasi */}
+            <div className="w-16 h-16 border-2 border-black rounded-xl flex items-center justify-center text-center p-1 font-black text-xs leading-tight tracking-tight shrink-0">
+              KOPKAR<br/>PKPPK<br/>BTH
+            </div>
+
+            {/* Teks Kop Surat Tengah */}
+            <div className="text-center flex-1">
+              <h1 className="text-lg font-black tracking-wider uppercase m-0 p-0 text-black">
+                KOPERASI KARYAWAN PKPPK BTH
+              </h1>
+              <p className="text-[11px] font-bold text-gray-800 m-0 mt-0.5">
+                LEMBAR RENCANA KULAKAN BELANJA TOKO
+              </p>
+              <p className="text-[10px] text-gray-600 m-0">
+                Kota Batam, Kepulauan Riau — Unit Usaha Pertokoan & Retail
+              </p>
+            </div>
+
+            {/* Dokumen Meta Box Kanan */}
+            <div className="border border-black p-2 rounded-lg text-[10px] text-left shrink-0 min-w-[130px] space-y-0.5">
+              <div><strong>Tanggal:</strong> {new Date().toLocaleDateString('id-ID', { dateStyle: 'medium' })}</div>
+              <div><strong>Basis:</strong> {days} Hari Penjualan</div>
+              <div><strong>Total SKU:</strong> {activeSelectedItems.length} Item</div>
+            </div>
           </div>
         </div>
 
-        {/* Clean Table */}
+        {/* Clean Table: HANYA ITEM YANG DICENTANG */}
         <table className="w-full border-collapse border border-black text-xs mb-6">
           <thead>
-            <tr className="bg-slate-100 font-bold border-b border-black">
-              <th className="border border-black p-2 text-center w-8">No</th>
-              <th className="border border-black p-2 text-center w-12">[ ✓ ]</th>
-              <th className="border border-black p-2 text-left">Nama Barang</th>
-              <th className="border border-black p-2 text-center w-20">Laku ({days}H)</th>
-              <th className="border border-black p-2 text-center w-28">Sisa Stok (Toko/Gdg)</th>
-              <th className="border border-black p-2 text-center w-24">Jumlah Beli</th>
-              <th className="border border-black p-2 text-right w-28">Modal Satuan</th>
-              <th className="border border-black p-2 text-right w-32">Total Harga Beli</th>
+            <tr className="bg-gray-100 font-bold border-b border-black">
+              <th className="border border-black p-1.5 text-center w-8">No</th>
+              <th className="border border-black p-1.5 text-center w-10">Cek</th>
+              <th className="border border-black p-1.5 text-left">Nama Barang</th>
+              <th className="border border-black p-1.5 text-center w-16">Laku ({days}H)</th>
+              <th className="border border-black p-1.5 text-center w-20">Sisa Stok</th>
+              <th className="border border-black p-1.5 text-center w-20">Jumlah Beli</th>
+              <th className="border border-black p-1.5 text-right w-24">Harga Modal</th>
+              <th className="border border-black p-1.5 text-right w-28">Total Harga Beli</th>
             </tr>
           </thead>
           <tbody>
-            {activeSelectedItems.map((item, idx) => (
-              <tr key={item.barang_id} className="border-b border-black">
-                <td className="border border-black p-2 text-center">{idx + 1}</td>
-                <td className="border border-black p-2 text-center font-bold text-base">[ &nbsp; ]</td>
-                <td className="border border-black p-2 font-bold">{item.nama_barang}</td>
-                <td className="border border-black p-2 text-center">{item.total_sold} pcs</td>
-                <td className="border border-black p-2 text-center">{item.stok_toko} / {item.stok_gudang} ({item.stok_total})</td>
-                <td className="border border-black p-2 text-center font-black text-sm">{item.jumlah_beli} pcs</td>
-                <td className="border border-black p-2 text-right">{formatRupiah(item.harga_modal)}</td>
-                <td className="border border-black p-2 text-right font-bold">{formatRupiah(item.jumlah_beli * item.harga_modal)}</td>
+            {activeSelectedItems.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="border border-black p-4 text-center text-gray-500">
+                  Tidak ada barang yang dicentang untuk dibeli.
+                </td>
               </tr>
-            ))}
+            ) : (
+              activeSelectedItems.map((item, idx) => (
+                <tr key={item.barang_id} className="border-b border-black">
+                  <td className="border border-black p-1.5 text-center">{idx + 1}</td>
+                  <td className="border border-black p-1.5 text-center font-bold text-sm">[ &nbsp; ]</td>
+                  <td className="border border-black p-1.5 font-bold">{item.nama_barang}</td>
+                  <td className="border border-black p-1.5 text-center">{item.total_sold} pcs</td>
+                  <td className="border border-black p-1.5 text-center">{item.stok_total} pcs</td>
+                  <td className="border border-black p-1.5 text-center font-black">{item.jumlah_beli} pcs</td>
+                  <td className="border border-black p-1.5 text-right">{formatRupiah(item.harga_modal)}</td>
+                  <td className="border border-black p-1.5 text-right font-bold">{formatRupiah(item.jumlah_beli * item.harga_modal)}</td>
+                </tr>
+              ))
+            )}
           </tbody>
           <tfoot>
-            <tr className="bg-slate-100 font-black border-t-2 border-black text-xs">
-              <td colSpan={5} className="border border-black p-2 text-right">TOTAL RENCANA BELANJA:</td>
-              <td className="border border-black p-2 text-center text-sm">{totalPiecesToBuy} pcs</td>
-              <td className="border border-black p-2 text-right">TOTAL MODAL:</td>
-              <td className="border border-black p-2 text-right text-sm">{formatRupiah(totalBudgetSelected)}</td>
+            <tr className="bg-gray-100 font-black border-t-2 border-black text-xs">
+              <td colSpan={5} className="border border-black p-1.5 text-right">TOTAL RENCANA BELANJA:</td>
+              <td className="border border-black p-1.5 text-center">{totalPiecesToBuy} pcs</td>
+              <td className="border border-black p-1.5 text-right">TOTAL ESTIMASI:</td>
+              <td className="border border-black p-1.5 text-right text-sm">{formatRupiah(totalBudgetSelected)}</td>
             </tr>
           </tfoot>
         </table>
 
-        {/* Formal Signature Block */}
+        {/* Dual Signature Block */}
         <div className="grid grid-cols-2 gap-8 pt-6 text-xs text-center">
           <div>
-            <p className="font-semibold mb-16">Petugas Yang Berbelanja,</p>
-            <p className="font-bold border-t border-black w-48 mx-auto pt-1">( ........................................ )</p>
+            <p className="font-semibold mb-14">Petugas Yang Berbelanja,</p>
+            <p className="font-bold border-t border-black w-44 mx-auto pt-1">( ........................................ )</p>
           </div>
           <div>
-            <p className="font-semibold mb-16">Pengurus / Bendahara Koperasi,</p>
-            <p className="font-bold border-t border-black w-48 mx-auto pt-1">( ........................................ )</p>
+            <p className="font-semibold mb-14">Pengurus / Bendahara Koperasi,</p>
+            <p className="font-bold border-t border-black w-44 mx-auto pt-1">( ........................................ )</p>
           </div>
         </div>
       </div>
