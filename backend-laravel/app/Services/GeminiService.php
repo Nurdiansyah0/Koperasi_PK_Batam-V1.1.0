@@ -19,7 +19,7 @@ class GeminiService
     public function __construct()
     {
         $this->apiKey = (string) config('services.gemini.api_key', env('GEMINI_API_KEY', ''));
-        $this->model = (string) config('services.gemini.model', 'gemini-3.6-flash');
+        $this->model = (string) config('services.gemini.model', 'gemini-2.5-flash');
         $this->baseUrl = (string) config('services.gemini.base_url', 'https://generativelanguage.googleapis.com/v1beta');
     }
 
@@ -63,7 +63,7 @@ class GeminiService
         }
 
         try {
-            $response = Http::timeout(30)
+            $response = Http::timeout(60)
                 ->withHeaders([
                     'Content-Type' => 'application/json',
                 ])

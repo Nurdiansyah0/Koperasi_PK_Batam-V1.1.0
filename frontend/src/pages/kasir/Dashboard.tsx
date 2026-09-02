@@ -4,7 +4,6 @@ import { kasirService } from '@/services/kasirService'
 import { useAuthStore } from '@/store/authStore'
 import { DashboardKasir, Transaksi } from '@/types'
 import { formatRupiah, formatDate } from '@/lib/utils'
-import { IosListSection, IosListItem } from '@/components/ios/IosList'
 import { 
   ShoppingCart, 
   Banknote, 
@@ -16,10 +15,13 @@ import {
   ArrowRight,
   ShieldCheck,
   ShieldAlert,
-  UserCheck,
   ScanLine,
   Coins,
-  BadgeCheck
+  BadgeCheck,
+  ReceiptText,
+  Landmark,
+  History,
+  ChevronRight
 } from 'lucide-react'
 
 export function KasirDashboard() {
@@ -45,16 +47,47 @@ export function KasirDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-full border-3 border-blue-600 border-t-transparent animate-spin" />
+          <p className="text-xs font-semibold text-slate-500">Memuat Dashboard Kasir POS...</p>
+        </div>
       </div>
     )
   }
 
   const statCards = [
-    { label: 'Penjualan Hari Ini', value: formatRupiah(data?.total_pendapatan_hari_ini || 0), icon: TrendingUp, color: 'text-emerald-600', bg: 'from-emerald-500/10 to-teal-500/10 border-emerald-500/20' },
-    { label: 'Transaksi Selesai', value: `${data?.total_transaksi_hari_ini || 0} struk`, icon: ShoppingCart, color: 'text-blue-600', bg: 'from-blue-500/10 to-indigo-500/10 border-blue-500/20' },
-    { label: 'Saldo Kas Laci', value: formatRupiah(data?.saldo_kas || 0), icon: Banknote, color: 'text-indigo-600', bg: 'from-indigo-500/10 to-purple-500/10 border-indigo-500/20' },
-    { label: 'Pending Serah Terima', value: `${data?.pending_serah_terima || 0} req`, icon: ArrowRightLeft, color: 'text-amber-500', bg: 'from-amber-500/10 to-orange-500/10 border-amber-500/20' },
+    { 
+      label: 'Penjualan Hari Ini', 
+      value: formatRupiah(data?.total_pendapatan_hari_ini || 0), 
+      desc: 'Total omset toko shift ini',
+      icon: TrendingUp, 
+      color: 'text-emerald-600 dark:text-emerald-400', 
+      bg: 'from-emerald-500/10 to-teal-500/10 border-emerald-500/20' 
+    },
+    { 
+      label: 'Transaksi Selesai', 
+      value: `${data?.total_transaksi_hari_ini || 0} Struk`, 
+      desc: 'Transaksi berhasil tercatat',
+      icon: ReceiptText, 
+      color: 'text-blue-600 dark:text-blue-400', 
+      bg: 'from-blue-500/10 to-indigo-500/10 border-blue-500/20' 
+    },
+    { 
+      label: 'Saldo Kas Laci', 
+      value: formatRupiah(data?.saldo_kas || 0), 
+      desc: 'Uang fisik tunai kasir',
+      icon: Banknote, 
+      color: 'text-indigo-600 dark:text-indigo-400', 
+      bg: 'from-indigo-500/10 to-purple-500/10 border-indigo-500/20' 
+    },
+    { 
+      label: 'Pending Shift', 
+      value: `${data?.pending_serah_terima || 0} Antrean`, 
+      desc: 'Serah terima menunggu validasi',
+      icon: ArrowRightLeft, 
+      color: 'text-amber-600 dark:text-amber-400', 
+      bg: 'from-amber-500/10 to-orange-500/10 border-amber-500/20' 
+    },
   ]
 
   const pendingPesanan = data?.pending_pesanan || 0
@@ -64,52 +97,99 @@ export function KasirDashboard() {
   const barangSelisihShift = opnameShift?.summary?.barangSelisih || 0
 
   return (
-    <div className="space-y-6 pb-20 max-w-lg md:max-w-4xl mx-auto">
-      {/* 1. Header with Petugas & Member Identity */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">Kasir POS</h1>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 uppercase tracking-wider">
-              Mandat Kasir Aktif
+    <div className="space-y-4 sm:space-y-6 pb-24 max-w-lg md:max-w-4xl mx-auto px-1 sm:px-0">
+      
+      {/* ─── WIDGET 1: PETUGAS KASIR & MEMBER FINANCIAL HERO CARD ─── */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-5 sm:p-6 shadow-xl border border-slate-800">
+        <div className="absolute -right-12 -top-12 w-48 h-48 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col gap-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white font-black text-lg flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0 ring-2 ring-white/10">
+                {user?.nama_lengkap ? user.nama_lengkap.charAt(0).toUpperCase() : user?.username?.charAt(0).toUpperCase() || 'K'}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
+                    {user?.nama_lengkap || user?.username}
+                  </h2>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider flex items-center gap-1">
+                    <BadgeCheck className="w-3 h-3" />
+                    Kasir Aktif
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  @{user?.username} &bull; Anggota Resmi #{user?.anggota_id || '-'}
+                </p>
+              </div>
+            </div>
+
+            <span className="hidden sm:inline-block text-[11px] text-slate-400 bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl font-mono">
+              POS v2.1
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">Ringkasan transaksi dan status operasional kasir hari ini</p>
-        </div>
 
-        {/* Member Profile & SHU Widget */}
-        <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/80 p-2.5 px-3.5 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 self-start sm:self-auto">
-          <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-            {user?.nama_lengkap ? user.nama_lengkap.charAt(0).toUpperCase() : user?.username?.charAt(0).toUpperCase() || 'K'}
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-              {user?.nama_lengkap || user?.username}
-              {user?.nama_lengkap && user?.username && (
-                <span className="text-[11px] font-normal text-slate-400 ml-1">(@{user.username})</span>
-              )}
-            </p>
-            <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
-              <span>Anggota #{user?.anggota_id}</span>
-              <span>&bull;</span>
-              <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                <Coins className="w-3 h-3" />
-                SHU: {formatRupiah(user?.shu || 0)}
-              </span>
+          {/* Member Financial Stats Pills */}
+          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/80">
+            <div className="bg-white/5 backdrop-blur-xs p-2.5 rounded-2xl border border-white/5">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">SHU Pribadi</p>
+              <p className="text-xs sm:text-sm font-black text-emerald-400 mt-0.5 truncate">
+                {formatRupiah(user?.shu || 0)}
+              </p>
+            </div>
+            <div className="bg-white/5 backdrop-blur-xs p-2.5 rounded-2xl border border-white/5">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Simpanan</p>
+              <p className="text-xs sm:text-sm font-black text-blue-300 mt-0.5 truncate">
+                {formatRupiah(user?.saldo || 300000)}
+              </p>
+            </div>
+            <div className="bg-white/5 backdrop-blur-xs p-2.5 rounded-2xl border border-white/5">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Limit Kasbon</p>
+              <p className="text-xs sm:text-sm font-black text-amber-300 mt-0.5 truncate">
+                {formatRupiah(400000)}
+              </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Urgent Pending Handover Banner */}
+      {/* ─── WIDGET 2: PRIMARY POS LAUNCHER (FULL-WIDTH TOUCH ACTION) ─── */}
+      <button
+        onClick={() => navigate('/kasir/transaksi')}
+        className="w-full p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-xl shadow-blue-600/25 flex items-center justify-between group active:scale-[0.98] transition-all border border-blue-400/30 text-left"
+      >
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-white text-blue-600 flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+            <ShoppingCart className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base sm:text-lg font-black tracking-tight">Buka Kasir POS Sekarang</h3>
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-white/20 text-white">
+                Siap Transaksi
+              </span>
+            </div>
+            <p className="text-xs text-blue-100 mt-0.5">
+              Input belanja anggota, scan barcode, bayar tunai/saldo/hutang
+            </p>
+          </div>
+        </div>
+        <div className="w-9 h-9 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-transform">
+          <ArrowRight className="w-5 h-5" />
+        </div>
+      </button>
+
+      {/* ─── URGENT NOTIFICATION BANNER (SERAH TERIMA) ─── */}
       {(data?.pending_serah_terima || 0) > 0 && (
-        <div className="p-4 rounded-3xl bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md flex items-center justify-between gap-3">
+        <div className="p-4 rounded-3xl bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-lg flex items-center justify-between gap-3 animate-pulse">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
               <ArrowRightLeft className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="text-xs font-black uppercase tracking-wider">Tugas Masuk Serah Terima Shift</div>
+              <div className="text-xs font-black uppercase tracking-wider">Tugas Serah Terima Masuk</div>
               <p className="text-xs text-amber-100 mt-0.5">
                 Terdapat {data?.pending_serah_terima} serah terima shift menunggu validasi Anda.
               </p>
@@ -117,29 +197,29 @@ export function KasirDashboard() {
           </div>
           <button
             onClick={() => navigate('/kasir/serah-terima')}
-            className="px-3.5 py-2 rounded-xl bg-white text-rose-700 font-extrabold text-xs shadow-md shrink-0 active:scale-95 hover:bg-rose-50 transition-transform"
+            className="px-3.5 py-2 rounded-xl bg-white text-rose-700 font-black text-xs shadow-md shrink-0 active:scale-95 hover:bg-rose-50 transition-transform"
           >
-            Validasi Shift &rarr;
+            Validasi &rarr;
           </button>
         </div>
       )}
 
-      {/* 2. Active Shift Status Card (Hasil Cycle Count & Serah Terima Diterima) */}
-      {activeShift && (
-        <div className="p-4 rounded-3xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950/40 border border-blue-200/80 dark:border-blue-900/60 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* ─── WIDGET 3: LIVE ACTIVE SHIFT STATUS ─── */}
+      {activeShift ? (
+        <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-blue-200/80 dark:border-blue-900/60 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md">
+            <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-900">
               <ScanLine className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-900 dark:text-white">Shift Aktif Berjalan</span>
+                <span className="text-xs font-extrabold text-slate-900 dark:text-white">Shift Aktif Toko</span>
                 <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
                   Ref: #ST-{activeShift.serah_id}
                 </span>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                Diterima dari <b>@{activeShift.kasir_from_name}</b> &bull; Modal Kas: <b>{formatRupiah(opnameShift?.uang_fisik || 0)}</b>
+                Diterima dari <b>@{activeShift.kasir_from_name}</b> &bull; Modal Awal: <b>{formatRupiah(opnameShift?.uang_fisik || 0)}</b>
               </p>
               <div className="flex items-center gap-2 mt-1">
                 {barangSelisihShift > 0 ? (
@@ -156,129 +236,249 @@ export function KasirDashboard() {
               </div>
             </div>
           </div>
+          <div className="flex items-center gap-2 self-end sm:self-center">
+            <button
+              onClick={() => navigate('/kasir/serah-terima/buat')}
+              className="text-xs font-bold text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            >
+              Ganti Shift
+            </button>
+            <button
+              onClick={() => navigate('/kasir/serah-terima')}
+              className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900"
+            >
+              Detail &rarr;
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 rounded-3xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Clock className="w-5 h-5 text-slate-400" />
+            <div>
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Operasional Shift Mandiri</p>
+              <p className="text-[11px] text-slate-500">Anda dapat membuat serah terima saat pergantian tugas kasir.</p>
+            </div>
+          </div>
           <button
-            onClick={() => navigate('/kasir/serah-terima')}
-            className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 self-end sm:self-center px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-900 shadow-xs active:scale-95"
+            onClick={() => navigate('/kasir/serah-terima/buat')}
+            className="text-xs font-bold text-blue-600 dark:text-blue-400 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-700 shadow-2xs"
           >
-            Lihat Berita Acara &rarr;
+            Form Serah Terima
           </button>
         </div>
       )}
 
-      {/* 3. Priority Action Cards (Pending Orders, Debt Approvals, & Tarik Tunai) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {/* Pesanan Anggota Card */}
-        <button
-          onClick={() => navigate('/kasir/pesanan')}
-          className="p-4 rounded-3xl bg-blue-600 text-white shadow-lg shadow-blue-600/20 flex items-center justify-between text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
-              <ShoppingBag className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h4 className="font-extrabold text-xs sm:text-sm">Pesanan Anggota</h4>
-              <p className="text-[10px] text-blue-100 mt-0.5">
-                {pendingPesanan > 0 ? `${pendingPesanan} pending approval` : 'Semua selesai'}
-              </p>
-            </div>
-          </div>
-          {pendingPesanan > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-white text-blue-700 text-xs font-black shadow-xs">
-              {pendingPesanan}
-            </span>
-          )}
-        </button>
-
-        {/* Persetujuan Bayar Hutang Card */}
-        <button
-          onClick={() => navigate('/kasir/hutang')}
-          className="p-4 rounded-3xl bg-slate-900 dark:bg-zinc-800 text-white border border-slate-800 shadow-md flex items-center justify-between text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-slate-800 flex items-center justify-center">
-              <CreditCard className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <h4 className="font-extrabold text-xs sm:text-sm">Persetujuan Hutang</h4>
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                {pendingHutang > 0 ? `${pendingHutang} cicilan disetor` : 'Tidak ada antrean'}
-              </p>
-            </div>
-          </div>
-          {pendingHutang > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-xs font-black">
-              {pendingHutang}
-            </span>
-          )}
-        </button>
-
-        {/* Tarik Tunai & SHU Card */}
-        <button
-          onClick={() => navigate('/kasir/tarik-tunai')}
-          className="p-4 rounded-3xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 flex items-center justify-between text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
-              <Banknote className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h4 className="font-extrabold text-xs sm:text-sm">Tarik Tunai & SHU</h4>
-              <p className="text-[10px] text-emerald-100 mt-0.5">
-                Min. Belanja Rp 25.000
-              </p>
-            </div>
-          </div>
-          <span className="p-1 rounded-full bg-white/20 text-white">
-            <ArrowRight className="w-3.5 h-3.5" />
-          </span>
-        </button>
-      </div>
-
-      {/* 4. iOS Stat Widgets Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* ─── WIDGET 4: FINANCIAL & DRAWER METRICS (4 COMPACT SMART CARDS) ─── */}
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
         {statCards.map((st) => {
           const Icon = st.icon
           return (
             <div
               key={st.label}
-              className={`p-4 rounded-3xl bg-gradient-to-br ${st.bg} bg-white dark:bg-zinc-900 border shadow-xs flex flex-col justify-between`}
+              className={`p-3.5 sm:p-4 rounded-3xl bg-gradient-to-br ${st.bg} bg-white dark:bg-slate-900 border shadow-xs flex flex-col justify-between`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{st.label}</span>
-                <Icon className={`w-4 h-4 ${st.color}`} />
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{st.label}</span>
+                <div className={`p-1.5 rounded-xl bg-white/80 dark:bg-slate-800/80 shadow-2xs ${st.color}`}>
+                  <Icon className="w-4 h-4" />
+                </div>
               </div>
-              <h3 className={`text-lg sm:text-xl font-extrabold tracking-tight mt-2 ${st.color}`}>
-                {st.value}
-              </h3>
+              <div className="mt-2">
+                <h3 className={`text-base sm:text-xl font-black tracking-tight ${st.color}`}>
+                  {st.value}
+                </h3>
+                <p className="text-[10px] text-slate-400 truncate mt-0.5">{st.desc}</p>
+              </div>
             </div>
           )
         })}
       </div>
 
-      {/* 5. Inset Grouped Recent Transactions */}
-      <IosListSection title="Transaksi Kasir Terbaru">
+      {/* ─── WIDGET 5: BENTO GRID OF 6 QUICK OPERATIONS FOR SMARTPHONE ─── */}
+      <div>
+        <div className="flex items-center justify-between mb-2.5 px-1">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Aksi Cepat Operasional
+          </h3>
+          <span className="text-[11px] text-slate-400">6 Menu Kasir</span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
+          {/* Action 1: Tarik Tunai */}
+          <button
+            onClick={() => navigate('/kasir/tarik-tunai')}
+            className="p-3.5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between text-left hover:border-emerald-500/50 hover:shadow-md transition-all active:scale-[0.97]"
+          >
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+                <Banknote className="w-5 h-5" />
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-300" />
+            </div>
+            <div className="mt-3">
+              <p className="text-xs font-black text-slate-900 dark:text-white">Tarik Tunai SHU</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Verifikasi 4-Tahap</p>
+            </div>
+          </button>
+
+          {/* Action 2: Pesanan Anggota */}
+          <button
+            onClick={() => navigate('/kasir/pesanan')}
+            className="p-3.5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between text-left hover:border-blue-500/50 hover:shadow-md transition-all active:scale-[0.97]"
+          >
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+              {pendingPesanan > 0 ? (
+                <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black animate-pulse">
+                  {pendingPesanan}
+                </span>
+              ) : (
+                <ChevronRight className="w-4 h-4 text-slate-300" />
+              )}
+            </div>
+            <div className="mt-3">
+              <p className="text-xs font-black text-slate-900 dark:text-white">Pesanan Anggota</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">{pendingPesanan > 0 ? `${pendingPesanan} perlu approval` : 'Semua selesai'}</p>
+            </div>
+          </button>
+
+          {/* Action 3: Persetujuan Hutang */}
+          <button
+            onClick={() => navigate('/kasir/hutang')}
+            className="p-3.5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between text-left hover:border-amber-500/50 hover:shadow-md transition-all active:scale-[0.97]"
+          >
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              {pendingHutang > 0 ? (
+                <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black">
+                  {pendingHutang}
+                </span>
+              ) : (
+                <ChevronRight className="w-4 h-4 text-slate-300" />
+              )}
+            </div>
+            <div className="mt-3">
+              <p className="text-xs font-black text-slate-900 dark:text-white">Persetujuan Hutang</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">{pendingHutang > 0 ? `${pendingHutang} cicilan disetor` : 'Kasbon & Cicilan'}</p>
+            </div>
+          </button>
+
+          {/* Action 4: Setoran Kas Admin */}
+          <button
+            onClick={() => navigate('/kasir/setoran')}
+            className="p-3.5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between text-left hover:border-indigo-500/50 hover:shadow-md transition-all active:scale-[0.97]"
+          >
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                <Landmark className="w-5 h-5" />
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-300" />
+            </div>
+            <div className="mt-3">
+              <p className="text-xs font-black text-slate-900 dark:text-white">Setor Kas Toko</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Setor ke Admin</p>
+            </div>
+          </button>
+
+          {/* Action 5: Operasional Shift */}
+          <button
+            onClick={() => navigate('/kasir/serah-terima')}
+            className="p-3.5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between text-left hover:border-purple-500/50 hover:shadow-md transition-all active:scale-[0.97]"
+          >
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+                <ArrowRightLeft className="w-5 h-5" />
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-300" />
+            </div>
+            <div className="mt-3">
+              <p className="text-xs font-black text-slate-900 dark:text-white">Operasional Shift</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Handover & Berita Acara</p>
+            </div>
+          </button>
+
+          {/* Action 6: Riwayat Transaksi */}
+          <button
+            onClick={() => navigate('/kasir/riwayat')}
+            className="p-3.5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between text-left hover:border-slate-500/50 hover:shadow-md transition-all active:scale-[0.97]"
+          >
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-2xl bg-slate-500/10 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold">
+                <History className="w-5 h-5" />
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-300" />
+            </div>
+            <div className="mt-3">
+              <p className="text-xs font-black text-slate-900 dark:text-white">Riwayat Transaksi</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Cari & Cetak Nota</p>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* ─── WIDGET 6: INSET GROUPED RECENT TRANSACTIONS FEED ─── */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-xs">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-sm font-black text-slate-900 dark:text-white">Transaksi Kasir Terbaru</h3>
+            <p className="text-[11px] text-slate-400">Aktivitas penjualan kasir hari ini</p>
+          </div>
+          <button
+            onClick={() => navigate('/kasir/riwayat')}
+            className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
+          >
+            Lihat Semua &rarr;
+          </button>
+        </div>
+
         {transaksiTerbaru.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-400">
-            Belum ada transaksi tercatat hari ini
+          <div className="text-center py-8 text-slate-400 text-xs">
+            Belum ada transaksi pada shift ini. Klik <b>"Buka Kasir POS"</b> untuk melayani pembeli.
           </div>
         ) : (
-          transaksiTerbaru.map((t) => (
-            <IosListItem
-              key={t.transaksi_id}
-              icon={<ShoppingCart className="w-4 h-4" />}
-              iconBgColor="bg-blue-600"
-              title={t.nama_anggota || 'Umum (Non-Anggota)'}
-              subtitle={`${formatDate(t.created_at)} • ${t.metode_pembayaran}`}
-              value={
-                <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-                  {formatRupiah(t.total_harga)}
-                </span>
-              }
-            />
-          ))
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {transaksiTerbaru.slice(0, 5).map((t) => (
+              <div key={t.transaksi_id} className="py-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-9 h-9 rounded-2xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                    t.metode_pembayaran === 'cash' || t.metode_pembayaran === 'tunai'
+                      ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
+                      : t.metode_pembayaran === 'saldo'
+                      ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400'
+                      : t.metode_pembayaran === 'hutang'
+                      ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400'
+                      : 'bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400'
+                  }`}>
+                    {t.metode_pembayaran === 'cash' || t.metode_pembayaran === 'tunai' ? '💵' : t.metode_pembayaran === 'saldo' ? '💳' : t.metode_pembayaran === 'hutang' ? '📝' : '📱'}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                      {t.nama_anggota || 'Pembeli Anggota'}
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      #{t.transaksi_id} &bull; {formatDate(t.created_at)} &bull; <span className="capitalize font-semibold">{t.metode_pembayaran}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs font-black text-slate-900 dark:text-white">
+                    {formatRupiah(t.total_harga)}
+                  </p>
+                  <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">
+                    {t.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
-      </IosListSection>
+      </div>
+
     </div>
   )
 }
