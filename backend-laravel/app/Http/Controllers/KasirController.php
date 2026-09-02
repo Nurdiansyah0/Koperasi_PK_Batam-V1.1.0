@@ -183,8 +183,14 @@ class KasirController extends Controller
     public function getDataBarangBelanjaKasir(Request $request)
     {
         $this->checkKasir($request);
-        $barang = Barang::select('barang_id', 'nama_barang', 'harga_jual', 'stok', 'harga_modal')
-            ->where('stok', '>', 0)->get();
+
+        $barang = \Illuminate\Support\Facades\Cache::remember('kasir_barang_catalog', 60, function() {
+            return Barang::select('barang_id', 'nama_barang', 'harga_jual', 'stok')
+                ->where('stok', '>', 0)
+                ->orderBy('nama_barang', 'asc')
+                ->get();
+        });
+
         return response()->json(['success' => true, 'data' => $barang]);
     }
 
@@ -260,6 +266,7 @@ class KasirController extends Controller
             }
 
             DB::commit();
+            \Illuminate\Support\Facades\Cache::forget('kasir_barang_catalog');
             return response()->json(['success' => true, 'message' => 'Pesanan berhasil dibatalkan dan saldo dikembalikan']);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -357,6 +364,7 @@ class KasirController extends Controller
                 }
             }
             DB::commit();
+            \Illuminate\Support\Facades\Cache::forget('kasir_barang_catalog');
             return response()->json(['success' => true, 'message' => 'Pesanan berhasil diselesaikan']);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -577,14 +585,26 @@ class KasirController extends Controller
     {
         $this->checkKasir($request);
         
-        $anggota = \Illuminate\Support\Facades\Cache::remember('kasir_all_anggota', 30, function() {
-            return Anggota::with('user:user_id,username')
+        $anggota = \Illuminate\Support\Facades\Cache::remember('kasir_all_anggota_slim', 120, function() {
+            return Anggota::select(
+                    'anggota_id','user_id','nama_lengkap','saldo','hutang',
+                    'shu','limit_hutang','sisa_limit_hutang','allowance_hutang'
+                )
+                ->with('user:user_id,username')
                 ->orderBy('nama_lengkap', 'asc')
                 ->get()
                 ->map(function($a) {
-                    $arr = $a->toArray();
-                    $arr['username'] = $a->user ? $a->user->username : '';
-                    return $arr;
+                    return [
+                        'anggota_id'       => $a->anggota_id,
+                        'nama_lengkap'     => $a->nama_lengkap,
+                        'username'         => $a->user?->username ?? '',
+                        'saldo'            => (float) $a->saldo,
+                        'hutang'           => (float) $a->hutang,
+                        'shu'              => (float) $a->shu,
+                        'limit_hutang'     => (float) $a->limit_hutang,
+                        'sisa_limit_hutang'=> (float) $a->sisa_limit_hutang,
+                        'allowance_hutang' => (bool)  $a->allowance_hutang,
+                    ];
                 });
         });
 
