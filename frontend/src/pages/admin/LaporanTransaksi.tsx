@@ -627,7 +627,7 @@ export function LaporanTransaksi() {
                   <td className="border border-black p-1 text-right font-mono font-bold">{formatRupiah(summary.shu_pengurus_10)}</td>
                 </tr>
                 <tr className="bg-gray-100 font-bold border-t-2 border-black">
-                  <td className="border border-black p-1 uppercase font-bold">TOTAL REALISASI ALOKASI SHU:</td>
+                  <td className="border border-black p-1 uppercase font-bold">TOTAL ALOKASI SHU KOPERASI (100.0%):</td>
                   <td className="border border-black p-1 text-center font-bold">100.0%</td>
                   <td className="border border-black p-1 text-right font-mono font-bold">{formatRupiah(summary.total_laba_bersih)}</td>
                 </tr>
@@ -716,7 +716,7 @@ export function LaporanTransaksi() {
               </tbody>
               <tfoot>
                 <tr className="bg-gray-100 font-bold border-t-2 border-black text-[9.5px]">
-                  <td colSpan={3} className="border border-black p-1 text-right uppercase">TOTAL REKAPITULASI:</td>
+                  <td colSpan={3} className="border border-black p-1 text-right uppercase">TOTAL REKAPITULASI (HAK ANGGOTA 60%):</td>
                   <td className="border border-black p-1 text-right font-mono font-black">
                     {formatRupiah((data?.rekap_anggota || []).reduce((acc, c) => acc + c.total_belanja, 0))}
                   </td>
@@ -1849,7 +1849,7 @@ export function LaporanTransaksi() {
                   <td className="border border-black p-1.5 text-right font-mono font-bold">{formatRupiah(summary.shu_pengurus_10)}</td>
                 </tr>
                 <tr className="bg-gray-100 font-black border-t-2 border-black">
-                  <td className="border border-black p-1.5 uppercase">TOTAL REALISASI ALOKASI SHU:</td>
+                  <td className="border border-black p-1.5 uppercase">TOTAL ALOKASI SHU KOPERASI (100.0%):</td>
                   <td className="border border-black p-1.5 text-center font-black">100.0%</td>
                   <td className="border border-black p-1.5 text-right font-mono font-black">{formatRupiah(summary.total_laba_bersih)}</td>
                 </tr>
@@ -1905,7 +1905,7 @@ export function LaporanTransaksi() {
               </tbody>
               <tfoot>
                 <tr className="bg-gray-100 font-black border-t-2 border-black text-[10px]">
-                  <td colSpan={3} className="border border-black p-1 text-right uppercase">TOTAL REKAPITULASI:</td>
+                  <td colSpan={3} className="border border-black p-1 text-right uppercase">TOTAL REKAPITULASI (HAK ANGGOTA 60%):</td>
                   <td className="border border-black p-1 text-right font-mono font-black">
                     {formatRupiah((data?.rekap_anggota || []).reduce((acc, c) => acc + c.total_belanja, 0))}
                   </td>
