@@ -9,6 +9,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::dropIfExists('jabatan_anggota');
+
         Schema::create('jabatan_anggota', function (Blueprint $table) {
             $table->id('jabatan_id');
             $table->integer('user_id');
