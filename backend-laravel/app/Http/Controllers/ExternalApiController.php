@@ -8,9 +8,7 @@ use App\Models\Anggota;
 use App\Models\Barang;
 use App\Models\Transaksi;
 use App\Models\PengeluaranOperasional;
-use App\Models\ShuDistribusi;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 
 class ExternalApiController extends Controller
 {
@@ -209,15 +207,7 @@ class ExternalApiController extends Controller
 
         if ($request->filled('search')) {
             $s = '%' . $request->search . '%';
-            $q->where(function ($query) use ($s) {
-                $query->where('nama_barang', 'like', $s)
-                      ->orWhere('barcode', 'like', $s)
-                      ->orWhere('kategori', 'like', $s);
-            });
-        }
-
-        if ($request->filled('kategori')) {
-            $q->where('kategori', $request->kategori);
+            $q->where('nama_barang', 'like', $s);
         }
 
         if ($request->boolean('in_stock_only')) {
@@ -228,19 +218,17 @@ class ExternalApiController extends Controller
         $paginator = $q->orderBy('nama_barang', 'asc')->paginate($perPage);
 
         $items = collect($paginator->items())->map(function ($b) {
-            $fotoUrl = $b->foto ? (str_starts_with($b->foto, 'http') ? $b->foto : url($b->foto)) : null;
             return [
                 'barang_id' => $b->barang_id,
                 'nama_barang' => $b->nama_barang,
-                'barcode' => $b->barcode,
-                'kategori' => $b->kategori ?: 'Umum',
                 'harga_jual' => (float) $b->harga_jual,
-                'harga_beli' => (float) $b->harga_beli,
+                'harga_modal' => (float) ($b->harga_modal ?? 0),
+                'keuntungan' => (float) ($b->keuntungan ?? 0),
                 'stok' => (int) $b->stok,
                 'stok_toko' => (int) ($b->stok_toko ?? $b->stok),
                 'stok_gudang' => (int) ($b->stok_gudang ?? 0),
-                'satuan' => $b->satuan ?: 'pcs',
-                'foto' => $fotoUrl,
+                'pkm' => (int) ($b->pkm ?? 0),
+                'tgl_kadaluarsa_toko' => $b->tgl_kadaluarsa_toko,
                 'status_stok' => $b->stok <= 0 ? 'HABIS' : ($b->stok <= 5 ? 'MENIPIS' : 'TERSEDIA'),
             ];
         });
@@ -269,7 +257,6 @@ class ExternalApiController extends Controller
             $s = '%' . $request->search . '%';
             $q->where(function ($query) use ($s) {
                 $query->where('nama_lengkap', 'like', $s)
-                      ->orWhere('nomor_anggota', 'like', $s)
                       ->orWhere('email', 'like', $s);
             });
         }
@@ -277,14 +264,13 @@ class ExternalApiController extends Controller
         $members = $q->orderBy('nama_lengkap', 'asc')->get()->map(function ($a) {
             return [
                 'anggota_id' => $a->anggota_id,
-                'nomor_anggota' => $a->nomor_anggota,
+                'user_id' => $a->user_id,
                 'nama_lengkap' => $a->nama_lengkap,
                 'email' => $a->email,
-                'no_telepon' => $a->no_telepon,
                 'saldo_simpanan' => (float) ($a->saldo ?? 0),
                 'saldo_hutang' => (float) ($a->hutang ?? 0),
                 'saldo_shu' => (float) ($a->shu ?? 0),
-                'status' => $a->status ?: 'aktif',
+                'status' => 'aktif',
             ];
         });
 
@@ -301,9 +287,7 @@ class ExternalApiController extends Controller
      */
     public function getMemberDetail(Request $request, $id)
     {
-        $member = Anggota::where('anggota_id', $id)
-            ->orWhere('nomor_anggota', $id)
-            ->first();
+        $member = Anggota::where('anggota_id', $id)->first();
 
         if (!$member) {
             return response()->json([
@@ -334,10 +318,9 @@ class ExternalApiController extends Controller
             'data' => [
                 'profil' => [
                     'anggota_id' => $member->anggota_id,
-                    'nomor_anggota' => $member->nomor_anggota,
+                    'user_id' => $member->user_id,
                     'nama_lengkap' => $member->nama_lengkap,
                     'email' => $member->email,
-                    'no_telepon' => $member->no_telepon,
                     'saldo_simpanan' => (float) ($member->saldo ?? 0),
                     'saldo_hutang' => (float) ($member->hutang ?? 0),
                     'saldo_shu' => (float) ($member->shu ?? 0),
@@ -352,7 +335,6 @@ class ExternalApiController extends Controller
      */
     public function getFinancialReport(Request $request)
     {
-        // Delegate to AdminController logic internally
         $adminController = app(AdminController::class);
         $res = $adminController->getLaporanTransaksi($request);
         $data = $res->getData(true);
@@ -370,7 +352,7 @@ class ExternalApiController extends Controller
      */
     public function getTransactions(Request $request)
     {
-        $q = Transaksi::with(['kasir:user_id,username', 'anggota:anggota_id,nama_lengkap,nomor_anggota', 'details.barang'])
+        $q = Transaksi::with(['kasir:user_id,username', 'anggota:anggota_id,nama_lengkap', 'details.barang'])
             ->whereNotIn('status', ['batal', 'ditolak']);
 
         if ($request->filled('tanggal_awal')) {
@@ -392,7 +374,6 @@ class ExternalApiController extends Controller
                 'created_at' => $t->created_at ? $t->created_at->toIso8601String() : null,
                 'anggota' => $t->anggota ? [
                     'id' => $t->anggota->anggota_id,
-                    'nomor' => $t->anggota->nomor_anggota,
                     'nama' => $t->anggota->nama_lengkap,
                 ] : null,
                 'kasir' => $t->kasir ? $t->kasir->username : 'System',
@@ -427,7 +408,6 @@ class ExternalApiController extends Controller
 
     /**
      * GET /api/v1/assets
-     * Returns all static assets, brand logos, icons, and media files with absolute direct URLs.
      */
     public function getAssets(Request $request)
     {
@@ -464,7 +444,6 @@ class ExternalApiController extends Controller
 
     /**
      * GET /api/v1/ui/widget-data
-     * Ready-to-use structured payload for embedding in personal websites / mobile apps.
      */
     public function getWidgetData(Request $request)
     {
@@ -481,8 +460,8 @@ class ExternalApiController extends Controller
 
         $popularProducts = DB::table('transaksi_detail')
             ->join('barang', 'transaksi_detail.barang_id', '=', 'barang.barang_id')
-            ->select('barang.barang_id', 'barang.nama_barang', 'barang.harga_jual', 'barang.foto', DB::raw('SUM(transaksi_detail.jumlah) as total_terjual'))
-            ->groupBy('barang.barang_id', 'barang.nama_barang', 'barang.harga_jual', 'barang.foto')
+            ->select('barang.barang_id', 'barang.nama_barang', 'barang.harga_jual', DB::raw('SUM(transaksi_detail.jumlah) as total_terjual'))
+            ->groupBy('barang.barang_id', 'barang.nama_barang', 'barang.harga_jual')
             ->orderByDesc('total_terjual')
             ->limit(6)
             ->get()
@@ -492,7 +471,6 @@ class ExternalApiController extends Controller
                     'nama_barang' => $p->nama_barang,
                     'harga_jual' => (float) $p->harga_jual,
                     'total_terjual' => (int) $p->total_terjual,
-                    'foto' => $p->foto ? (str_starts_with($p->foto, 'http') ? $p->foto : url($p->foto)) : null,
                 ];
             });
 
