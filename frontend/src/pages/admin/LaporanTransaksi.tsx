@@ -1164,7 +1164,7 @@ export function LaporanTransaksi() {
                   LAPORAN PERHITUNGAN HASIL USAHA (PHU) & KAS TOKO
                 </p>
                 <p className="text-[10px] text-slate-500 m-0">
-                  Unit Usaha Pertokoan & Retail — Kota Batam, Kepulauan Riau
+                  Unit PKPPK Hang Nadim Batam — Jl. Hang Nadim No.01, Batu Besar, Kecamatan Nongsa, Kota Batam, Kepulauan Riau 29466
                 </p>
               </div>
 

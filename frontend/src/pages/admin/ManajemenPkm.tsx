@@ -407,7 +407,7 @@ export function ManajemenPkmPage() {
                 LEMBAR RENCANA KULAKAN BELANJA TOKO
               </p>
               <p className="text-[10px] text-gray-600 m-0">
-                Unit Usaha Pertokoan & Retail — Kota Batam, Kepulauan Riau
+                Unit PKPPK Hang Nadim Batam — Jl. Hang Nadim No.01, Batu Besar, Kecamatan Nongsa, Kota Batam, Kepulauan Riau 29466
               </p>
             </div>
 
