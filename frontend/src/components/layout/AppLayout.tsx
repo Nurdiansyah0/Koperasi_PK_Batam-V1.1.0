@@ -4,6 +4,7 @@ import { Outlet, Navigate, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
 import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt'
+import { OrderNotificationModal } from '@/components/notifications/OrderNotificationModal'
 import { useAuthStore } from '@/store/authStore'
 import api from '@/lib/api'
 import { LogOut, Menu } from 'lucide-react'
@@ -97,6 +98,9 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Realtime Order Alert Notification Engine */}
+      <OrderNotificationModal />
 
       {/* iOS Bottom Navigation Bar */}
       <BottomNav />

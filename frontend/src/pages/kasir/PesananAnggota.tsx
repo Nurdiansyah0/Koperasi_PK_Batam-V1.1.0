@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
 import { formatRupiah, formatDate } from '@/lib/utils'
-import { ShoppingBag, CheckCircle, XCircle, UserCircle2, CheckSquare, Square, ArrowLeft, CheckCircle2, PackageSearch, RefreshCw, Coins, HandCoins } from 'lucide-react'
+import { ShoppingBag, CheckCircle, XCircle, UserCircle2, CheckSquare, Square, ArrowLeft, CheckCircle2, PackageSearch, RefreshCw, Coins, HandCoins, BellRing } from 'lucide-react'
+import { realtimeOrderService } from '@/services/realtimeOrderService'
 import toast from 'react-hot-toast'
 import type { PesananAnggota } from '@/types'
 
@@ -129,10 +130,30 @@ const PesananAnggotaPage = () => {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Pesanan Anggota</h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Antrean pesanan belanja yang menunggu persetujuan kasir.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={loadData} loading={loading} className="gap-1.5 h-9 rounded-xl">
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Segarkan</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                try {
+                  toast.loading('Memicu simulasi pesanan realtime...', { id: 'test-notif' })
+                  await realtimeOrderService.triggerTestNotification()
+                  toast.success('Simulasi notifikasi berhasil dipancarkan!', { id: 'test-notif' })
+                } catch {
+                  toast.error('Gagal memicu notifikasi test', { id: 'test-notif' })
+                }
+              }}
+              className="gap-1.5 h-9 rounded-xl text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 border border-blue-200 dark:border-blue-800"
+            >
+              <BellRing className="w-3.5 h-3.5" />
+              <span>Test Notifikasi</span>
+            </Button>
+
+            <Button variant="outline" size="sm" onClick={loadData} loading={loading} className="gap-1.5 h-9 rounded-xl">
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Segarkan</span>
+            </Button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-3 pr-1 pb-4 mt-1">

@@ -64,6 +64,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/create-serah-terima', [KasirController::class, 'createSerahTerima']);
         Route::post('/approve-serah-terima', [KasirController::class, 'approveSerahTerima']);
         Route::post('/reject-serah-terima', [KasirController::class, 'rejectSerahTerima']);
+
+        // Real-Time 0s-Latency Push Notifications & SSE Stream for Active Cashiers
+        Route::get('/order-stream', [KasirController::class, 'orderStream']);
+        Route::get('/latest-pending-orders', [KasirController::class, 'getLatestPendingOrders']);
+        Route::post('/test-order-notification', [KasirController::class, 'testOrderNotification']);
     });
 
     // Admin Module

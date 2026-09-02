@@ -420,6 +420,42 @@ class AnggotaController extends Controller
 
             DB::commit();
 
+            // Broadcast real-time order event to Cache for 0-latency SSE & Push Notification
+            try {
+                $itemNames = Barang::whereIn('barang_id', array_column($transaksiItems, 'barang_id'))
+                    ->pluck('nama_barang', 'barang_id');
+                $itemsSummary = collect($transaksiItems)->map(function($it) use ($itemNames) {
+                    return $it['jumlah'] . 'x ' . ($itemNames[$it['barang_id']] ?? 'Item');
+                })->implode(', ');
+
+                $orderEvent = [
+                    'transaksi_id' => $transaksi->transaksi_id,
+                    'anggota_id' => $anggota->anggota_id,
+                    'nama_anggota' => $anggota->nama_lengkap,
+                    'username' => $anggota->username ?? '',
+                    'total_harga' => (float) $totalHarga,
+                    'metode_pembayaran' => $metode,
+                    'items_count' => count($transaksiItems),
+                    'items_summary' => $itemsSummary,
+                    'items' => collect($transaksiItems)->map(function($it) use ($itemNames) {
+                        return [
+                            'barang_id' => $it['barang_id'],
+                            'nama_barang' => $itemNames[$it['barang_id']] ?? 'Item #' . $it['barang_id'],
+                            'jumlah' => $it['jumlah'],
+                            'harga_satuan' => (float) $it['harga_satuan'],
+                            'subtotal' => (float) $it['subtotal']
+                        ];
+                    })->values()->all(),
+                    'created_at' => now()->toIso8601String(),
+                    'timestamp' => microtime(true)
+                ];
+
+                \Illuminate\Support\Facades\Cache::put('koperasi_latest_order_event', $orderEvent, 120);
+                \Illuminate\Support\Facades\Cache::put('koperasi_latest_order_timestamp', microtime(true), 120);
+            } catch (\Throwable $e) {
+                // Non-blocking
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => $tarikTunaiData

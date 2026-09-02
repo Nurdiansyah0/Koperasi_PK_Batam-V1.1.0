@@ -1365,4 +1365,164 @@ class KasirController extends Controller
             ]
         ]);
     }
+
+    /**
+     * ── REAL-TIME ORDER STREAM (Server-Sent Events / SSE) ──
+     * 0s-Latency push notification channel to active cashier on shift.
+     */
+    public function orderStream(Request $request)
+    {
+        $kasirId = $this->checkKasir($request);
+
+        // Check if cashier has an active accepted shift or is admin
+        $hasActiveShift = SerahTerimaKasir::where('kasir_to', $kasirId)
+            ->where('status', 'approved')
+            ->exists() || ($request->user() && $request->user()->isAdmin());
+
+        return response()->stream(function () use ($kasirId, $hasActiveShift) {
+            $lastPushedTime = microtime(true);
+            $maxExecutionSeconds = 25; // Reconnect smoothly every 25s
+            $startTime = time();
+
+            // Initial connection greeting
+            echo "event: connected\n";
+            echo "data: " . json_encode([
+                'status' => 'CONNECTED',
+                'kasir_id' => $kasirId,
+                'has_active_shift' => $hasActiveShift,
+                'server_time' => now()->toIso8601String()
+            ]) . "\n\n";
+            ob_flush();
+            flush();
+
+            while ((time() - $startTime) < $maxExecutionSeconds) {
+                // If connection aborted by client
+                if (connection_aborted()) {
+                    break;
+                }
+
+                // Check Cache for latest order event
+                $latestEvent = \Illuminate\Support\Facades\Cache::get('koperasi_latest_order_event');
+                $eventTime = (float) \Illuminate\Support\Facades\Cache::get('koperasi_latest_order_timestamp', 0);
+
+                if ($latestEvent && $eventTime > $lastPushedTime) {
+                    $lastPushedTime = $eventTime;
+
+                    echo "event: new_order\n";
+                    echo "data: " . json_encode([
+                        'type' => 'NEW_ORDER',
+                        'has_active_shift' => $hasActiveShift,
+                        'order' => $latestEvent
+                    ]) . "\n\n";
+
+                    ob_flush();
+                    flush();
+                }
+
+                // Heartbeat ping every 5 seconds to keep connection alive
+                if ((time() - $startTime) % 5 === 0) {
+                    echo "event: heartbeat\n";
+                    echo "data: " . json_encode(['timestamp' => time()]) . "\n\n";
+                    ob_flush();
+                    flush();
+                }
+
+                usleep(300000); // 300ms sleep for micro-latency response
+            }
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache, no-transform',
+            'Connection' => 'keep-alive',
+            'X-Accel-Buffering' => 'no',
+            'Access-Control-Allow-Origin' => '*'
+        ]);
+    }
+
+    /**
+     * Fast-polling & Delta Sync Fallback endpoint
+     */
+    public function getLatestPendingOrders(Request $request)
+    {
+        $kasirId = $this->checkKasir($request);
+
+        $hasActiveShift = SerahTerimaKasir::where('kasir_to', $kasirId)
+            ->where('status', 'approved')
+            ->exists() || ($request->user() && $request->user()->isAdmin());
+
+        $pendingOrders = Transaksi::with(['anggota', 'details.barang'])
+            ->where('status', 'pending')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($t) {
+                $itemsSummary = $t->details->map(function ($d) {
+                    return $d->jumlah . 'x ' . ($d->barang ? $d->barang->nama_barang : 'Item');
+                })->implode(', ');
+
+                return [
+                    'transaksi_id' => $t->transaksi_id,
+                    'anggota_id' => $t->anggota_id,
+                    'nama_anggota' => $t->anggota ? $t->anggota->nama_lengkap : 'Anggota #' . $t->anggota_id,
+                    'username' => $t->anggota ? $t->anggota->username : '',
+                    'total_harga' => (float) $t->total_harga,
+                    'metode_pembayaran' => $t->metode_pembayaran,
+                    'items_count' => $t->details->count(),
+                    'items_summary' => $itemsSummary,
+                    'created_at' => $t->created_at ? $t->created_at->toIso8601String() : null,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'is_active_shift' => $hasActiveShift,
+            'pending_count' => $pendingOrders->count(),
+            'latest_order' => $pendingOrders->first(),
+            'orders' => $pendingOrders,
+            'server_timestamp' => microtime(true)
+        ]);
+    }
+
+    /**
+     * Simulate / Test incoming order push notification
+     */
+    public function testOrderNotification(Request $request)
+    {
+        $this->checkKasir($request);
+
+        $dummyMember = Anggota::first();
+        $dummyItems = Barang::where('stok', '>', 0)->limit(2)->get();
+
+        $namaAnggota = $dummyMember ? $dummyMember->nama_lengkap : 'Zulkarnain';
+        $itemsSummary = $dummyItems->count() > 0 
+            ? $dummyItems->map(fn($b) => '1x ' . $b->nama_barang)->implode(', ')
+            : '2x Kopi, 1x Samsu';
+        $totalHarga = $dummyItems->sum('harga_jual') ?: 25500;
+
+        $testEvent = [
+            'transaksi_id' => rand(9000, 9999),
+            'anggota_id' => $dummyMember ? $dummyMember->anggota_id : 2,
+            'nama_anggota' => $namaAnggota,
+            'username' => $dummyMember ? $dummyMember->username : 'zulkarnain',
+            'total_harga' => (float) $totalHarga,
+            'metode_pembayaran' => 'hutang',
+            'items_count' => max(1, $dummyItems->count()),
+            'items_summary' => $itemsSummary,
+            'items' => [
+                ['barang_id' => 1, 'nama_barang' => 'Kopi', 'jumlah' => 2, 'harga_satuan' => 3500, 'subtotal' => 7000],
+                ['barang_id' => 2, 'nama_barang' => 'Samsu', 'jumlah' => 1, 'harga_satuan' => 22000, 'subtotal' => 22000],
+            ],
+            'created_at' => now()->toIso8601String(),
+            'timestamp' => microtime(true),
+            'is_test' => true
+        ];
+
+        \Illuminate\Support\Facades\Cache::put('koperasi_latest_order_event', $testEvent, 120);
+        \Illuminate\Support\Facades\Cache::put('koperasi_latest_order_timestamp', microtime(true), 120);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Test event notifikasi berhasil di-broadcast ke seluruh kasir aktif!',
+            'data' => $testEvent
+        ]);
+    }
 }
