@@ -525,11 +525,18 @@ class KasirController extends Controller
     public function getAllAnggota(Request $request)
     {
         $this->checkKasir($request);
-        $anggota = Anggota::with('user:user_id,username')->orderBy('nama_lengkap', 'asc')->get()->map(function($a) {
-            $arr = $a->toArray();
-            $arr['username'] = $a->user ? $a->user->username : '';
-            return $arr;
+        
+        $anggota = \Illuminate\Support\Facades\Cache::remember('kasir_all_anggota', 30, function() {
+            return Anggota::with('user:user_id,username')
+                ->orderBy('nama_lengkap', 'asc')
+                ->get()
+                ->map(function($a) {
+                    $arr = $a->toArray();
+                    $arr['username'] = $a->user ? $a->user->username : '';
+                    return $arr;
+                });
         });
+
         return response()->json(['success' => true, 'data' => $anggota]);
     }
 
