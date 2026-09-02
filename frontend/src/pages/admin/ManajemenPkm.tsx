@@ -158,11 +158,11 @@ export function ManajemenPkmPage() {
       `---------------------------------------`,
       ...activeSelectedItems.map((item, idx) => {
         const subtotal = item.jumlah_beli * item.harga_modal
-        return `${idx + 1}. [ ] *${item.nama_barang}* ➔ *${item.jumlah_beli} pcs* (Laku ${item.total_sold} | Sisa ${item.stok_total}) ~ ${formatRupiah(subtotal)}`
+        return `${idx + 1}. [ ] *${item.nama_barang}* ➔ Beli: *${item.jumlah_beli} pcs* @ ${formatRupiah(item.harga_modal)} = *${formatRupiah(subtotal)}* (Laku: ${item.total_sold} | Sisa: ${item.stok_total})`
       }),
       `---------------------------------------`,
       `*TOTAL DIBELI:* *${totalPiecesToBuy} pcs* (${activeSelectedItems.length} item)`,
-      `*ESTIMASI MODAL:* *${formatRupiah(totalBudgetSelected)}*`,
+      `*ESTIMASI TOTAL MODAL:* *${formatRupiah(totalBudgetSelected)}*`,
       `---------------------------------------`,
       `_Bawa uang kas tunai / debit koperasi._`
     ]
@@ -341,9 +341,9 @@ export function ManajemenPkmPage() {
               <th className="border border-black p-2 text-left">Nama Barang</th>
               <th className="border border-black p-2 text-center w-20">Laku ({days}H)</th>
               <th className="border border-black p-2 text-center w-28">Sisa Stok (Toko/Gdg)</th>
-              <th className="border border-black p-2 text-center w-24">Rencana Beli</th>
-              <th className="border border-black p-2 text-right w-28">Harga Modal</th>
-              <th className="border border-black p-2 text-right w-32">Estimasi Subtotal</th>
+              <th className="border border-black p-2 text-center w-24">Jumlah Beli</th>
+              <th className="border border-black p-2 text-right w-28">Modal Satuan</th>
+              <th className="border border-black p-2 text-right w-32">Total Harga Beli</th>
             </tr>
           </thead>
           <tbody>
@@ -364,7 +364,7 @@ export function ManajemenPkmPage() {
             <tr className="bg-slate-100 font-black border-t-2 border-black text-xs">
               <td colSpan={5} className="border border-black p-2 text-right">TOTAL RENCANA BELANJA:</td>
               <td className="border border-black p-2 text-center text-sm">{totalPiecesToBuy} pcs</td>
-              <td className="border border-black p-2 text-right">ESTIMASI BUDGET:</td>
+              <td className="border border-black p-2 text-right">TOTAL MODAL:</td>
               <td className="border border-black p-2 text-right text-sm">{formatRupiah(totalBudgetSelected)}</td>
             </tr>
           </tfoot>
@@ -640,10 +640,12 @@ export function ManajemenPkmPage() {
                         <span className="text-[11px] text-slate-400">pcs</span>
                       </div>
 
-                      <div className="text-right min-w-[100px]">
-                        <span className="text-[10px] text-slate-400 block">Subtotal Modal</span>
-                        <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-                          {formatRupiah(subtotal)}
+                      <div className="text-right min-w-[120px]">
+                        <span className="text-[10px] text-slate-400 block">
+                          {item.jumlah_beli} x {formatRupiah(item.harga_modal)}
+                        </span>
+                        <span className="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">
+                          = {formatRupiah(subtotal)}
                         </span>
                       </div>
                     </div>
