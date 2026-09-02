@@ -1,8 +1,7 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import {
   ShoppingCart,
-  Receipt,
   Search,
   Copy,
   Check,
@@ -12,23 +11,15 @@ import {
   Zap,
   CheckSquare,
   Square,
-  SlidersHorizontal,
-  Store,
-  Warehouse,
-  ArrowRight,
-  TrendingUp,
-  Download,
-  PlusCircle,
   FileCheck2,
   Trash2,
-  Building2
+  HelpCircle,
+  ArrowRight
 } from 'lucide-react'
 import { adminService } from '@/services/adminService'
-import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
-import { InputRupiah } from '@/components/ui/InputRupiah'
 import { formatRupiah } from '@/lib/utils'
 import type { PkmItem } from '@/types'
 
@@ -57,17 +48,15 @@ interface InboundItem {
 
 export function ManajemenPkmPage() {
   const [items, setItems] = useState<PkmItem[]>([])
-  const [summary, setSummary] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [days, setDays] = useState(7)
   const [leadTime, setLeadTime] = useState(4)
-  const [viewMode, setViewMode] = useState<'checklist' | 'receipt'>('checklist')
   const [copiedSlip, setCopiedSlip] = useState(false)
   const [shoppingItems, setShoppingItems] = useState<ShoppingCartItem[]>([])
   const [autoCalculating, setAutoCalculating] = useState(false)
 
-  // Inbound Receiving Modal State (Catat Faktur Kulakan Masuk)
+  // Inbound Receiving Modal State (Catat Faktur Masuk Pasca Belanja)
   const [isInboundModalOpen, setIsInboundModalOpen] = useState(false)
   const [inboundItems, setInboundItems] = useState<InboundItem[]>([])
   const [inboundForm, setInboundForm] = useState({
@@ -78,8 +67,6 @@ export function ManajemenPkmPage() {
   })
   const [savingInbound, setSavingInbound] = useState(false)
 
-  const receiptRef = useRef<HTMLDivElement>(null)
-
   const loadData = async () => {
     setLoading(true)
     try {
@@ -87,7 +74,6 @@ export function ManajemenPkmPage() {
       if (res.success) {
         const rawData: PkmItem[] = res.data || []
         setItems(rawData)
-        setSummary(res.summary || null)
 
         // Initialize shopping cart items
         const cart: ShoppingCartItem[] = rawData.map(item => {
@@ -109,7 +95,7 @@ export function ManajemenPkmPage() {
         setShoppingItems(cart)
       }
     } catch {
-      toast.error('Gagal memuat rencana belanja kulakan')
+      toast.error('Gagal memuat rencana belanja')
     } finally {
       setLoading(false)
     }
@@ -131,6 +117,12 @@ export function ManajemenPkmPage() {
     ))
   }
 
+  // Select / Deselect All
+  const handleToggleSelectAll = () => {
+    const allSelected = shoppingItems.every(i => i.is_selected)
+    setShoppingItems(prev => prev.map(item => ({ ...item, is_selected: !allSelected })))
+  }
+
   // Update purchase quantity
   const updateBuyQty = (barangId: number, qty: number) => {
     setShoppingItems(prev => prev.map(item => 
@@ -138,7 +130,7 @@ export function ManajemenPkmPage() {
     ))
   }
 
-  // Active items selected for the shopping slip
+  // Active items selected for the shopping list
   const activeSelectedItems = useMemo(() => {
     return shoppingItems.filter(i => i.is_selected && i.jumlah_beli > 0)
   }, [shoppingItems])
@@ -155,39 +147,39 @@ export function ManajemenPkmPage() {
   // Copy shopping slip to WhatsApp
   const handleCopyWhatsAppSlip = () => {
     if (activeSelectedItems.length === 0) {
-      toast.error('Pilih minimal 1 barang untuk dimasukkan ke struk')
+      toast.error('Pilih minimal 1 barang untuk dimasukkan ke daftar belanja')
       return
     }
 
     const lines = [
-      `🛒 *STRUK RENCANA KULAKAN BELANJA*`,
-      `*KOPERASI KARYAWAN PK BATAM*`,
+      `🛒 *DAFTAR RENCANA KULAKAN BELANJA*`,
+      `*KOPERASI KARYAWAN PT. PKPPK BATAM*`,
       `Tanggal: ${new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })}`,
-      `Basis Data: Penjualan ${days} Hari Terakhir (Buffer ${leadTime} Hari)`,
+      `Dasar Perhitungan: Penjualan ${days} Hari Terakhir`,
       `---------------------------------------`,
       ...activeSelectedItems.map((item, idx) => {
         const subtotal = item.jumlah_beli * item.harga_modal
-        return `${idx + 1}. [ ] *${item.nama_barang}*\n   ├ Laku: ${item.total_sold} pcs | Sisa: ${item.stok_total} pcs (Toko: ${item.stok_toko}/Gudang: ${item.stok_gudang})\n   └ Beli: *${item.jumlah_beli} pcs* @ ${formatRupiah(item.harga_modal)} = *${formatRupiah(subtotal)}*`
+        return `${idx + 1}. [ ] *${item.nama_barang}*\n   ├ Laku: ${item.total_sold} pcs | Sisa: ${item.stok_total} pcs (Toko: ${item.stok_toko} / Gudang: ${item.stok_gudang})\n   └ ➔ Beli: *${item.jumlah_beli} pcs* @ ${formatRupiah(item.harga_modal)} = *${formatRupiah(subtotal)}*`
       }),
       `---------------------------------------`,
       `*TOTAL BARANG DIBELI:* ${totalPiecesToBuy} pcs (${activeSelectedItems.length} SKU)`,
-      `*ESTIMASI TOTAL BUDGET:* *${formatRupiah(totalBudgetSelected)}*`,
+      `*ESTIMASI UANG BELANJA:* *${formatRupiah(totalBudgetSelected)}*`,
       `---------------------------------------`,
-      `_Catatan: Siapkan uang kas / saldo debit koperasi sesuai estimasi._`
+      `_Catatan: Siapkan uang kas tunai / debit sesuai estimasi di atas._`
     ]
 
     navigator.clipboard.writeText(lines.join('\n'))
     setCopiedSlip(true)
-    toast.success('Struk belanja berhasil disalin ke clipboard WhatsApp!')
+    toast.success('Daftar belanja berhasil disalin ke clipboard WhatsApp!')
     setTimeout(() => setCopiedSlip(false), 3000)
   }
 
-  // Print Receipt
+  // Print Shopping List
   const handlePrintReceipt = () => {
     window.print()
   }
 
-  // Open Inbound Receiving Modal (Pre-filled from Shopping Slip)
+  // Open Inbound Receiving Modal (Pre-filled from Shopping List)
   const handleOpenInboundModal = () => {
     if (activeSelectedItems.length === 0) {
       toast.error('Pilih minimal 1 barang yang dibeli untuk dicatat faktur masuknya')
@@ -302,46 +294,40 @@ export function ManajemenPkmPage() {
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             <ShoppingCart className="w-6 h-6 text-blue-600" />
-            Struk Rencana Kulakan Belanja
+            Rencana Belanja Kulakan
           </h1>
           <p className="text-xs text-slate-500">
-            Daftar rekomendasi belanja kulakan ke grosir/distributor berdasarkan data barang laku & sisa stok.
+            Daftar otomatis barang yang perlu dibeli ke supplier berdasarkan barang laku & sisa stok.
           </p>
         </div>
 
-        {/* View Mode Switcher & Inbound Trigger */}
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <Button
-            onClick={handleOpenInboundModal}
-            className="h-9 px-3.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-1.5 shadow-xs"
-          >
-            <FileCheck2 className="w-4 h-4" />
-            Catat Faktur Masuk ({activeSelectedItems.length})
-          </Button>
+        {/* Action Button: Catat Faktur Masuk Pasca Belanja */}
+        <Button
+          onClick={handleOpenInboundModal}
+          className="h-10 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl gap-2 shadow-sm w-full sm:w-auto"
+        >
+          <FileCheck2 className="w-4 h-4" />
+          📥 Catat Barang Masuk ({activeSelectedItems.length} SKU)
+        </Button>
+      </div>
 
-          <div className="flex rounded-2xl bg-slate-100 dark:bg-zinc-800 p-1 text-xs w-full sm:w-auto shadow-2xs">
-            <button
-              onClick={() => setViewMode('checklist')}
-              className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 ${
-                viewMode === 'checklist'
-                  ? 'bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              <CheckSquare className="w-3.5 h-3.5" />
-              Lembar Kerja
-            </button>
-            <button
-              onClick={() => setViewMode('receipt')}
-              className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 ${
-                viewMode === 'receipt'
-                  ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              <Receipt className="w-3.5 h-3.5" />
-              Struk Kasir
-            </button>
+      {/* Panduan 3 Langkah Singkat (Zero-Confusion Guide) */}
+      <div className="p-3.5 bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/40 rounded-3xl text-xs space-y-1 text-slate-700 dark:text-slate-300">
+        <div className="font-bold flex items-center gap-1.5 text-blue-900 dark:text-blue-300">
+          <HelpCircle className="w-4 h-4 text-blue-600" /> Cara Pakai Halaman Ini:
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1">
+          <div className="p-2 bg-white/80 dark:bg-zinc-900/80 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+            <strong className="text-blue-600 block">1. Cek & Sesuaikan</strong>
+            Lihat daftar di bawah. Centang barang yang mau dibeli hari ini dan sesuaikan jumlah pcs-nya.
+          </div>
+          <div className="p-2 bg-white/80 dark:bg-zinc-900/80 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+            <strong className="text-blue-600 block">2. Bawa ke Pasar Grosir</strong>
+            Klik tombol <strong>"Salin ke WA"</strong> atau <strong>"Cetak"</strong> untuk membawa daftar di HP.
+          </div>
+          <div className="p-2 bg-white/80 dark:bg-zinc-900/80 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+            <strong className="text-emerald-600 block">3. Pulang & Catat Stok</strong>
+            Setelah barang fisik tiba, klik tombol hijau <strong>"📥 Catat Barang Masuk"</strong> untuk menambah stok sistem.
           </div>
         </div>
       </div>
@@ -352,7 +338,7 @@ export function ManajemenPkmPage() {
           {/* Period Selector */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="font-bold text-slate-500 mr-1 flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" /> Basis Histori Penjualan:
+              <Calendar className="w-3.5 h-3.5" /> Hitung Penjualan:
             </span>
             {[3, 7, 14, 30].map(d => (
               <button
@@ -364,14 +350,14 @@ export function ManajemenPkmPage() {
                     : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                 }`}
               >
-                {d} Hari {d === 7 && '(Rekomendasi)'}
+                {d} Hari {d === 7 && '(Standar)'}
               </button>
             ))}
           </div>
 
           {/* Buffer Lead Time */}
           <div className="flex items-center gap-1.5">
-            <span className="font-bold text-slate-500 mr-1">Target Buffer:</span>
+            <span className="font-bold text-slate-500 mr-1">Target Stok:</span>
             {[4, 7].map(lt => (
               <button
                 key={lt}
@@ -382,7 +368,7 @@ export function ManajemenPkmPage() {
                     : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                 }`}
               >
-                {lt} Hari Stok {lt === 4 && '(PKM Toko)'}
+                {lt} Hari {lt === 4 && '(PKM Toko)'}
               </button>
             ))}
           </div>
@@ -394,7 +380,7 @@ export function ManajemenPkmPage() {
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Cari rokok, sembako, atau snack..."
+              placeholder="Cari nama barang..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 border rounded-2xl text-xs bg-slate-50 dark:bg-zinc-800/80 border-slate-200 dark:border-zinc-700 outline-none focus:ring-2 focus:ring-blue-500"
@@ -417,12 +403,12 @@ export function ManajemenPkmPage() {
         </form>
       </div>
 
-      {/* Summary Banner */}
+      {/* Summary Banner (Estimasi Budget & Total Fisik) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="p-4 rounded-3xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/60 flex items-center justify-between">
           <div>
             <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 block uppercase tracking-wider">
-              Estimasi Budget Modal
+              Estimasi Uang Modal Dibawa
             </span>
             <span className="text-xl font-black text-blue-900 dark:text-blue-100">
               {formatRupiah(totalBudgetSelected)}
@@ -434,54 +420,63 @@ export function ManajemenPkmPage() {
         <div className="p-4 rounded-3xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/60 flex items-center justify-between">
           <div>
             <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 block uppercase tracking-wider">
-              Fisik yang Harus Dibeli
+              Total Fisik yang Harus Dibeli
             </span>
             <span className="text-xl font-black text-emerald-900 dark:text-emerald-100">
               {totalPiecesToBuy} <span className="text-xs font-normal text-slate-500">pcs ({activeSelectedItems.length} SKU)</span>
             </span>
           </div>
-          <Receipt className="w-7 h-7 text-emerald-500 opacity-60" />
+          <CheckSquare className="w-7 h-7 text-emerald-500 opacity-60" />
         </div>
 
         <div className="p-4 rounded-3xl bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 flex items-center justify-between">
-          <div className="space-y-1">
+          <div className="space-y-1.5 w-full">
             <span className="text-[11px] font-bold text-slate-500 block uppercase tracking-wider">
-              Aksi Cepat Struk
+              Bawa Daftar Belanja:
             </span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <Button
                 size="sm"
                 onClick={handleCopyWhatsAppSlip}
-                className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-1"
+                className="flex-1 h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-1"
               >
                 {copiedSlip ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                {copiedSlip ? 'Tersalin' : 'Salin WA'}
+                {copiedSlip ? 'Tersalin!' : 'Salin ke WA'}
               </Button>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={handlePrintReceipt}
-                className="h-8 text-xs font-bold rounded-xl gap-1"
+                className="flex-1 h-8 text-xs font-bold rounded-xl gap-1"
               >
-                <Printer className="w-3.5 h-3.5" /> Cetak
+                <Printer className="w-3.5 h-3.5" /> Cetak Kertas
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Content Area: DAFTAR BARANG BELANJA */}
       {loading ? (
         <div className="p-12 text-center text-slate-500">
           <div className="w-8 h-8 mx-auto mb-2 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
-          Menganalisis pergerakan penjualan {days} hari terakhir...
+          Menganalisis penjualan {days} hari terakhir...
         </div>
-      ) : viewMode === 'checklist' ? (
-        /* MODE 1: INTERACTIVE CHECKLIST TABLE */
+      ) : (
         <div className="space-y-2.5">
           <div className="flex justify-between items-center px-1 text-xs text-slate-500">
-            <span>Daftar Barang ({shoppingItems.length} SKU ditemukan)</span>
-            <span className="text-[11px]">Centang & sesuaikan jumlah sebelum belanja</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleToggleSelectAll}
+                className="font-bold text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                {shoppingItems.every(i => i.is_selected) ? 'Batal Pilih Semua' : 'Pilih Semua'}
+              </button>
+              <span>•</span>
+              <span>{shoppingItems.length} SKU terdaftar</span>
+            </div>
+            <span className="text-[11px]">Centang & ubah angka beli sebelum belanja</span>
           </div>
 
           <div className="space-y-2">
@@ -528,7 +523,7 @@ export function ManajemenPkmPage() {
                         <span className="text-emerald-600 dark:text-emerald-400 font-bold">
                           Laku: {item.total_sold} pcs
                         </span>
-                        <span>Sisa Total: <strong>{item.stok_total} pcs</strong> (Toko: {item.stok_toko} / Gudang: {item.stok_gudang})</span>
+                        <span>Sisa: <strong>{item.stok_total} pcs</strong> (Toko: {item.stok_toko} / Gudang: {item.stok_gudang})</span>
                         <span>Modal Kemarin: <strong>{formatRupiah(item.harga_modal)}</strong></span>
                       </div>
                     </div>
@@ -561,73 +556,6 @@ export function ManajemenPkmPage() {
             })}
           </div>
         </div>
-      ) : (
-        /* MODE 2: STRUK BELANJA KASIR (THERMAL RECEIPT PAPER PREVIEW) */
-        <div className="flex justify-center pt-2">
-          <div
-            ref={receiptRef}
-            className="w-full max-w-md bg-white text-slate-900 p-6 rounded-3xl shadow-xl border border-slate-300 relative font-mono text-xs space-y-4 print:shadow-none print:border-none print:p-0"
-          >
-            {/* Receipt Header */}
-            <div className="text-center space-y-1 pb-3 border-b-2 border-dashed border-slate-300">
-              <h2 className="font-black text-sm tracking-wider uppercase">
-                KOPERASI KARYAWAN PT. PKPPK
-              </h2>
-              <p className="text-[11px] text-slate-600 font-sans">
-                STRUK RENCANA KULAKAN BELANJA GROSIR
-              </p>
-              <div className="pt-2 text-[10px] text-slate-500 flex justify-between">
-                <span>Tgl: {new Date().toLocaleDateString('id-ID', { dateStyle: 'short' })}</span>
-                <span>Basis: {days} Hari Terakhir</span>
-              </div>
-            </div>
-
-            {/* Receipt Items Table */}
-            <div className="space-y-3 pt-1">
-              {activeSelectedItems.length === 0 ? (
-                <div className="text-center py-6 text-slate-400">
-                  Belum ada item yang dipilih untuk dibeli.
-                </div>
-              ) : (
-                activeSelectedItems.map((item, idx) => {
-                  const subtotal = item.jumlah_beli * item.harga_modal
-                  return (
-                    <div key={item.barang_id} className="space-y-0.5">
-                      <div className="flex justify-between font-bold">
-                        <span>{idx + 1}. {item.nama_barang}</span>
-                      </div>
-                      <div className="flex justify-between text-[11px] text-slate-600 pl-3.5">
-                        <span>Laku: {item.total_sold} | Sisa: {item.stok_total} (T:{item.stok_toko}/G:{item.stok_gudang})</span>
-                      </div>
-                      <div className="flex justify-between text-xs font-semibold pl-3.5">
-                        <span>➔ Beli {item.jumlah_beli} pcs @ {formatRupiah(item.harga_modal)}</span>
-                        <span className="font-black">{formatRupiah(subtotal)}</span>
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-
-            {/* Receipt Footer & Totals */}
-            <div className="pt-3 border-t-2 border-dashed border-slate-300 space-y-1.5 text-xs">
-              <div className="flex justify-between font-bold">
-                <span>TOTAL BARANG DIBELI:</span>
-                <span>{totalPiecesToBuy} pcs ({activeSelectedItems.length} SKU)</span>
-              </div>
-              <div className="flex justify-between text-sm font-black pt-1 border-t border-slate-200">
-                <span>ESTIMASI TOTAL BUDGET:</span>
-                <span className="text-base text-blue-700">{formatRupiah(totalBudgetSelected)}</span>
-              </div>
-            </div>
-
-            {/* Footer Notice */}
-            <div className="pt-4 text-center text-[10px] text-slate-500 border-t border-dashed border-slate-300 space-y-1">
-              <p>*** DOKUMEN OPERASIONAL KULAKAN ***</p>
-              <p>Bawa uang tunai / gunakan kartu debit koperasi sesuai total estimasi budget di atas.</p>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* MODAL INBOUND: CATAT PENERIMAAN BARANG MASUK (FAKTUR KULAKAN) */}
@@ -642,7 +570,7 @@ export function ManajemenPkmPage() {
               <FileCheck2 className="w-4 h-4 text-emerald-600" /> Verifikasi Faktur Grosir & Stok Masuk:
             </div>
             <p className="text-[11px] leading-relaxed">
-              Sesuaikan kuantitas riil yang dibeli, harga modal baru dari faktur, dan tanggal kadaluarsa batch. Sistem akan otomatis menambah stok dan mencatat buku pengeluaran kas.
+              Sesuaikan jumlah riil yang dibeli, harga modal baru dari nota, dan tanggal expired lot. Stok sistem akan otomatis bertambah dan pengeluaran kas dicatat.
             </p>
           </div>
 
