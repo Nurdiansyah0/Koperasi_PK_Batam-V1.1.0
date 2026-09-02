@@ -122,19 +122,37 @@ cd ~/public_html/laravel
 chmod 755 .
 chmod 755 public
 
+# Auto-detect PHP 8.2 EA path or system php
+if [ -x "/opt/cpanel/ea-php82/root/usr/bin/php" ]; then
+    PHP_BIN="/opt/cpanel/ea-php82/root/usr/bin/php"
+else
+    PHP_BIN="php"
+fi
+
+# Auto-detect Composer binary
+if [ -f "/usr/local/bin/composer" ]; then
+    COMPOSER_CMD="$PHP_BIN /usr/local/bin/composer"
+elif [ -f "$HOME/composer.phar" ]; then
+    COMPOSER_CMD="$PHP_BIN $HOME/composer.phar"
+elif which composer >/dev/null 2>&1; then
+    COMPOSER_CMD="composer"
+else
+    COMPOSER_CMD="$PHP_BIN /usr/local/bin/composer"
+fi
+
 echo "  → Installing Composer dependencies..."
-/opt/cpanel/ea-php82/root/usr/bin/php /usr/local/bin/composer install --no-dev --optimize-autoloader --quiet
+$COMPOSER_CMD install --no-dev --optimize-autoloader --quiet
 
 echo "  → Running database migrations..."
-/opt/cpanel/ea-php82/root/usr/bin/php artisan migrate --force
+$PHP_BIN artisan migrate --force
 
 echo "  → Generating app key (if not set)..."
-grep -q "^APP_KEY=.\+" .env || /opt/cpanel/ea-php82/root/usr/bin/php artisan key:generate --no-interaction --force
+grep -q "^APP_KEY=.\+" .env || $PHP_BIN artisan key:generate --no-interaction --force
 
-echo "  → Caching config & routes..."
-/opt/cpanel/ea-php82/root/usr/bin/php artisan config:clear && /opt/cpanel/ea-php82/root/usr/bin/php artisan config:cache
-/opt/cpanel/ea-php82/root/usr/bin/php artisan route:clear && /opt/cpanel/ea-php82/root/usr/bin/php artisan route:cache
-/opt/cpanel/ea-php82/root/usr/bin/php artisan view:clear && /opt/cpanel/ea-php82/root/usr/bin/php artisan view:cache
+echo "  → Caching config, routes & views..."
+$PHP_BIN artisan config:clear && $PHP_BIN artisan config:cache
+$PHP_BIN artisan route:clear && $PHP_BIN artisan route:cache
+$PHP_BIN artisan view:clear && $PHP_BIN artisan view:cache
 
 echo "  → Setting storage permissions..."
 chmod -R 775 storage bootstrap/cache
