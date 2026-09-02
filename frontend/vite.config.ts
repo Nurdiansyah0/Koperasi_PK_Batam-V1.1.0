@@ -34,10 +34,13 @@ export default defineConfig({
         ],
       },
       workbox: {
+        navigateFallback: '/index.html',
+        navigateFallbackAllowlist: [/^(?!\/(api|laravel)).*$/],
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api'),
+            urlPattern: ({ url }) => url.pathname.startsWith('/api') || url.pathname.startsWith('/laravel'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
