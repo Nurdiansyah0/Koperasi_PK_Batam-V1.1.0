@@ -13,13 +13,14 @@ use App\Models\PembayaranHutang;
 use App\Models\SetoranKasir;
 use App\Models\SerahTerimaKasir;
 use App\Models\TarikTunai;
+use App\Models\JabatanAnggota;
 use Carbon\Carbon;
 
 class KasirController extends Controller
 {
     private function checkKasir(Request $request) {
-        if ($request->user()->role !== 'kasir' && $request->user()->role !== 'admin') {
-            abort(403, 'Unauthorized');
+        if (!$request->user() || !$request->user()->isKasir()) {
+            abort(403, 'Unauthorized: Hanya Kasir atau Admin yang memiliki akses.');
         }
         return $request->user()->user_id;
     }
@@ -960,13 +961,20 @@ class KasirController extends Controller
     public function getDaftarKasir(Request $request)
     {
         $this->checkKasir($request);
-        $kasirs = User::where('role', 'kasir')->get()->map(function($u) {
-            return [
-                'user_id' => $u->user_id,
-                'username' => $u->username,
-                'nama_lengkap' => $u->username,
-            ];
-        });
+        $kasirUserIds = JabatanAnggota::where('role', 'kasir')->where('status', 'aktif')->pluck('user_id');
+        $kasirs = User::whereIn('user_id', $kasirUserIds)
+            ->orWhere('role', 'kasir')
+            ->with('anggota')
+            ->get()
+            ->unique('user_id')
+            ->map(function($u) {
+                return [
+                    'user_id' => $u->user_id,
+                    'username' => $u->username,
+                    'nama_lengkap' => $u->anggota ? $u->anggota->nama_lengkap : $u->username,
+                ];
+            })
+            ->values();
         return response()->json(['success' => true, 'data' => $kasirs]);
     }
 
@@ -1081,10 +1089,22 @@ class KasirController extends Controller
     public function getSerahTerimaDraft(Request $request)
     {
         $kasirId = $this->checkKasir($request);
-        $kasirList = User::where('role', 'kasir')
+        $kasirUserIds = JabatanAnggota::where('role', 'kasir')->where('status', 'aktif')->pluck('user_id');
+        $kasirList = User::where(function($q) use ($kasirUserIds) {
+                $q->whereIn('user_id', $kasirUserIds)->orWhere('role', 'kasir');
+            })
             ->where('user_id', '!=', $kasirId)
-            ->select('user_id', 'username')
-            ->get();
+            ->with('anggota')
+            ->get()
+            ->unique('user_id')
+            ->map(function($u) {
+                return [
+                    'user_id' => $u->user_id,
+                    'username' => $u->username,
+                    'nama_lengkap' => $u->anggota ? $u->anggota->nama_lengkap : $u->username,
+                ];
+            })
+            ->values();
 
         // Load all active items in the store for cycle count
         $allItems = Barang::orderBy('nama_barang', 'asc')->get();

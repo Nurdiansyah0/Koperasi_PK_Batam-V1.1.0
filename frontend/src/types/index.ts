@@ -5,13 +5,17 @@
 export interface User {
   user_id: number
   username: string
-  role: 'admin' | 'kasir' | 'anggota'
+  role: 'admin' | 'kasir' | 'anggota' | 'pengurus'
   nama_lengkap?: string
-  // Anggota-only fields (merged on login)
+  active_roles?: string[]
+  is_admin?: boolean
+  is_kasir?: boolean
+  // Anggota fields (merged on login)
   anggota_id?: number
   saldo?: number
   hutang?: number
   shu?: number
+  persetujuan_shu_master_at?: string | null
 }
 
 export interface LoginResponse {
@@ -328,3 +332,26 @@ export interface LaporanTarikTunaiData {
     rasio_sales_to_tarik: number
   }
 }
+
+// ─── Manajemen Jabatan & Mandat ─────────────────────────────
+export interface JabatanAnggotaItem {
+  jabatan_id: number
+  user_id: number
+  username: string
+  nama_lengkap: string
+  role: 'admin' | 'kasir' | 'pengurus' | 'anggota'
+  status: 'aktif' | 'nonaktif'
+  catatan?: string | null
+  assigned_at: string | null
+  revoked_at: string | null
+  ditugaskan_oleh: string
+}
+
+export interface JabatanSummary {
+  admin_aktif: number
+  kasir_aktif: number
+  pengurus_aktif: number
+  total_riwayat: number
+  total_nonaktif: number
+}
+

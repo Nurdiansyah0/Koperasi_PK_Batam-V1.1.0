@@ -35,7 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Kasir Module
-    Route::prefix('kasir')->group(function () {
+    Route::prefix('kasir')->middleware('kasir')->group(function () {
         Route::get('/dashboard', [KasirController::class, 'getDashboard']);
         Route::get('/transaksi-terbaru', [KasirController::class, 'getTransaksiTerbaru']);
         Route::get('/barang-belanja', [KasirController::class, 'getDataBarangBelanjaKasir']);
@@ -66,7 +66,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Admin Module
-    Route::prefix('admin')->group(function () {
+    Route::prefix('admin')->middleware('admin')->group(function () {
         Route::post('/opname', [AdminController::class, 'submitOpnameMassal']);
         Route::get('/dashboard-stats', [AdminController::class, 'getDashboardStats']);
         Route::get('/barang', [AdminController::class, 'getBarang']);
@@ -93,6 +93,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/laporan-tarik-tunai', [AdminController::class, 'getLaporanTarikTunai']);
         Route::get('/shu-management', [AdminController::class, 'getShuManagement']);
         Route::post('/konversi-shu', [AdminController::class, 'prosesKonversiShu']);
+        Route::get('/jabatan', [AdminController::class, 'getDaftarJabatan']);
+        Route::post('/jabatan/assign', [AdminController::class, 'assignJabatan']);
+        Route::post('/jabatan/revoke', [AdminController::class, 'revokeJabatan']);
     });
 
     // AI & Gemini Integration Module

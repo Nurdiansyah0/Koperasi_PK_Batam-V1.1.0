@@ -16,10 +16,13 @@ class AuthController extends Controller
         ]);
 
         $cleanUsername = strtolower(trim($request->username));
-        $user = User::whereRaw('LOWER(username) = ?', [$cleanUsername])->first();
+        $user = User::whereRaw('LOWER(username) = ?', [$cleanUsername])
+            ->orWhereHas('anggota', function($q) use ($cleanUsername) {
+                $q->whereRaw('LOWER(nama_lengkap) = ?', [$cleanUsername]);
+            })
+            ->first();
 
-        // Check if user exists and password is correct (checking standard Laravel Hash)
-        // Note: The previous raw PHP system used password_verify() which is compatible with Laravel's Hash::check.
+        // Check if user exists and password is correct
         if (!$user || !Hash::check($request->password, $user->password_hash)) {
             return response()->json([
                 'success' => false,
@@ -30,16 +33,17 @@ class AuthController extends Controller
         // Generate Sanctum token
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        // Fetch additional data if user is an anggota
+        // Load anggota profile and active mandates
+        $user->load(['anggota', 'jabatanAktif']);
         $userData = $user->toArray();
-        if ($user->role === 'anggota') {
-            $anggota = $user->anggota;
-            if ($anggota) {
-                $userData['anggota_id'] = $anggota->anggota_id;
-                $userData['saldo'] = $anggota->saldo;
-                $userData['hutang'] = $anggota->hutang;
-                $userData['shu'] = $anggota->shu;
-            }
+        
+        if ($user->anggota) {
+            $userData['anggota_id'] = $user->anggota->anggota_id;
+            $userData['nama_lengkap'] = $user->anggota->nama_lengkap;
+            $userData['saldo'] = (float) $user->anggota->saldo;
+            $userData['hutang'] = (float) $user->anggota->hutang;
+            $userData['shu'] = (float) $user->anggota->shu;
+            $userData['persetujuan_shu_master_at'] = $user->anggota->persetujuan_shu_master_at;
         }
 
         return response()->json([
@@ -52,9 +56,20 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
+        $user = $request->user()->load(['anggota', 'jabatanAktif']);
+        $userData = $user->toArray();
+        if ($user->anggota) {
+            $userData['anggota_id'] = $user->anggota->anggota_id;
+            $userData['nama_lengkap'] = $user->anggota->nama_lengkap;
+            $userData['saldo'] = (float) $user->anggota->saldo;
+            $userData['hutang'] = (float) $user->anggota->hutang;
+            $userData['shu'] = (float) $user->anggota->shu;
+            $userData['persetujuan_shu_master_at'] = $user->anggota->persetujuan_shu_master_at;
+        }
+
         return response()->json([
             'success' => true,
-            'user'    => $request->user(),
+            'user'    => $userData,
         ]);
     }
 
@@ -78,7 +93,11 @@ class AuthController extends Controller
         ]);
 
         $cleanUsername = strtolower(trim($request->username));
-        $user = User::whereRaw('LOWER(username) = ?', [$cleanUsername])->first();
+        $user = User::whereRaw('LOWER(username) = ?', [$cleanUsername])
+            ->orWhereHas('anggota', function($q) use ($cleanUsername) {
+                $q->whereRaw('LOWER(nama_lengkap) = ?', [$cleanUsername]);
+            })
+            ->first();
 
         if (!$user) {
             return response()->json([

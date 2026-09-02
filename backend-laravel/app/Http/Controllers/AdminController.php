@@ -15,13 +15,14 @@ use App\Models\ShuDistribusi;
 use App\Models\SerahTerimaKasir;
 use App\Models\TarikTunai;
 use App\Models\KonversiShu;
+use App\Models\JabatanAnggota;
 use Carbon\Carbon;
 
 class AdminController extends Controller
 {
     private function checkAdmin(Request $request) {
-        if ($request->user()->role !== 'admin') {
-            abort(403, 'Unauthorized');
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            abort(403, 'Unauthorized: Hanya Admin yang memiliki izin akses.');
         }
         return $request->user()->user_id;
     }
@@ -195,11 +196,12 @@ class AdminController extends Controller
 
     public function tambahUser(Request $request)
     {
-        $this->checkAdmin($request);
+        $adminId = $this->checkAdmin($request);
         $request->validate([
             'username' => 'required|unique:users',
             'password' => 'required',
-            'role' => 'required|in:admin,kasir,anggota'
+            'role' => 'required|in:admin,kasir,pengurus,anggota',
+            'nama_lengkap' => 'nullable|string',
         ]);
 
         DB::beginTransaction();
@@ -210,18 +212,30 @@ class AdminController extends Controller
                 'role' => $request->role,
             ]);
 
-            if ($request->role === 'anggota') {
-                Anggota::create([
+            // Every user is registered as an official anggota
+            Anggota::create([
+                'user_id' => $user->user_id,
+                'nama_lengkap' => $request->nama_lengkap ?: $request->username,
+                'email' => strtolower($request->username) . '@koperasi.local',
+                'saldo' => 0,
+                'hutang' => 0,
+                'shu' => 0,
+            ]);
+
+            // If given a staff/management role, record in jabatan_anggota
+            if (in_array($request->role, ['admin', 'kasir', 'pengurus'])) {
+                JabatanAnggota::create([
                     'user_id' => $user->user_id,
-                    'nama_lengkap' => $request->username,
-                    'email' => $request->username . '@koperasi.local',
-                    'saldo' => 0,
-                    'hutang' => 0,
-                    'shu' => 0,
+                    'role' => $request->role,
+                    'status' => 'aktif',
+                    'ditugaskan_oleh' => $adminId,
+                    'catatan' => 'Penugasan awal saat registrasi akun',
+                    'assigned_at' => now(),
                 ]);
             }
+
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'User berhasil ditambah']);
+            return response()->json(['success' => true, 'message' => 'User & anggota berhasil ditambahkan']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
@@ -230,22 +244,73 @@ class AdminController extends Controller
 
     public function updateUser(Request $request)
     {
-        $this->checkAdmin($request);
+        $adminId = $this->checkAdmin($request);
         $user = User::find($request->user_id);
-        if (!$user) return response()->json(['success' => false], 404);
+        if (!$user) return response()->json(['success' => false, 'message' => 'User tidak ditemukan'], 404);
 
-        $user->username = $request->username;
-        $user->role = $request->role;
-        if ($request->password) {
-            $user->password_hash = Hash::make($request->password);
+        DB::beginTransaction();
+        try {
+            $user->username = $request->username;
+            $oldRole = $user->role;
+            $newRole = $request->role ?: $oldRole;
+            $user->role = $newRole;
+
+            if ($request->password) {
+                $user->password_hash = Hash::make($request->password);
+            }
+            $user->save();
+
+            // Update anggota record nama_lengkap if provided
+            if ($request->nama_lengkap && $user->anggota) {
+                $user->anggota->nama_lengkap = $request->nama_lengkap;
+                $user->anggota->save();
+            }
+
+            // Sync jabatan_anggota if role changed
+            if ($newRole !== $oldRole) {
+                // Deactivate old active mandate of this specific role
+                JabatanAnggota::where('user_id', $user->user_id)
+                    ->where('role', $oldRole)
+                    ->where('status', 'aktif')
+                    ->update([
+                        'status' => 'nonaktif',
+                        'revoked_at' => now(),
+                        'catatan' => DB::raw("CONCAT(COALESCE(catatan, ''), ' | Diubah melalui update user')"),
+                    ]);
+
+                if (in_array($newRole, ['admin', 'kasir', 'pengurus'])) {
+                    JabatanAnggota::create([
+                        'user_id' => $user->user_id,
+                        'role' => $newRole,
+                        'status' => 'aktif',
+                        'ditugaskan_oleh' => $adminId,
+                        'catatan' => 'Penugasan peran baru via perbaruan data user',
+                        'assigned_at' => now(),
+                    ]);
+                }
+            }
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'User berhasil diupdate']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
-        $user->save();
-        return response()->json(['success' => true, 'message' => 'User berhasil diupdate']);
     }
 
     public function hapusUser(Request $request)
     {
         $this->checkAdmin($request);
+        $user = User::find($request->user_id);
+        if (!$user) return response()->json(['success' => false, 'message' => 'User tidak ditemukan'], 404);
+
+        if ($user->isAdmin()) {
+            $adminCount = JabatanAnggota::where('role', 'admin')->where('status', 'aktif')->count();
+            if ($adminCount <= 1) {
+                return response()->json(['success' => false, 'message' => 'Tidak dapat menghapus admin terakhir'], 422);
+            }
+        }
+
         User::destroy($request->user_id);
         return response()->json(['success' => true, 'message' => 'User berhasil dihapus']);
     }
@@ -417,13 +482,20 @@ class AdminController extends Controller
     public function getDataKasir(Request $request)
     {
         $this->checkAdmin($request);
-        $kasir = User::where('role', 'kasir')->get()->map(function($u) {
-            return [
-                'user_id' => $u->user_id,
-                'username' => $u->username,
-                'nama_lengkap' => $u->username,
-            ];
-        });
+        $kasirUserIds = JabatanAnggota::where('role', 'kasir')->where('status', 'aktif')->pluck('user_id');
+        $kasir = User::whereIn('user_id', $kasirUserIds)
+            ->orWhere('role', 'kasir')
+            ->with('anggota')
+            ->get()
+            ->unique('user_id')
+            ->map(function($u) {
+                return [
+                    'user_id' => $u->user_id,
+                    'username' => $u->username,
+                    'nama_lengkap' => $u->anggota ? $u->anggota->nama_lengkap : $u->username,
+                ];
+            })
+            ->values();
         return response()->json(['success' => true, 'data' => $kasir]);
     }
 
@@ -821,6 +893,168 @@ class AdminController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $message,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+    }
+
+    public function getDaftarJabatan(Request $request)
+    {
+        $this->checkAdmin($request);
+
+        $jabatanList = JabatanAnggota::with(['user.anggota', 'ditugaskanOlehUser.anggota'])
+            ->orderBy('status', 'asc') // 'aktif' comes first before 'nonaktif'
+            ->orderBy('assigned_at', 'desc')
+            ->get()
+            ->map(function ($j) {
+                return [
+                    'jabatan_id' => $j->jabatan_id,
+                    'user_id' => $j->user_id,
+                    'username' => $j->user ? $j->user->username : 'Unknown',
+                    'nama_lengkap' => $j->user && $j->user->anggota ? $j->user->anggota->nama_lengkap : ($j->user ? $j->user->username : 'Unknown'),
+                    'role' => $j->role,
+                    'status' => $j->status,
+                    'catatan' => $j->catatan,
+                    'assigned_at' => $j->assigned_at ? $j->assigned_at->format('Y-m-d H:i') : null,
+                    'revoked_at' => $j->revoked_at ? $j->revoked_at->format('Y-m-d H:i') : null,
+                    'ditugaskan_oleh' => $j->ditugaskanOlehUser ? ($j->ditugaskanOlehUser->anggota ? $j->ditugaskanOlehUser->anggota->nama_lengkap : $j->ditugaskanOlehUser->username) : 'Sistem Utama',
+                ];
+            });
+
+        // Summary metrics
+        $totalAdminAktif = JabatanAnggota::where('role', 'admin')->where('status', 'aktif')->count();
+        $totalKasirAktif = JabatanAnggota::where('role', 'kasir')->where('status', 'aktif')->count();
+        $totalPengurusAktif = JabatanAnggota::where('role', 'pengurus')->where('status', 'aktif')->count();
+        $totalNonaktif = JabatanAnggota::where('status', 'nonaktif')->count();
+
+        return response()->json([
+            'success' => true,
+            'data' => $jabatanList,
+            'summary' => [
+                'admin_aktif' => $totalAdminAktif,
+                'kasir_aktif' => $totalKasirAktif,
+                'pengurus_aktif' => $totalPengurusAktif,
+                'total_riwayat' => $jabatanList->count(),
+                'total_nonaktif' => $totalNonaktif,
+            ],
+        ]);
+    }
+
+    public function assignJabatan(Request $request)
+    {
+        $adminId = $this->checkAdmin($request);
+        $request->validate([
+            'user_id' => 'required|exists:users,user_id',
+            'role' => 'required|in:admin,kasir,pengurus',
+            'catatan' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $userId = (int) $request->user_id;
+            $role = $request->role;
+
+            // Check if already active with this role
+            $existing = JabatanAnggota::where('user_id', $userId)
+                ->where('role', $role)
+                ->where('status', 'aktif')
+                ->first();
+
+            if ($existing) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anggota ini sudah memiliki mandat aktif sebagai ' . strtoupper($role) . '.',
+                ], 422);
+            }
+
+            // Create new mandate
+            $jabatan = JabatanAnggota::create([
+                'user_id' => $userId,
+                'role' => $role,
+                'status' => 'aktif',
+                'ditugaskan_oleh' => $adminId,
+                'catatan' => $request->catatan ?: "Penugasan mandat {$role} oleh Admin",
+                'assigned_at' => now(),
+            ]);
+
+            // Sync user's primary role for seamless backward compatibility
+            $user = User::find($userId);
+            if ($user) {
+                if ($role === 'admin' || ($role === 'kasir' && $user->role !== 'admin')) {
+                    $user->role = $role;
+                    $user->save();
+                }
+            }
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => "Mandat " . strtoupper($role) . " berhasil ditugaskan kepada anggota.",
+                'data' => $jabatan,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+    }
+
+    public function revokeJabatan(Request $request)
+    {
+        $adminId = $this->checkAdmin($request);
+        $request->validate([
+            'jabatan_id' => 'required|exists:jabatan_anggota,jabatan_id',
+            'alasan' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $jabatan = JabatanAnggota::find($request->jabatan_id);
+            if ($jabatan->status === 'nonaktif') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mandat jabatan ini sudah berstatus nonaktif sebelumnya.',
+                ], 422);
+            }
+
+            // Guard: Cannot revoke the last active admin
+            if ($jabatan->role === 'admin') {
+                $activeAdminCount = JabatanAnggota::where('role', 'admin')->where('status', 'aktif')->count();
+                if ($activeAdminCount <= 1) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Tidak dapat mencabut mandat Admin utama terakhir! Sistem membutuhkan minimal 1 Admin aktif.',
+                    ], 422);
+                }
+            }
+
+            // Revoke mandate
+            $jabatan->status = 'nonaktif';
+            $jabatan->revoked_at = now();
+            if ($request->alasan) {
+                $jabatan->catatan = ($jabatan->catatan ? $jabatan->catatan . ' | ' : '') . 'Alasan pencabutan: ' . $request->alasan;
+            }
+            $jabatan->save();
+
+            // Update user's primary role fallback if no other active staff role
+            $user = User::find($jabatan->user_id);
+            if ($user) {
+                $remainingActiveRoles = JabatanAnggota::where('user_id', $user->user_id)->where('status', 'aktif')->pluck('role')->toArray();
+                if (in_array('admin', $remainingActiveRoles)) {
+                    $user->role = 'admin';
+                } elseif (in_array('kasir', $remainingActiveRoles)) {
+                    $user->role = 'kasir';
+                } else {
+                    $user->role = 'anggota';
+                }
+                $user->save();
+            }
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => "Mandat jabatan berhasil dinonaktifkan/dicabut.",
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

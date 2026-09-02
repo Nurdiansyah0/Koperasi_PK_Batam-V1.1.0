@@ -14,7 +14,8 @@ import {
   X,
   ShoppingBag,
   Banknote,
-  Coins
+  Coins,
+  ShieldCheck
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -30,6 +31,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     { to: '/admin/barang', icon: Package, label: 'Data Barang' },
     { to: '/admin/pkm', icon: Layers, label: 'Manajemen PKM' },
     { to: '/admin/anggota', icon: Users, label: 'Data Anggota' },
+    { to: '/admin/jabatan', icon: ShieldCheck, label: 'Jabatan & Mandat' },
     { to: '/admin/shu', icon: Coins, label: 'Manajemen SHU' },
     { to: '/admin/laporan', icon: FileText, label: 'Laporan Transaksi' },
     { to: '/admin/tarik-tunai', icon: Banknote, label: 'Laporan Tarik Tunai' },

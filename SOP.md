@@ -208,6 +208,30 @@ Untuk menjaga likuiditas kas toko dan memastikan keadilan pembagian SHU tahunan 
 
 ---
 
+## 8. STRUKTUR KEANGGOTAAN & TATA KELOLA JABATAN (ROLE MANDATE ENGINE)
+
+Untuk menjunjung tinggi prinsip dasar jati diri koperasi *"Dari Anggota, Oleh Anggota, Untuk Anggota"*, sistem otorisasi dan penugasan staf diatur sebagai berikut:
+
+### A. Hakikat Keanggotaan Tunggal (Unified Identity Layer)
+1. **Semua Pengelola adalah Anggota Resmi:** Seluruh staf internal (Admin Utama, Petugas Kasir Toko, dan Pengurus Koperasi) wajib terdaftar secara sah dalam Buku Daftar Anggota Koperasi (`anggota`).
+2. **Hak Finansial Melekat:** Setiap kasir dan admin tetap berhak atas:
+   - Kepemilikan Simpanan Pokok (Agunan Fasilitas Belanja Rp 300.000).
+   - Hak Akumulasi dan Pembagian Sisa Hasil Usaha (SHU) Tahunan.
+   - Pagu Limit Kredit Kasbon Anggota (Maksimal Rp 400.000).
+
+### B. Mekanisme Mandat Jabatan Dinamis (Dynamic Role Mandate Engine)
+1. **Pemisahan Akun & Mandat:** Jabatan kasir atau admin bukanlah kasta akun yang statis, melainkan **Mandat Penugasan Terjadwal** yang dicatat di sistem melalui menu Admin: **Jabatan & Mandat** ([/admin/jabatan](http://localhost:5173/admin/jabatan)).
+2. **Penugasan Mandat (Assign Mandate):** Admin Koperasi dapat menunjuk anggota koperasi resmi untuk mengemban tugas sebagai Kasir POS atau Admin Operasional disertai catatan Surat Keputusan (SK) atau jadwal shift.
+3. **Pencabutan / Rotasi Mandat (Revoke Mandate):**
+   - Apabila seorang kasir purna tugas atau dirotasi ke posisi lain, Admin cukup menonaktifkan mandat jabatan terkait.
+   - **Jaminan Keamanan Data:** Pencabutan mandat **TIDAK PERNAH** menghapus akun login, saldo tabungan, riwayat transaksi, maupun hak SHU anggota. Akun bersangkutan otomatis kembali beroperasi sebagai Anggota biasa.
+
+### C. Perlindungan Sistem Kritis (Last Admin Safety Lock)
+1. Sistem database dan backend secara otomatis menolak dan memblokir pencabutan mandat atau penghapusan akun Admin jika hanya tersisa 1 Admin aktif di sistem.
+2. Hal ini mencegah kekosongan otoritas manajemen (*administrative lockout*) dalam tata kelola aplikasi koperasi.
+
+---
+
 **Disahkan oleh:**  
 *Pengurus & Manajemen Koperasi Karyawan PKPPK Batam*  
 *Tanggal Efektif: September 2026*

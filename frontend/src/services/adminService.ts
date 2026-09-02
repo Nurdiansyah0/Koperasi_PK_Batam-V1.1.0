@@ -168,5 +168,27 @@ export const adminService = {
   }): Promise<ApiResponse<any>> => {
     const { data } = await api.post('/laravel/api/admin/konversi-shu', payload)
     return data
+  },
+
+  getDaftarJabatan: async (): Promise<{ data: any[]; summary: any }> => {
+    const { data } = await api.get('/laravel/api/admin/jabatan')
+    return data
+  },
+
+  assignJabatan: async (payload: {
+    user_id: number
+    role: 'admin' | 'kasir' | 'pengurus'
+    catatan?: string
+  }): Promise<ApiResponse<any>> => {
+    const { data } = await api.post('/laravel/api/admin/jabatan/assign', payload)
+    return data
+  },
+
+  revokeJabatan: async (payload: {
+    jabatan_id: number
+    alasan?: string
+  }): Promise<ApiResponse<any>> => {
+    const { data } = await api.post('/laravel/api/admin/jabatan/revoke', payload)
+    return data
   }
 }

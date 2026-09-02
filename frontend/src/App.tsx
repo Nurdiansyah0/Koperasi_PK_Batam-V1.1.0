@@ -18,6 +18,7 @@ import OpnamePage from './pages/admin/Opname'
 import ManajemenPkmPage from './pages/admin/ManajemenPkm'
 import LaporanTarikTunaiPage from './pages/admin/LaporanTarikTunai'
 import ManajemenShuPage from './pages/admin/ManajemenShu'
+import { ManajemenJabatan } from './pages/admin/ManajemenJabatan'
 
 // Kasir Pages
 import { KasirDashboard } from './pages/kasir/Dashboard'
@@ -60,6 +61,7 @@ export default function App() {
           <Route path="barang" element={<DataBarang />} />
           <Route path="pkm" element={<ManajemenPkmPage />} />
           <Route path="anggota" element={<DataAnggota />} />
+          <Route path="jabatan" element={<ManajemenJabatan />} />
           <Route path="laporan" element={<LaporanTransaksi />} />
           <Route path="tarik-tunai" element={<LaporanTarikTunaiPage />} />
           <Route path="shu" element={<ManajemenShuPage />} />

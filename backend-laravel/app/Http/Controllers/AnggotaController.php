@@ -24,15 +24,15 @@ class AnggotaController extends Controller
     private function getAnggotaId(Request $request)
     {
         $user = $request->user();
-        if ($user->role !== 'anggota') {
-            abort(403, 'Akses ditolak. Anda bukan anggota.');
+        if (!$user || !$user->anggota) {
+            abort(403, 'Akses ditolak. Akun Anda tidak memiliki profil data anggota terdaftar.');
         }
         return $user->anggota->anggota_id;
     }
 
     public function getProfil(Request $request)
     {
-        $anggotaId = $this->getAnggotaId($request); // Ensure user is anggota
+        $anggotaId = $this->getAnggotaId($request);
         $user = $request->user();
         $anggota = $user->anggota;
 
@@ -68,7 +68,7 @@ class AnggotaController extends Controller
     public function getPaketBelanja(Request $request)
     {
         $user = $request->user();
-        $anggotaId = ($user && $user->role === 'anggota' && $user->anggota) ? $user->anggota->anggota_id : null;
+        $anggotaId = ($user && $user->anggota) ? $user->anggota->anggota_id : null;
 
         // 1. Load active products indexed by ID
         $allBarang = Barang::where('stok', '>', 0)->get()->keyBy('barang_id');

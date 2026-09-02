@@ -13,8 +13,6 @@ class User extends Authenticatable
     protected $table = 'users';
     protected $primaryKey = 'user_id';
     
-    // Original DB does not use standard timestamps if they aren't named created_at/updated_at, but we have them.
-    
     public $timestamps = false;
     
     protected $fillable = [
@@ -27,15 +25,85 @@ class User extends Authenticatable
         'password_hash',
     ];
 
-    // Tell Laravel to use password_hash instead of password for Auth checking
+    protected $appends = [
+        'active_roles',
+        'is_admin',
+        'is_kasir',
+    ];
+
     public function getAuthPasswordName()
     {
         return 'password_hash';
     }
 
-    // Optional relation for anggota
     public function anggota()
     {
         return $this->hasOne(Anggota::class, 'user_id', 'user_id');
+    }
+
+    public function jabatan()
+    {
+        return $this->hasMany(JabatanAnggota::class, 'user_id', 'user_id');
+    }
+
+    public function jabatanAktif()
+    {
+        return $this->hasMany(JabatanAnggota::class, 'user_id', 'user_id')->where('status', 'aktif');
+    }
+
+    public function getActiveRolesAttribute(): array
+    {
+        $roles = $this->relationLoaded('jabatanAktif')
+            ? $this->jabatanAktif->pluck('role')->toArray()
+            : $this->jabatanAktif()->pluck('role')->toArray();
+
+        // Include primary static role as well if not already present
+        if ($this->role && !in_array($this->role, $roles)) {
+            $roles[] = $this->role;
+        }
+
+        // Everyone is fundamentally an anggota
+        if (!in_array('anggota', $roles)) {
+            $roles[] = 'anggota';
+        }
+
+        return array_values(array_unique($roles));
+    }
+
+    public function hasRole(string $role): bool
+    {
+        if ($role === 'anggota') {
+            return true; // Everyone registered is an anggota
+        }
+
+        if ($this->role === $role) {
+            return true;
+        }
+
+        if ($this->relationLoaded('jabatanAktif')) {
+            return $this->jabatanAktif->contains('role', $role);
+        }
+
+        return $this->jabatanAktif()->where('role', $role)->exists();
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('admin');
+    }
+
+    public function isKasir(): bool
+    {
+        return $this->hasRole('kasir') || $this->isAdmin();
+    }
+
+    public function getIsAdminAttribute(): bool
+    {
+        return $this->isAdmin();
+    }
+
+    public function getIsKasirAttribute(): bool
+    {
+        return $this->isKasir();
     }
 }
