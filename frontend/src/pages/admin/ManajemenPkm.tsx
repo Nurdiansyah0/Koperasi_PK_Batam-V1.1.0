@@ -292,7 +292,7 @@ export function ManajemenPkmPage() {
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-20 max-w-5xl mx-auto">
-      {/* PRINT-ONLY CSS (STANDAR DOKUMEN ISO A4) */}
+      {/* PRINT-ONLY CSS (STANDAR DOKUMEN ISO A4 & EXPORT PDF FLUID) */}
       <style dangerouslySetInnerHTML={{__html: `
         @media screen {
           #printable-shopping-sheet {
@@ -302,18 +302,21 @@ export function ManajemenPkmPage() {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 12mm 15mm;
+            margin: 10mm 12mm;
           }
           *, *::before, *::after {
             box-sizing: border-box !important;
           }
-          html, body {
+          html, body, #root, #root > div, main, .max-w-5xl {
             width: 100% !important;
-            height: auto !important;
+            max-width: 100% !important;
+            min-width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
             color: #000000 !important;
+            height: auto !important;
+            overflow: visible !important;
             font-size: 10pt !important;
             line-height: 1.3 !important;
             -webkit-print-color-adjust: exact !important;
@@ -330,7 +333,7 @@ export function ManajemenPkmPage() {
             padding: 0 !important;
             background: #ffffff !important;
             color: #000000 !important;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+            font-family: Arial, Helvetica, sans-serif !important;
           }
           table.print-table {
             width: 100% !important;
@@ -338,12 +341,17 @@ export function ManajemenPkmPage() {
             table-layout: fixed !important;
             border-collapse: collapse !important;
             page-break-inside: auto !important;
+            border: 1.5px solid #000000 !important;
           }
           table.print-table thead {
             display: table-header-group !important;
           }
           table.print-table tfoot {
             display: table-footer-group !important;
+          }
+          table.print-table th, table.print-table td {
+            border: 1px solid #000000 !important;
+            padding: 5px 6px !important;
           }
           table.print-table tr {
             page-break-inside: avoid !important;
@@ -358,11 +366,11 @@ export function ManajemenPkmPage() {
       {/* DEDICATED PRINTABLE A4 SHOPPING SHEET (STANDAR KOP RESMI A4 TANPA OVERFLOW) */}
       <div id="printable-shopping-sheet" className="text-black bg-white">
         {/* OFFICIAL LETTERHEAD (KOP SURAT) */}
-        <div className="border-b-2 border-black pb-2 mb-3">
+        <div className="border-b-2 border-black pb-2.5 mb-3">
           <div className="flex items-center justify-between gap-3">
-            {/* Logo Resmi SVG Koperasi (52px x 52px Presisi) */}
-            <div className="w-[52px] h-[52px] shrink-0 flex items-center justify-center">
-              <svg viewBox="0 0 512 512" className="w-[52px] h-[52px]" xmlns="http://www.w3.org/2000/svg">
+            {/* Logo Resmi SVG Koperasi (48px x 48px Presisi) */}
+            <div className="w-12 h-12 shrink-0 flex items-center justify-center">
+              <svg viewBox="0 0 512 512" className="w-12 h-12" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <linearGradient id="printBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#1E3A8A" />
@@ -461,12 +469,14 @@ export function ManajemenPkmPage() {
             * Catatan: Simpan nota/faktur toko grosir untuk diinput ke sistem pada menu "📥 Catat Barang Masuk" setelah berbelanja.
           </p>
 
-          <div className="grid grid-cols-2 gap-8 pt-2 text-[11px] text-center">
+          <div className="grid grid-cols-2 gap-8 pt-3 text-[11px] text-center">
             <div>
+              <p className="text-[10px] text-gray-500 mb-1">Batam, {new Date().toLocaleDateString('id-ID', { dateStyle: 'medium' })}</p>
               <p className="font-semibold mb-12">Petugas Yang Berbelanja,</p>
               <p className="font-bold border-t border-black w-44 mx-auto pt-1">( ........................................ )</p>
             </div>
             <div>
+              <p className="text-[10px] text-gray-500 mb-1">Mengetahui / Menyetujui,</p>
               <p className="font-semibold mb-12">Pengurus / Bendahara Koperasi,</p>
               <p className="font-bold border-t border-black w-44 mx-auto pt-1">( ........................................ )</p>
             </div>
