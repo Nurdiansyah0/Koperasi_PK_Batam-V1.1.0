@@ -856,40 +856,40 @@ export function LaporanTransaksi() {
 
           </div>
 
-          {/* ── BAGIAN V: LEMBAR TRANSPARANSI & INTEGRITAS SISTEM (AUDIT TRAIL & VERIFIKASI AKUNTANSI) ── */}
-          <div className="p-2 border-2 border-dashed border-gray-400 bg-gray-50/60 rounded text-[8.5px] text-gray-800 space-y-1 mb-2">
+          {/* ── BAGIAN V: KETERANGAN & REKONSILIASI LAPORAN (INTERNAL KOPKAR PKP-PK) ── */}
+          <div className="p-2 border border-black bg-gray-50/60 rounded text-[8.5px] text-gray-800 space-y-1 mb-2">
             <div className="flex items-center justify-between border-b border-gray-300 pb-0.5 font-bold">
               <span className="uppercase text-black flex items-center gap-1">
-                🛡️ V. LEMBAR TRANSPARANSI & INTEGRITAS SISTEM (SYSTEM GENERATED AUDIT TRAIL)
+                📋 V. KETERANGAN & REKONSILIASI LAPORAN KOPERASI
               </span>
-              <span className="font-mono text-[8px] text-gray-600">REF ID: KOP-PK/{Date.now().toString(36).toUpperCase()}</span>
+              <span className="font-mono text-[8px] text-gray-600">UNIT KERJA PKP-PK HANG NADIM</span>
             </div>
 
-            {/* Sub-Box: Bukti Rekonsiliasi Matematis (Three-Way Matching) */}
+            {/* Sub-Box: Bukti Rekonsiliasi Otomatis */}
             <div className="border border-black p-1 rounded bg-white text-[8px] space-y-0.5 my-1">
-              <div className="font-black text-black uppercase flex justify-between border-b border-gray-300 pb-0.5">
-                <span>📋 BUKTI REKONSILIASI MATEMATIS (DASAR KEBENARAN PERHITUNGAN SISTEM)</span>
-                <span className="text-emerald-700 font-bold">STATUS: MATCH 100% (SELISIH: RP 0)</span>
+              <div className="font-bold text-black uppercase flex justify-between border-b border-gray-300 pb-0.5">
+                <span>Pengecekan Kesesuaian Perhitungan (Tabel II & Tabel III):</span>
+                <span className="text-emerald-700 font-bold">MATCH 100% (SELISIH: RP 0)</span>
               </div>
               <table className="w-full text-left border-collapse text-[7.5px] mt-0.5">
                 <tbody>
                   <tr className="border-b border-gray-200">
-                    <td className="p-0.5 font-semibold text-gray-700" style={{ width: '45%' }}>1. Metode Top-Down (Tabel II - Alokasi 60% Anggota)</td>
-                    <td className="p-0.5 font-mono text-gray-600" style={{ width: '35%' }}>60% × Laba Partisipasi Belanja Anggota</td>
+                    <td className="p-0.5 font-semibold text-gray-700" style={{ width: '45%' }}>• Alokasi 60% Jasa Belanja Anggota (Tabel II)</td>
+                    <td className="p-0.5 font-mono text-gray-600" style={{ width: '35%' }}>60% × Total Laba Belanja Anggota</td>
                     <td className="p-0.5 text-right font-mono font-bold text-black" style={{ width: '20%' }}>{formatRupiah(summary.shu_anggota_60)}</td>
                   </tr>
                   <tr className="border-b border-gray-200">
-                    <td className="p-0.5 font-semibold text-gray-700">2. Metode Bottom-Up (Tabel III - Total Rekapitulasi 65 Anggota)</td>
-                    <td className="p-0.5 font-mono text-gray-600">Σ (Hak SHU per Anggota 1 s/d 65)</td>
+                    <td className="p-0.5 font-semibold text-gray-700">• Total Pembagian ke 65 Anggota (Tabel III)</td>
+                    <td className="p-0.5 font-mono text-gray-600">Jumlah Hak SHU Seluruh Anggota</td>
                     <td className="p-0.5 text-right font-mono font-bold text-black">{formatRupiah(totHakShuRekap)}</td>
                   </tr>
                   <tr className="border-b border-gray-200 bg-emerald-50/70 font-bold">
-                    <td className="p-0.5 text-emerald-900">3. Validasi Selisih (Variance Difference)</td>
-                    <td className="p-0.5 font-mono text-emerald-800">| Metode Top-Down − Metode Bottom-Up |</td>
-                    <td className="p-0.5 text-right font-mono text-emerald-900 font-black">Rp 0 (NOL RUPIAH)</td>
+                    <td className="p-0.5 text-emerald-900">• Status Selisih Pembagian SHU</td>
+                    <td className="p-0.5 font-mono text-emerald-800">Tabel II − Tabel III</td>
+                    <td className="p-0.5 text-right font-mono text-emerald-900 font-black">Rp 0 (Pas & Tepat)</td>
                   </tr>
                   <tr>
-                    <td className="p-0.5 font-semibold text-gray-700">4. Keseimbangan Arus Kas & Piutang Belanja</td>
+                    <td className="p-0.5 font-semibold text-gray-700">• Rincian Transaksi Belanja Anggota</td>
                     <td className="p-0.5 font-mono text-gray-600">Bayar Lunas ({formatRupiah(totLunasRekap)}) + Bon ({formatRupiah(totHutangRekap)})</td>
                     <td className="p-0.5 text-right font-mono font-bold text-black">{formatRupiah(totBelanjaRekap)}</td>
                   </tr>
@@ -898,23 +898,17 @@ export function LaporanTransaksi() {
             </div>
 
             <p className="m-0 text-gray-700 leading-tight">
-              <strong>1. Sumber & Keabsahan Data:</strong> Laporan pertanggungjawaban operasional dan perhitungan SHU ini diterbitkan secara otomatis oleh <em>Core Engine Koperasi PKP-PK BTH</em> secara <strong>real-time</strong> berdasarkan <em>immutable transaction logs</em> (tabel <code>transaksi</code>, <code>transaksi_detail</code>, dan <code>pengeluaran_operasional</code>) yang tercatat di sistem kasir POS Koperasi.
+              <strong>1. Sumber Data:</strong> Laporan ini dibuat secara otomatis berdasarkan data transaksi kasir dan catatan pengeluaran kas toko Koperasi Karyawan PKP-PK Bandara Hang Nadim Batam.
             </p>
             <p className="m-0 text-gray-700 leading-tight">
-              <strong>2. Metodologi Komputasi SHU:</strong> Perhitungan mengacu pada standar <strong>SAK Entitas Privat Koperasi Indonesia</strong> & Anggaran Dasar Koperasi (AD/ART) Bab Perhitungan SHU:
-              <br />
-              • <em>Laba Kotor</em> = Total Omset Penjualan Anggota − Beban Pokok Penjualan (HPP Modal Kulakan).
-              <br />
-              • <em>Net SHU Riil</em> = Laba Kotor − Total Realisasi Pengeluaran Kas Operasional (OPEX).
-              <br />
-              • <em>Hak SHU Anggota (60%)</em> dibagikan secara adil berdasarkan kontribusi margin laba riil belanja masing-masing anggota.
+              <strong>2. Pembagian SHU:</strong> Sisa Hasil Usaha toko dibagikan secara adil berdasarkan keuntungan dari barang yang dibelanjakan masing-masing anggota (60% Hak Anggota, 30% Kas Koperasi, 10% Pengurus).
             </p>
             <p className="m-0 text-gray-700 leading-tight">
-              <strong>3. Hak Uji & Rekonsiliasi Anggota:</strong> Laporan ini disajikan terbuka kepada Pengurus, Badan Pengawas, dan seluruh Anggota Koperasi. Apabila terdapat ketidaksesuaian nilai transaksi, riwayat pembayaran, atau saldo piutang, Anggota berhak mengajukan verifikasi/koreksi dengan melampirkan nomor referensi transaksi atau struk belanja ke Pengurus Koperasi.
+              <strong>3. Transparansi:</strong> Jika ada catatan transaksi atau saldo bon yang perlu dicocokkan, anggota dapat langsung mengonfirmasi kepada pengurus/kasir koperasi.
             </p>
             <div className="pt-0.5 border-t border-gray-200 flex justify-between items-center text-[7.5px] text-gray-500 font-mono">
-              <span>Status Verifikasi: VALID & REALTIME (TERAUTENTIKASI SISTEM)</span>
-              <span>Diterbitkan: {new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'medium' })}</span>
+              <span>Status: Terverifikasi Sistem Internal</span>
+              <span>Dicetak: {new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
             </div>
           </div>
 
@@ -1218,19 +1212,19 @@ export function LaporanTransaksi() {
             </div>
             <div>
               <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                Dasar Kebenaran & Rekonsiliasi Akuntansi (Audit Certainty)
+                Kesesuaian & Rekonsiliasi SHU Koperasi
                 <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
                   MATCH 100% (SELISIH: RP 0)
                 </span>
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Verifikasi Silang Otomatis: Buku Besar Alokasi SHU (Tabel II) vs Buku Pembantu 65 Anggota (Tabel III)
+                Pengecekan Otomatis: Alokasi SHU Toko (Tabel II) vs Rincian Hak 65 Anggota (Tabel III)
               </p>
             </div>
           </div>
           <div className="text-left md:text-right text-[11px] font-mono text-slate-600 dark:text-slate-400">
-            <div>Standard: <span className="font-bold text-slate-900 dark:text-white">SAK Entitas Privat Koperasi & AD/ART</span></div>
-            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Autentikasi: Real-Time Core Accounting</div>
+            <div>Unit: <span className="font-bold text-slate-900 dark:text-white">Koperasi Karyawan PKP-PK BTH</span></div>
+            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Perhitungan Otomatis Sistem Kasir</div>
           </div>
         </div>
 
@@ -2088,34 +2082,34 @@ export function LaporanTransaksi() {
               <span className="uppercase text-black flex items-center gap-1.5">
                 🛡️ V. LEMBAR TRANSPARANSI & INTEGRITAS SISTEM (SYSTEM GENERATED AUDIT TRAIL)
               </span>
-              <span className="font-mono text-[9px] text-gray-600">REF ID: KOP-PK/{Date.now().toString(36).toUpperCase()}</span>
+              <span className="font-mono text-[9px] text-gray-600">UNIT KERJA PKP-PK HANG NADIM</span>
             </div>
 
-            {/* Sub-Box: Bukti Rekonsiliasi Matematis (Three-Way Matching) */}
+            {/* Sub-Box: Bukti Rekonsiliasi Otomatis */}
             <div className="border border-black p-2 rounded bg-white text-[9.5px] space-y-1 my-1.5">
-              <div className="font-black text-black uppercase flex justify-between border-b border-gray-300 pb-1">
-                <span>📋 BUKTI REKONSILIASI MATEMATIS (DASAR KEBENARAN PERHITUNGAN SISTEM)</span>
-                <span className="text-emerald-700 font-bold">STATUS: MATCH 100% (SELISIH: RP 0)</span>
+              <div className="font-bold text-black uppercase flex justify-between border-b border-gray-300 pb-1">
+                <span>Pengecekan Kesesuaian Perhitungan (Tabel II & Tabel III):</span>
+                <span className="text-emerald-700 font-bold">MATCH 100% (SELISIH: RP 0)</span>
               </div>
               <table className="w-full text-left border-collapse text-[9px] mt-1">
                 <tbody>
                   <tr className="border-b border-gray-200">
-                    <td className="p-1 font-semibold text-gray-700" style={{ width: '45%' }}>1. Metode Top-Down (Tabel II - Alokasi 60% Anggota)</td>
-                    <td className="p-1 font-mono text-gray-600" style={{ width: '35%' }}>60% × Laba Partisipasi Belanja Anggota</td>
+                    <td className="p-1 font-semibold text-gray-700" style={{ width: '45%' }}>• Alokasi 60% Jasa Belanja Anggota (Tabel II)</td>
+                    <td className="p-1 font-mono text-gray-600" style={{ width: '35%' }}>60% × Total Laba Belanja Anggota</td>
                     <td className="p-1 text-right font-mono font-bold text-black" style={{ width: '20%' }}>{formatRupiah(summary.shu_anggota_60)}</td>
                   </tr>
                   <tr className="border-b border-gray-200">
-                    <td className="p-1 font-semibold text-gray-700">2. Metode Bottom-Up (Tabel III - Total Rekapitulasi 65 Anggota)</td>
-                    <td className="p-1 font-mono text-gray-600">Σ (Hak SHU per Anggota 1 s/d 65)</td>
+                    <td className="p-1 font-semibold text-gray-700">• Total Pembagian ke 65 Anggota (Tabel III)</td>
+                    <td className="p-1 font-mono text-gray-600">Jumlah Hak SHU Seluruh Anggota</td>
                     <td className="p-1 text-right font-mono font-bold text-black">{formatRupiah(totHakShuRekap)}</td>
                   </tr>
                   <tr className="border-b border-gray-200 bg-emerald-50/70 font-bold">
-                    <td className="p-1 text-emerald-900">3. Validasi Selisih (Variance Difference)</td>
-                    <td className="p-1 font-mono text-emerald-800">| Metode Top-Down − Metode Bottom-Up |</td>
-                    <td className="p-1 text-right font-mono text-emerald-900 font-black">Rp 0 (NOL RUPIAH)</td>
+                    <td className="p-1 text-emerald-900">• Status Selisih Pembagian SHU</td>
+                    <td className="p-1 font-mono text-emerald-800">Tabel II − Tabel III</td>
+                    <td className="p-1 text-right font-mono text-emerald-900 font-black">Rp 0 (Pas & Tepat)</td>
                   </tr>
                   <tr>
-                    <td className="p-1 font-semibold text-gray-700">4. Keseimbangan Arus Kas & Piutang Belanja</td>
+                    <td className="p-1 font-semibold text-gray-700">• Rincian Transaksi Belanja Anggota</td>
                     <td className="p-1 font-mono text-gray-600">Bayar Lunas ({formatRupiah(totLunasRekap)}) + Bon ({formatRupiah(totHutangRekap)})</td>
                     <td className="p-1 text-right font-mono font-bold text-black">{formatRupiah(totBelanjaRekap)}</td>
                   </tr>
@@ -2124,23 +2118,17 @@ export function LaporanTransaksi() {
             </div>
 
             <p className="m-0 text-gray-700 leading-relaxed">
-              <strong>1. Sumber & Keabsahan Data:</strong> Laporan pertanggungjawaban operasional dan perhitungan SHU ini diterbitkan secara otomatis oleh <em>Core Engine Koperasi PKP-PK BTH</em> secara <strong>real-time</strong> berdasarkan <em>immutable transaction logs</em> (tabel <code>transaksi</code>, <code>transaksi_detail</code>, dan <code>pengeluaran_operasional</code>) yang tercatat di sistem kasir POS Koperasi.
+              <strong>1. Sumber Data:</strong> Laporan ini dibuat secara otomatis berdasarkan data transaksi kasir dan catatan pengeluaran kas toko Koperasi Karyawan PKP-PK Bandara Hang Nadim Batam.
             </p>
             <p className="m-0 text-gray-700 leading-relaxed">
-              <strong>2. Metodologi Komputasi SHU:</strong> Perhitungan mengacu pada standar <strong>SAK Entitas Privat Koperasi Indonesia</strong> & Anggaran Dasar Koperasi (AD/ART) Bab Perhitungan SHU:
-              <br />
-              • <em>Laba Kotor</em> = Total Omset Penjualan Anggota − Beban Pokok Penjualan (HPP Modal Kulakan).
-              <br />
-              • <em>Net SHU Riil</em> = Laba Kotor − Total Realisasi Pengeluaran Kas Operasional (OPEX).
-              <br />
-              • <em>Hak SHU Anggota (60%)</em> dibagikan secara adil berdasarkan kontribusi margin laba riil belanja masing-masing anggota.
+              <strong>2. Pembagian SHU:</strong> Sisa Hasil Usaha toko dibagikan secara adil berdasarkan keuntungan dari barang yang dibelanjakan masing-masing anggota (60% Hak Anggota, 30% Kas Koperasi, 10% Pengurus).
             </p>
             <p className="m-0 text-gray-700 leading-relaxed">
-              <strong>3. Hak Uji & Rekonsiliasi Anggota:</strong> Laporan ini disajikan terbuka kepada Pengurus, Badan Pengawas, dan seluruh Anggota Koperasi. Apabila terdapat ketidaksesuaian nilai transaksi, riwayat pembayaran, atau saldo piutang, Anggota berhak mengajukan verifikasi/koreksi dengan melampirkan nomor referensi transaksi atau struk belanja ke Pengurus Koperasi.
+              <strong>3. Transparansi:</strong> Jika ada catatan transaksi atau saldo bon yang perlu dicocokkan, anggota dapat langsung mengonfirmasi kepada pengurus/kasir koperasi.
             </p>
             <div className="pt-1 border-t border-gray-200 flex justify-between items-center text-[9px] text-gray-500 font-mono">
-              <span>Status Verifikasi: VALID & REALTIME (TERAUTENTIKASI SISTEM)</span>
-              <span>Diterbitkan: {new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'medium' })}</span>
+              <span>Status: Terverifikasi Sistem Internal</span>
+              <span>Dicetak: {new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
             </div>
           </div>
 
