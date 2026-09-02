@@ -202,8 +202,10 @@ export const adminService = {
     return data
   },
 
-  autoRefillDisplay: async (): Promise<ApiResponse<any>> => {
-    const { data } = await api.post('/laravel/api/admin/auto-refill-display')
+  autoRefillDisplay: async (payload?: {
+    items?: Array<{ barang_id: number; jumlah: number }>
+  }): Promise<ApiResponse<any>> => {
+    const { data } = await api.post('/laravel/api/admin/auto-refill-display', payload || {})
     return data
   },
 

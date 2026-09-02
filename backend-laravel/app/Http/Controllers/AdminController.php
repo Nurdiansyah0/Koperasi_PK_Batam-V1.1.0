@@ -381,24 +381,54 @@ class AdminController extends Controller
         $this->checkAdmin($request);
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
-            $barangs = Barang::where('stok_gudang', '>', 0)->lockForUpdate()->get();
             $totalRefilled = 0;
             $itemsRefilled = 0;
 
-            foreach ($barangs as $barang) {
-                $pkm = (int) ($barang->pkm ?: 1);
-                $currentToko = (int) $barang->stok_toko;
-                if ($currentToko < $pkm) {
-                    $deficit = $pkm - $currentToko;
-                    $canTransfer = min($deficit, (int) $barang->stok_gudang);
-                    if ($canTransfer > 0) {
-                        $barang->stok_gudang -= $canTransfer;
-                        $barang->stok_toko += $canTransfer;
-                        $barang->stok = $barang->stok_toko + $barang->stok_gudang;
-                        $barang->save();
+            if ($request->has('items') && is_array($request->input('items'))) {
+                // Confirmed picking list with custom physical counts
+                foreach ($request->input('items') as $item) {
+                    $barangId = $item['barang_id'] ?? null;
+                    $jumlah = (int) ($item['jumlah'] ?? 0);
+                    if (!$barangId || $jumlah <= 0) continue;
 
-                        $totalRefilled += $canTransfer;
-                        $itemsRefilled++;
+                    $barang = Barang::where('barang_id', $barangId)->lockForUpdate()->first();
+                    if ($barang) {
+                        $canTransfer = min($jumlah, (int) $barang->stok_gudang);
+                        if ($canTransfer > 0) {
+                            $barang->stok_gudang -= $canTransfer;
+                            $barang->stok_toko += $canTransfer;
+                            $barang->stok = $barang->stok_toko + $barang->stok_gudang;
+                            if (!$barang->tgl_kadaluarsa_toko && $barang->tgl_kadaluarsa_gudang) {
+                                $barang->tgl_kadaluarsa_toko = $barang->tgl_kadaluarsa_gudang;
+                            }
+                            $barang->save();
+
+                            $totalRefilled += $canTransfer;
+                            $itemsRefilled++;
+                        }
+                    }
+                }
+            } else {
+                // Automated fallback: calculate all PKM deficits
+                $barangs = Barang::where('stok_gudang', '>', 0)->lockForUpdate()->get();
+                foreach ($barangs as $barang) {
+                    $pkm = (int) ($barang->pkm ?: 1);
+                    $currentToko = (int) $barang->stok_toko;
+                    if ($currentToko < $pkm) {
+                        $deficit = $pkm - $currentToko;
+                        $canTransfer = min($deficit, (int) $barang->stok_gudang);
+                        if ($canTransfer > 0) {
+                            $barang->stok_gudang -= $canTransfer;
+                            $barang->stok_toko += $canTransfer;
+                            $barang->stok = $barang->stok_toko + $barang->stok_gudang;
+                            if (!$barang->tgl_kadaluarsa_toko && $barang->tgl_kadaluarsa_gudang) {
+                                $barang->tgl_kadaluarsa_toko = $barang->tgl_kadaluarsa_gudang;
+                            }
+                            $barang->save();
+
+                            $totalRefilled += $canTransfer;
+                            $itemsRefilled++;
+                        }
                     }
                 }
             }
@@ -406,7 +436,7 @@ class AdminController extends Controller
             \Illuminate\Support\Facades\DB::commit();
             return response()->json([
                 'success' => true,
-                'message' => "Auto-Refill selesai: {$totalRefilled} pcs berhasil dipindahkan dari gudang ke display toko ({$itemsRefilled} SKU)",
+                'message' => "Refill berhasil dikonfirmasi: {$totalRefilled} pcs telah dipindahkan ke display rak toko ({$itemsRefilled} SKU)",
                 'total_refilled' => $totalRefilled,
                 'items_refilled' => $itemsRefilled
             ]);

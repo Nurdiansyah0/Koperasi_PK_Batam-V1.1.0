@@ -12,10 +12,21 @@ import {
   Plus, Edit, Trash2, ShoppingCart, History,
   Search, Box, Store, Warehouse, ArrowRightLeft,
   Zap, AlertTriangle, AlertCircle, Calendar,
-  ShieldAlert, Sparkles, Filter
+  CheckSquare, Square, Copy, Check, Printer
 } from 'lucide-react'
 
 const ITEMS_PER_PAGE = 12
+
+interface RefillDraftItem {
+  barang_id: number
+  nama_barang: string
+  stok_toko: number
+  pkm: number
+  stok_gudang: number
+  tgl_kadaluarsa_gudang?: string | null
+  jumlah_ambil: number
+  is_selected: boolean
+}
 
 export function DataBarang() {
   const [barang, setBarang] = useState<Barang[]>([])
@@ -23,13 +34,18 @@ export function DataBarang() {
   const [search, setSearch] = useState('')
   const [filterTab, setFilterTab] = useState<'all' | 'expired' | 'near_expiry' | 'refill'>('all')
   const [page, setPage] = useState(1)
-  const [isAutoRefilling, setIsAutoRefilling] = useState(false)
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [formData, setFormData] = useState<Partial<Barang>>({})
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  // Refill Picking Slip State (Work Order)
+  const [isRefillModalOpen, setIsRefillModalOpen] = useState(false)
+  const [refillItems, setRefillItems] = useState<RefillDraftItem[]>([])
+  const [isConfirmingRefill, setIsConfirmingRefill] = useState(false)
+  const [copiedSlip, setCopiedSlip] = useState(false)
 
   // Restock State
   const [isRestockModalOpen, setIsRestockModalOpen] = useState(false)
@@ -90,8 +106,13 @@ export function DataBarang() {
     return barang.filter(b => (b.status_kadaluarsa_toko === 'near_expiry' && (b.stok_toko || 0) > 0) || (b.status_kadaluarsa_gudang === 'near_expiry' && (b.stok_gudang || 0) > 0)).length
   }, [barang])
 
-  const refillNeededCount = useMemo(() => {
-    return barang.filter(b => (b.stok_toko ?? Math.min(b.stok, b.pkm || 1)) < (b.pkm || 1)).length
+  const refillNeededItems = useMemo(() => {
+    return barang.filter(b => {
+      const currentToko = b.stok_toko ?? Math.min(b.stok, b.pkm || 1)
+      const pkm = b.pkm || 1
+      const gudang = b.stok_gudang ?? Math.max(0, b.stok - pkm)
+      return currentToko < pkm && gudang > 0
+    })
   }, [barang])
 
   const filteredBarang = useMemo(() => {
@@ -116,6 +137,108 @@ export function DataBarang() {
   const paginatedBarang = filteredBarang.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
 
   useEffect(() => { setPage(1) }, [search, filterTab])
+
+  // Open Picking Slip / Refill Modal
+  const handleOpenRefillModal = () => {
+    if (refillNeededItems.length === 0) {
+      toast('Semua etalase toko sudah terisi penuh sesuai PKM atau stok gudang kosong.', { icon: '✨' })
+      return
+    }
+
+    const initialList: RefillDraftItem[] = refillNeededItems.map(item => {
+      const currentToko = item.stok_toko ?? Math.min(item.stok, item.pkm || 1)
+      const pkm = item.pkm || 1
+      const gudang = item.stok_gudang ?? Math.max(0, item.stok - pkm)
+      const deficit = pkm - currentToko
+      const recommendQty = Math.min(deficit, gudang)
+
+      return {
+        barang_id: item.barang_id,
+        nama_barang: item.nama_barang,
+        stok_toko: currentToko,
+        pkm: pkm,
+        stok_gudang: gudang,
+        tgl_kadaluarsa_gudang: item.tgl_kadaluarsa_gudang,
+        jumlah_ambil: recommendQty,
+        is_selected: true
+      }
+    })
+
+    setRefillItems(initialList)
+    setIsRefillModalOpen(true)
+  }
+
+  // Toggle selection in picking list
+  const toggleRefillItem = (id: number) => {
+    setRefillItems(prev => prev.map(item => 
+      item.barang_id === id ? { ...item, is_selected: !item.is_selected } : item
+    ))
+  }
+
+  // Update physical count taken
+  const updateRefillQty = (id: number, qty: number) => {
+    setRefillItems(prev => prev.map(item => {
+      if (item.barang_id === id) {
+        const safeQty = Math.max(1, Math.min(qty, item.stok_gudang))
+        return { ...item, jumlah_ambil: safeQty }
+      }
+      return item
+    }))
+  }
+
+  // Copy picking slip text to clipboard
+  const handleCopyPickingSlip = () => {
+    const activeItems = refillItems.filter(i => i.is_selected)
+    if (activeItems.length === 0) return
+
+    const lines = [
+      `📋 *DAFTAR PICKING REFILL TOKO (KOPERASI PK)*`,
+      `Tanggal: ${new Date().toLocaleDateString('id-ID', { dateStyle: 'medium' })}`,
+      `Total Item: ${activeItems.length} SKU`,
+      `---------------------------------------`,
+      ...activeItems.map((item, idx) => 
+        `${idx + 1}. [ ] ${item.nama_barang} ➔ Ambil: *${item.jumlah_ambil} pcs* (Rak: ${item.stok_toko}/${item.pkm}, Sisa Gudang: ${item.stok_gudang})`
+      ),
+      `---------------------------------------`,
+      `*Instruksi:* Ambil barang dari gudang, cek fisik/expired, pajang di rak toko, lalu konfirmasi di sistem.`
+    ]
+
+    navigator.clipboard.writeText(lines.join('\n'))
+    setCopiedSlip(true)
+    toast.success('Daftar picking berhasil disalin ke clipboard!')
+    setTimeout(() => setCopiedSlip(false), 3000)
+  }
+
+  // Submit confirmed picking list
+  const handleConfirmRefill = async () => {
+    const selected = refillItems.filter(i => i.is_selected && i.jumlah_ambil > 0)
+    if (selected.length === 0) {
+      toast.error('Pilih minimal 1 barang untuk dipindahkan ke display toko')
+      return
+    }
+
+    setIsConfirmingRefill(true)
+    try {
+      const payload = {
+        items: selected.map(i => ({
+          barang_id: i.barang_id,
+          jumlah: i.jumlah_ambil
+        }))
+      }
+      const res = await adminService.autoRefillDisplay(payload)
+      if (res.success) {
+        toast.success(res.message || 'Pemindahan stok rak berhasil dikonfirmasi!')
+        setIsRefillModalOpen(false)
+        loadData()
+      } else {
+        toast.error(res.message || 'Gagal memproses konfirmasi refill')
+      }
+    } catch {
+      toast.error('Terjadi kesalahan saat memproses konfirmasi')
+    } finally {
+      setIsConfirmingRefill(false)
+    }
+  }
 
   const handleOpenModal = (item?: Barang) => {
     if (item) {
@@ -192,24 +315,6 @@ export function DataBarang() {
       toast.error("Gagal memuat riwayat restock")
     } finally {
       setLoadingHistory(false)
-    }
-  }
-
-  const handleAutoRefill = async () => {
-    if (isAutoRefilling) return
-    setIsAutoRefilling(true)
-    try {
-      const res = await adminService.autoRefillDisplay()
-      if (res.success) {
-        toast.success(res.message || 'Auto-Refill display toko berhasil!')
-        loadData()
-      } else {
-        toast.error(res.message || 'Gagal melakukan auto-refill')
-      }
-    } catch {
-      toast.error('Terjadi kesalahan saat memproses auto-refill')
-    } finally {
-      setIsAutoRefilling(false)
     }
   }
 
@@ -319,22 +424,24 @@ export function DataBarang() {
     </div>
   )
 
+  const selectedRefillCount = refillItems.filter(i => i.is_selected).length
+  const totalRefillPieces = refillItems.filter(i => i.is_selected).reduce((acc, curr) => acc + curr.jumlah_ambil, 0)
+
   return (
     <div className="space-y-4 sm:space-y-5 flex flex-col h-[calc(100vh-7.5rem)]">
       {/* Header section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shrink-0">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Katalog & Expired Radar</h1>
-          <p className="text-xs text-slate-500">Pemisahan Stok Toko & Gudang dengan Kontrol Kadaluarsa (FEFO)</p>
+          <p className="text-xs text-slate-500">Pemisahan Stok Toko & Gudang dengan Lembar Kerja Picking Fisik</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <Button 
-            onClick={handleAutoRefill} 
-            disabled={isAutoRefilling}
+            onClick={handleOpenRefillModal} 
             className="flex-1 sm:flex-none h-10 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs"
           >
-            <Zap className={`w-3.5 h-3.5 mr-1.5 ${isAutoRefilling ? 'animate-spin' : ''}`} />
-            Auto-Refill Toko
+            <Zap className="w-3.5 h-3.5 mr-1.5" />
+            Rencanakan Refill ({refillNeededItems.length})
           </Button>
           <Button onClick={handleOpenHistory} variant="secondary" className="flex-1 sm:flex-none h-10 text-xs font-semibold">
             <History className="w-3.5 h-3.5 mr-1.5" /> Riwayat Kulakan
@@ -393,7 +500,7 @@ export function DataBarang() {
             }`}
           >
             <Zap className="w-3 h-3" />
-            ⚡ Butuh Refill ({refillNeededCount})
+            ⚡ Butuh Refill ({refillNeededItems.length})
           </button>
         </div>
 
@@ -606,6 +713,116 @@ export function DataBarang() {
           </div>
         </div>
       )}
+
+      {/* MODAL 2-LANGKAH: LEMBAR KERJA PICKING / REFILL TOKO */}
+      <Modal 
+        isOpen={isRefillModalOpen} 
+        onClose={() => setIsRefillModalOpen(false)} 
+        title="📋 Lembar Kerja Picking & Refill Display Toko"
+      >
+        <div className="space-y-4">
+          {/* Petunjuk Operasional */}
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-900/60 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+            <div className="font-bold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+              <Zap className="w-4 h-4 text-amber-600" /> SOP Pemindahan Fisik Barang:
+            </div>
+            <p className="text-[11px] leading-relaxed">
+              1. Bawa daftar ini / salin ke HP saat staf menuju ke gudang belakang.<br />
+              2. Ambil barang dari kardus gudang sesuai jumlah yang tertera.<br />
+              3. Tata barang di rak display etalase kasir.<br />
+              4. Tekan tombol <strong>"Konfirmasi Selesai Ditata di Rak"</strong> di bawah untuk menyinkronkan data sistem.
+            </p>
+          </div>
+
+          {/* Quick Action Top Bar */}
+          <div className="flex items-center justify-between p-2.5 bg-slate-100 dark:bg-zinc-800 rounded-2xl text-xs">
+            <div className="font-semibold text-slate-700 dark:text-slate-300">
+              Terpilih: <strong className="text-blue-600 dark:text-blue-400">{selectedRefillCount} SKU</strong> ({totalRefillPieces} pcs fisik)
+            </div>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={handleCopyPickingSlip}
+              className="h-7 text-xs font-bold gap-1 rounded-xl"
+            >
+              {copiedSlip ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedSlip ? 'Tersalin' : 'Salin Checklist'}
+            </Button>
+          </div>
+
+          {/* Picking Items Table / Checklist */}
+          <div className="max-h-[45vh] overflow-y-auto space-y-2 pr-1">
+            {refillItems.map(item => (
+              <div 
+                key={item.barang_id}
+                className={`p-3 rounded-2xl border text-xs transition-all ${
+                  item.is_selected 
+                    ? 'border-blue-300 dark:border-blue-900 bg-white dark:bg-zinc-800 shadow-2xs' 
+                    : 'border-slate-200 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-900/50 opacity-60'
+                }`}
+              >
+                <div className="flex items-start gap-2.5">
+                  <button 
+                    type="button"
+                    onClick={() => toggleRefillItem(item.barang_id)}
+                    className="mt-0.5 text-blue-600 dark:text-blue-400 shrink-0"
+                  >
+                    {item.is_selected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4 text-slate-400" />}
+                  </button>
+
+                  <div className="flex-1 space-y-1">
+                    <div className="flex justify-between items-start">
+                      <span className="font-extrabold text-slate-900 dark:text-white leading-tight">
+                        {item.nama_barang}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                      <span>Rak Toko: <strong className="text-amber-600">{item.stok_toko} / PKM {item.pkm}</strong></span>
+                      <span>Gudang: <strong className="text-slate-700 dark:text-slate-300">{item.stok_gudang} pcs</strong></span>
+                      {item.tgl_kadaluarsa_gudang && (
+                        <span className="text-[10px] text-orange-600 font-semibold">
+                          Exp: {item.tgl_kadaluarsa_gudang.split('T')[0]}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Quantity Input */}
+                  <div className="shrink-0 text-right">
+                    <span className="text-[10px] text-slate-400 block mb-0.5">Ambil Fisik:</span>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max={item.stok_gudang}
+                      value={item.jumlah_ambil}
+                      disabled={!item.is_selected}
+                      onChange={e => updateRefillQty(item.barang_id, Number(e.target.value))}
+                      className="w-16 px-2 py-1 border rounded-xl text-center text-xs font-black bg-slate-50 dark:bg-zinc-900 border-slate-300 dark:border-zinc-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Action Footer */}
+          <div className="flex items-center justify-between pt-3 border-t">
+            <Button type="button" variant="ghost" onClick={() => setIsRefillModalOpen(false)}>
+              Batal
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleConfirmRefill} 
+              loading={isConfirmingRefill}
+              disabled={selectedRefillCount === 0}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4"
+            >
+              <Check className="w-4 h-4 mr-1.5" /> Konfirmasi Selesai Ditata ({totalRefillPieces} pcs)
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* MODAL TARIK / WRITE-OFF BARANG EXPIRED */}
       <Modal isOpen={isWriteOffModalOpen} onClose={() => setIsWriteOffModalOpen(false)} title="🔴 Pemusnahan / Tarik Barang Expired">
