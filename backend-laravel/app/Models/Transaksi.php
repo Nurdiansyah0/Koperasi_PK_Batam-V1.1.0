@@ -34,4 +34,9 @@ class Transaksi extends Model
     {
         return $this->belongsTo(User::class, 'kasir_id', 'user_id');
     }
+
+    public function tarikTunai()
+    {
+        return $this->hasOne(TarikTunai::class, 'transaksi_id', 'transaksi_id');
+    }
 }

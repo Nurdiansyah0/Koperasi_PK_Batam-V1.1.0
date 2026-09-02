@@ -270,35 +270,38 @@ class KasirController extends Controller
     public function getPesananAnggota(Request $request)
     {
         $this->checkKasir($request);
-        $pesanan = Transaksi::with(['anggota', 'details.barang'])
+
+        $pesanan = Transaksi::with(['anggota', 'details.barang', 'tarikTunai'])
             ->where('status', 'pending')
             ->orderBy('created_at', 'desc')
-            ->get()->map(function($t) {
-                $tarik = TarikTunai::where('transaksi_id', $t->transaksi_id)->first();
+            ->get()
+            ->map(function($t) {
+                $tarik = $t->tarikTunai; // Already loaded, no extra query
                 return [
-                    'transaksi_id' => $t->transaksi_id,
-                    'anggota_id' => $t->anggota_id,
-                    'nama_anggota' => $t->anggota ? $t->anggota->nama_lengkap : 'Unknown',
+                    'transaksi_id'      => $t->transaksi_id,
+                    'anggota_id'        => $t->anggota_id,
+                    'nama_anggota'      => $t->anggota ? $t->anggota->nama_lengkap : 'Unknown',
                     'metode_pembayaran' => $t->metode_pembayaran,
-                    'total_harga' => (float) $t->total_harga,
-                    'created_at' => $t->created_at,
-                    'tarik_tunai' => $tarik ? [
-                        'tarik_id' => $tarik->tarik_id,
-                        'kode_penarikan' => $tarik->kode_penarikan,
-                        'nominal' => (float) $tarik->nominal,
-                        'sumber_dana' => $tarik->sumber_dana,
-                        'uang_bersih_diserahkan' => max(0, (float) $tarik->nominal - (float) $t->total_harga)
+                    'total_harga'       => (float) $t->total_harga,
+                    'created_at'        => $t->created_at,
+                    'tarik_tunai'       => $tarik ? [
+                        'tarik_id'                => $tarik->tarik_id,
+                        'kode_penarikan'          => $tarik->kode_penarikan,
+                        'nominal'                 => (float) $tarik->nominal,
+                        'sumber_dana'             => $tarik->sumber_dana,
+                        'uang_bersih_diserahkan'  => max(0, (float) $tarik->nominal - (float) $t->total_harga)
                     ] : null,
                     'items' => $t->details->map(function($d) {
                         return [
-                            'barang_id' => $d->barang_id,
-                            'nama_barang' => $d->barang ? $d->barang->nama_barang : '',
-                            'jumlah' => $d->jumlah,
+                            'barang_id'    => $d->barang_id,
+                            'nama_barang'  => $d->barang ? $d->barang->nama_barang : '',
+                            'jumlah'       => $d->jumlah,
                             'harga_satuan' => (float) $d->harga_satuan,
                         ];
                     })
                 ];
             });
+
         return response()->json(['success' => true, 'data' => $pesanan]);
     }
 

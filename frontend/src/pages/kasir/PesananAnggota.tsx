@@ -19,12 +19,12 @@ const PesananAnggotaPage = () => {
   const [showMobileDetail, setShowMobileDetail] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
 
-  const loadData = async () => {
-    setLoading(true)
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await kasirService.getPesananAnggota()
       setPesanan(res)
-      setSelectedIds(new Set()) 
+      if (!silent) setSelectedIds(new Set())
       
       // If detail view is open, check if they still have orders.
       if (selectedAnggotaId !== null) {
@@ -35,7 +35,7 @@ const PesananAnggotaPage = () => {
         }
       }
     } catch {
-      toast.error('Gagal memuat pesanan anggota')
+      if (!silent) toast.error('Gagal memuat pesanan anggota')
     } finally {
       setLoading(false)
     }
@@ -43,6 +43,14 @@ const PesananAnggotaPage = () => {
 
   useEffect(() => {
     loadData()
+  }, [])
+
+  // Auto-refresh silently when new realtime order arrives
+  useEffect(() => {
+    const unsub = realtimeOrderService.subscribe(() => {
+      loadData(true) // silent refresh - no loading spinner, no selection reset
+    })
+    return () => unsub()
   }, [])
 
   // Group by Anggota
@@ -149,7 +157,7 @@ const PesananAnggotaPage = () => {
               <span>Test Notifikasi</span>
             </Button>
 
-            <Button variant="outline" size="sm" onClick={loadData} loading={loading} className="gap-1.5 h-9 rounded-xl">
+            <Button variant="outline" size="sm" onClick={() => loadData()} loading={loading} className="gap-1.5 h-9 rounded-xl">
               <RefreshCw className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Segarkan</span>
             </Button>
