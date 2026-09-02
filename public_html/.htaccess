@@ -2,6 +2,12 @@
   RewriteEngine On
   RewriteBase /
   
+  # Pass Authorization and API-Key headers to backend
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+  RewriteCond %{HTTP:X-API-KEY} .
+  RewriteRule .* - [E=HTTP_X_API_KEY:%{HTTP:X-API-KEY}]
+
   # API proxy to Laravel
   RewriteCond %{REQUEST_URI} ^/laravel/
   RewriteCond %{REQUEST_FILENAME} !-f
