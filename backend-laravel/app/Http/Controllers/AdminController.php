@@ -958,9 +958,14 @@ class AdminController extends Controller
             $shuCadangan30 = round(0.30 * $totalLabaBersih, 2);
             $shuPengurus10 = round(0.10 * $totalLabaBersih, 2);
 
-            // Rekapitulasi Partisipasi Belanja & Hak SHU per Anggota (Sub-Ledger SHU)
+            // Rekapitulasi Partisipasi Belanja & Hak SHU Seluruh Anggota Koperasi (Sub-Ledger SHU)
             $totalOmsetAnggota = (float) ($summaryAgg->omset_anggota ?? 0);
-            $rekapAnggota = (clone $q)
+
+            $allAnggota = Anggota::select('anggota_id', 'nomor_anggota', 'nama_lengkap', 'email', 'saldo', 'hutang')
+                ->orderBy('nama_lengkap', 'asc')
+                ->get();
+
+            $txAggPerAnggota = (clone $q)
                 ->whereNotNull('anggota_id')
                 ->selectRaw("
                     anggota_id,
@@ -971,26 +976,32 @@ class AdminController extends Controller
                     COALESCE(SUM(total_keuntungan), 0) as total_margin
                 ")
                 ->groupBy('anggota_id')
-                ->with('anggota:anggota_id,nama_lengkap,email,saldo,hutang')
-                ->orderByRaw('total_belanja DESC')
                 ->get()
-                ->map(function($row) use ($totalOmsetAnggota, $shuAnggota60) {
-                    $belanja = (float) $row->total_belanja;
-                    $rasio = $totalOmsetAnggota > 0 ? ($belanja / $totalOmsetAnggota) : 0;
-                    $hakShu = round($rasio * $shuAnggota60, 2);
+                ->keyBy('anggota_id');
 
-                    return [
-                        'anggota_id' => $row->anggota_id,
-                        'nama_lengkap' => $row->anggota ? $row->anggota->nama_lengkap : 'Anggota #' . $row->anggota_id,
-                        'frekuensi_belanja' => (int) $row->frekuensi_belanja,
-                        'total_belanja' => $belanja,
-                        'total_lunas' => (float) $row->total_lunas,
-                        'total_hutang' => (float) $row->total_hutang,
-                        'saldo_hutang_koperasi' => (float) ($row->anggota ? $row->anggota->hutang : 0),
-                        'porsi_persen' => round($rasio * 100, 2),
-                        'hak_shu' => $hakShu,
-                    ];
-                });
+            $rekapAnggota = $allAnggota->map(function($a) use ($txAggPerAnggota, $totalOmsetAnggota, $shuAnggota60) {
+                $tx = $txAggPerAnggota->get($a->anggota_id);
+                $belanja = $tx ? (float) $tx->total_belanja : 0.0;
+                $lunas = $tx ? (float) $tx->total_lunas : 0.0;
+                $hutang = $tx ? (float) $tx->total_hutang : 0.0;
+                $frek = $tx ? (int) $tx->frekuensi_belanja : 0;
+
+                $rasio = ($totalOmsetAnggota > 0 && $belanja > 0) ? ($belanja / $totalOmsetAnggota) : 0;
+                $hakShu = round($rasio * $shuAnggota60, 2);
+
+                return [
+                    'anggota_id' => $a->anggota_id,
+                    'nomor_anggota' => $a->nomor_anggota,
+                    'nama_lengkap' => $a->nama_lengkap ?: 'Anggota #' . $a->anggota_id,
+                    'frekuensi_belanja' => $frek,
+                    'total_belanja' => $belanja,
+                    'total_lunas' => $lunas,
+                    'total_hutang' => $hutang,
+                    'saldo_hutang_koperasi' => (float) ($a->hutang ?? 0),
+                    'porsi_persen' => round($rasio * 100, 2),
+                    'hak_shu' => $hakShu,
+                ];
+            });
 
             // Rekapitulasi Bulanan (Bila rentang waktu multi-bulan)
             $isSqlite = DB::connection()->getDriverName() === 'sqlite';
@@ -1018,8 +1029,8 @@ class AdminController extends Controller
                 });
 
             // ── 1. RASIO MANAJEMEN KEUANGAN & KESEHATAN KOPERASI (Permenkop UKM & Financial Ratio Analysis) ──
-            $totalSeluruhAnggota = Anggota::count();
-            $jumlahAnggotaAktif = $rekapAnggota->count();
+            $totalSeluruhAnggota = $allAnggota->count();
+            $jumlahAnggotaAktif = $rekapAnggota->where('total_belanja', '>', 0)->count();
             $rasioPartisipasiAnggota = $totalSeluruhAnggota > 0 
                 ? round(($jumlahAnggotaAktif / $totalSeluruhAnggota) * 100, 1) 
                 : 0;

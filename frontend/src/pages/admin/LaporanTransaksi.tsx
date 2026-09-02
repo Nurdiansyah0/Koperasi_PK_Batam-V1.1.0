@@ -419,17 +419,15 @@ export function LaporanTransaksi() {
           .print-sheet {
             page-break-after: always !important;
             break-after: page !important;
-            display: flex !important;
-            flex-direction: column !important;
-            min-height: 272mm !important;
+            display: block !important;
+            position: relative !important;
             box-sizing: border-box !important;
-            padding-bottom: 2mm !important;
+            padding-bottom: 4mm !important;
             clear: both !important;
           }
           .print-sheet-last {
             page-break-after: auto !important;
             break-after: auto !important;
-            min-height: auto !important;
           }
           table.print-table {
             width: 100% !important;
