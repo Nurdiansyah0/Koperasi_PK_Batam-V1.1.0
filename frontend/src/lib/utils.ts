@@ -13,11 +13,18 @@ export function formatRupiah(amount: number | null | undefined): string {
   }).format(amount ?? 0)
 }
 
-export function formatDate(dateStr: string): string {
-  return new Intl.DateTimeFormat('id-ID', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(dateStr))
+export function formatDate(dateStr: string | number | Date | null | undefined): string {
+  if (!dateStr) return '-'
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return String(dateStr)
+    return new Intl.DateTimeFormat('id-ID', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(d)
+  } catch {
+    return String(dateStr)
+  }
 }
 
 /**

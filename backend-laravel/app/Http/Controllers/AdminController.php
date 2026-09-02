@@ -712,12 +712,20 @@ class AdminController extends Controller
     public function getSetoranKasir(Request $request)
     {
         $this->checkAdmin($request);
-        $data = SetoranKasir::with('kasir')->get()->map(function($s) {
+        $data = SetoranKasir::with('kasir.anggota')->orderBy('created_at', 'desc')->get()->map(function($s) {
+            $namaKasir = $s->kasir ? ($s->kasir->anggota ? $s->kasir->anggota->nama_lengkap : $s->kasir->username) : 'Kasir';
+            $tglIso = $s->created_at ? $s->created_at->toIso8601String() : ($s->tanggal ? \Carbon\Carbon::parse($s->tanggal)->toIso8601String() : null);
             return [
                 'id' => $s->setoran_id,
+                'setoran_id' => $s->setoran_id,
                 'nominal' => (float) $s->nominal,
-                'nama_kasir' => $s->kasir ? $s->kasir->username : '',
-                'tanggal' => $s->created_at ? $s->created_at->toIso8601String() : null, // Mocking format if needed
+                'nama_kasir' => $namaKasir,
+                'kasir' => [
+                    'nama_lengkap' => $namaKasir,
+                    'username' => $s->kasir ? $s->kasir->username : ''
+                ],
+                'tanggal' => $tglIso,
+                'created_at' => $tglIso,
                 'status' => $s->status
             ];
         });
@@ -726,15 +734,19 @@ class AdminController extends Controller
 
     public function approveSetoranKasir(Request $request)
     {
-        $this->checkAdmin($request);
+        $adminId = $this->checkAdmin($request);
         $setoran = SetoranKasir::find($request->setoran_id);
         if ($setoran) {
-            $setoran->status = 'approved';
-            $setoran->approved_by = $request->user()->user_id;
+            $action = $request->input('action', 'approve');
+            $setoran->status = ($action === 'reject') ? 'rejected' : 'approved';
+            $setoran->approved_by = $adminId;
             $setoran->save();
-            return response()->json(['success' => true, 'message' => 'Setoran disetujui']);
+            return response()->json([
+                'success' => true,
+                'message' => $action === 'reject' ? 'Setoran ditolak' : 'Setoran disetujui'
+            ]);
         }
-        return response()->json(['success' => false], 404);
+        return response()->json(['success' => false, 'error' => 'Setoran tidak ditemukan'], 404);
     }
 
     public function topupSHU(Request $request)
