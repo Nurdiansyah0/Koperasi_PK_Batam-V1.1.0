@@ -993,15 +993,18 @@ class AdminController extends Controller
             });
 
         // Rekapitulasi Bulanan (Bila rentang waktu multi-bulan)
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+        $monthExpr = $isSqlite ? "strftime('%Y-%m', created_at)" : "DATE_FORMAT(created_at, '%Y-%m')";
+        
         $rekapBulanan = (clone $q)
             ->selectRaw("
-                DATE_FORMAT(created_at, '%Y-%m') as periode_bulan,
+                {$monthExpr} as periode_bulan,
                 COUNT(*) as total_transaksi,
                 COALESCE(SUM(total_harga), 0) as omset_bulan,
                 COALESCE(SUM(total_keuntungan), 0) as margin_bulan,
                 COALESCE(SUM(CASE WHEN metode_pembayaran = 'hutang' THEN total_harga ELSE 0 END), 0) as piutang_bulan
             ")
-            ->groupBy(DB::raw("DATE_FORMAT(created_at, '%Y-%m')"))
+            ->groupBy(DB::raw($monthExpr))
             ->orderBy('periode_bulan', 'asc')
             ->get()
             ->map(function($m) {

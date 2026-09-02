@@ -654,6 +654,88 @@ export function LaporanTransaksi() {
           </table>
         </div>
 
+        {/* ── BAGIAN IV: EVALUASI TINGKAT KESEHATAN KOPERASI & HIMBAUAN PARTISIPASI ANGGOTA PKP-PK ── */}
+        <div className="avoid-break mt-3 pt-1 border-t-2 border-black">
+          <div className="border-b border-black pb-1 mb-2">
+            <h2 className="text-[12px] font-black uppercase text-black m-0 flex items-center gap-1.5">
+              IV. EVALUASI TINGKAT KESEHATAN KOPERASI & PEDOMAN PARTISIPASI ANGGOTA
+            </h2>
+            <p className="text-[9px] text-gray-600 m-0">
+              Analisis Keberlanjutan Usaha Koperasi Karyawan Unit PKP-PK Hang Nadim Batam
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-[10px] mb-2">
+            {/* Box Kiri: Diagnosis Kesehatan Finansial */}
+            <div className="border border-black p-2 rounded bg-gray-50/50 space-y-1">
+              <div className="font-black text-black border-b border-gray-300 pb-0.5 uppercase text-[9px] flex justify-between">
+                <span>📊 Indikator Likuiditas & Arus Kas</span>
+                <span className={summary.total_hutang > kasLikuid ? 'text-rose-700 font-bold' : 'text-emerald-700 font-bold'}>
+                  {summary.total_hutang > kasLikuid ? '⚠️ PERHATIAN ARUS KAS' : '✅ SEHAT / LIKUID'}
+                </span>
+              </div>
+              <div className="text-[9px] text-gray-700 space-y-0.5">
+                <div>• <strong>Total Kas Masuk Terkumpul:</strong> {formatRupiah(kasLikuid)} (Lunas Tunai/QRIS)</div>
+                <div>• <strong>Total Piutang Belanja Anggota:</strong> {formatRupiah(summary.total_hutang)}</div>
+                <div>• <strong>Rasio Margin Kotor Toko:</strong> {marginGrossPercent}% (Kekuatan Laba Operasional)</div>
+                <div>• <strong>Beban Kas Operasional (OPEX):</strong> {formatRupiah(summary.total_beban_operasional)}</div>
+              </div>
+            </div>
+
+            {/* Box Kanan: Urgensi Kebutuhan Sehari-hari Unit Kerja */}
+            <div className="border border-black p-2 rounded bg-blue-50/40 space-y-1">
+              <div className="font-black text-blue-950 border-b border-blue-200 pb-0.5 uppercase text-[9px]">
+                🚒 Peran Vital Toko Koperasi Bagi Unit PKP-PK
+              </div>
+              <p className="text-[9px] text-gray-700 m-0 leading-tight">
+                Koperasi didirikan sebagai <strong>penyangga kebutuhan pokok harian & konsumsi piket dinas darurat 24 Jam</strong> personil PKP-PK Hang Nadim di pos jaga bandara. Kelancaran pasokan barang bergantung penuh pada kedisiplinan perputaran kas seluruh anggota.
+              </p>
+            </div>
+          </div>
+
+          {/* Tabel Matriks: Aksi Anggota vs Dampak Bagi Koperasi */}
+          <table className="print-table w-full border border-black text-[9.5px] mb-2">
+            <thead>
+              <tr className="bg-gray-100 font-black border-b border-black uppercase text-[9px]">
+                <th className="border border-black p-1 text-left" style={{ width: '45%' }}>✅ Kewajiban & Aksi Seluruh Anggota</th>
+                <th className="border border-black p-1 text-left" style={{ width: '55%' }}>⚠️ Risiko & Konsekuensi Jika Pasif / Lalai</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-gray-300">
+                <td className="border border-black p-1.5 align-top">
+                  <strong>1. Prioritaskan Belanja di Koperasi Sendiri:</strong>
+                  <p className="m-0 text-gray-600 text-[8.5px]">Alihkan belanja sembako, minuman piket, snack, dan keperluan pribadi harian ke koperasi agar volume perputaran modal bertambah besar.</p>
+                </td>
+                <td className="border border-black p-1.5 align-top text-rose-900">
+                  <strong>Jika Anggota Belanja di Luar:</strong>
+                  <p className="m-0 text-gray-600 text-[8.5px]">Omset toko menurun, perolehan SHU akhir tahun menjadi kecil/nihil, dan perputaran modal usaha koperasi menjadi lesu.</p>
+                </td>
+              </tr>
+              <tr className="border-b border-gray-300">
+                <td className="border border-black p-1.5 align-top">
+                  <strong>2. Disiplin & Tepat Waktu Pelunasan Hutang:</strong>
+                  <p className="m-0 text-gray-600 text-[8.5px]">Segera lunasi fasilitas bon belanja/piutang tepat waktu saat payroll/gajian agar kas koperasi segera terkumpul kembali.</p>
+                </td>
+                <td className="border border-black p-1.5 align-top text-rose-900">
+                  <strong>Jika Piutang Tertunda / Macet:</strong>
+                  <p className="m-0 text-gray-600 text-[8.5px]">Koperasi kehabisan kas likuid untuk kulakan belanja ke supplier/grosir. Stok barang di toko kosong dan fasilitas kasbon terpaksa dibatasi.</p>
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-black p-1.5 align-top">
+                  <strong>3. Berikan Masukan Pengadaan Barang:</strong>
+                  <p className="m-0 text-gray-600 text-[8.5px]">Sampaikan produk yang sering dibutuhkan personil jaga piket ke pengurus agar stok selalu tepat sasaran.</p>
+                </td>
+                <td className="border border-black p-1.5 align-top text-rose-900">
+                  <strong>Jika Tidak Ada Sinergi Bersama:</strong>
+                  <p className="m-0 text-gray-600 text-[8.5px]">Barang yang tersedia tidak sesuai kebutuhan anggota dinas sehingga modal tertahan pada barang yang lambat laku (slow-moving).</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
         {/* ── KOTAK DISCLAIMER & INTEGRITAS SISTEM (AUDIT TRAIL & VERIFIKASI AKUNTANSI) ── */}
         <div className="avoid-break mt-3 p-3 border-2 border-dashed border-gray-400 bg-gray-50/60 rounded text-[10px] text-gray-800 space-y-1.5">
           <div className="flex items-center justify-between border-b border-gray-300 pb-1 font-bold">
@@ -1694,6 +1776,88 @@ export function LaporanTransaksi() {
                   </td>
                 </tr>
               </tfoot>
+            </table>
+          </div>
+
+          {/* ── BAGIAN IV: EVALUASI TINGKAT KESEHATAN KOPERASI & HIMBAUAN PARTISIPASI ANGGOTA PKP-PK ── */}
+          <div className="avoid-break mt-3 pt-1 border-t-2 border-black">
+            <div className="border-b border-black pb-1 mb-2">
+              <h3 className="text-[11px] font-black uppercase text-black m-0 flex items-center gap-1.5">
+                IV. EVALUASI TINGKAT KESEHATAN KOPERASI & PEDOMAN PARTISIPASI ANGGOTA
+              </h3>
+              <p className="text-[9px] text-gray-600 m-0">
+                Analisis Keberlanjutan Usaha Koperasi Karyawan Unit PKP-PK Hang Nadim Batam
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[10px] mb-2">
+              {/* Box Kiri: Diagnosis Kesehatan Finansial */}
+              <div className="border border-black p-2 rounded bg-gray-50/50 space-y-1">
+                <div className="font-black text-black border-b border-gray-300 pb-0.5 uppercase text-[9px] flex justify-between">
+                  <span>📊 Indikator Likuiditas & Arus Kas</span>
+                  <span className={summary.total_hutang > kasLikuid ? 'text-rose-700 font-bold' : 'text-emerald-700 font-bold'}>
+                    {summary.total_hutang > kasLikuid ? '⚠️ PERHATIAN ARUS KAS' : '✅ SEHAT / LIKUID'}
+                  </span>
+                </div>
+                <div className="text-[9px] text-gray-700 space-y-0.5">
+                  <div>• <strong>Total Kas Masuk Terkumpul:</strong> {formatRupiah(kasLikuid)} (Lunas Tunai/QRIS)</div>
+                  <div>• <strong>Total Piutang Belanja Anggota:</strong> {formatRupiah(summary.total_hutang)}</div>
+                  <div>• <strong>Rasio Margin Kotor Toko:</strong> {marginGrossPercent}% (Kekuatan Laba Operasional)</div>
+                  <div>• <strong>Beban Kas Operasional (OPEX):</strong> {formatRupiah(summary.total_beban_operasional)}</div>
+                </div>
+              </div>
+
+              {/* Box Kanan: Urgensi Kebutuhan Sehari-hari Unit Kerja */}
+              <div className="border border-black p-2 rounded bg-blue-50/40 space-y-1">
+                <div className="font-black text-blue-950 border-b border-blue-200 pb-0.5 uppercase text-[9px]">
+                  🚒 Peran Vital Toko Koperasi Bagi Unit PKP-PK
+                </div>
+                <p className="text-[9px] text-gray-700 m-0 leading-tight">
+                  Koperasi didirikan sebagai <strong>penyangga kebutuhan pokok harian & konsumsi piket dinas darurat 24 Jam</strong> personil PKP-PK Hang Nadim di pos jaga bandara. Kelancaran pasokan barang bergantung penuh pada kedisiplinan perputaran kas seluruh anggota.
+                </p>
+              </div>
+            </div>
+
+            {/* Tabel Matriks: Aksi Anggota vs Dampak Bagi Koperasi */}
+            <table className="w-full border-collapse border border-black text-[9.5px]">
+              <thead>
+                <tr className="bg-gray-100 font-black border-b border-black uppercase text-[9px] text-black">
+                  <th className="border border-black p-1 text-left" style={{ width: '45%' }}>✅ Kewajiban & Aksi Seluruh Anggota</th>
+                  <th className="border border-black p-1 text-left" style={{ width: '55%' }}>⚠️ Risiko & Konsekuensi Jika Pasif / Lalai</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-gray-300">
+                  <td className="border border-black p-1.5 align-top">
+                    <strong>1. Prioritaskan Belanja di Koperasi Sendiri:</strong>
+                    <p className="m-0 text-gray-600 text-[8.5px]">Alihkan belanja sembako, minuman piket, snack, dan keperluan pribadi harian ke koperasi agar volume perputaran modal bertambah besar.</p>
+                  </td>
+                  <td className="border border-black p-1.5 align-top text-rose-900">
+                    <strong>Jika Anggota Belanja di Luar:</strong>
+                    <p className="m-0 text-gray-600 text-[8.5px]">Omset toko menurun, perolehan SHU akhir tahun menjadi kecil/nihil, dan perputaran modal usaha koperasi menjadi lesu.</p>
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-300">
+                  <td className="border border-black p-1.5 align-top">
+                    <strong>2. Disiplin & Tepat Waktu Pelunasan Hutang:</strong>
+                    <p className="m-0 text-gray-600 text-[8.5px]">Segera lunasi fasilitas bon belanja/piutang tepat waktu saat payroll/gajian agar kas koperasi segera terkumpul kembali.</p>
+                  </td>
+                  <td className="border border-black p-1.5 align-top text-rose-900">
+                    <strong>Jika Piutang Tertunda / Macet:</strong>
+                    <p className="m-0 text-gray-600 text-[8.5px]">Koperasi kehabisan kas likuid untuk kulakan belanja ke supplier/grosir. Stok barang di toko kosong dan fasilitas kasbon terpaksa dibatasi.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border border-black p-1.5 align-top">
+                    <strong>3. Berikan Masukan Pengadaan Barang:</strong>
+                    <p className="m-0 text-gray-600 text-[8.5px]">Sampaikan produk yang sering dibutuhkan personil jaga piket ke pengurus agar stok selalu tepat sasaran.</p>
+                  </td>
+                  <td className="border border-black p-1.5 align-top text-rose-900">
+                    <strong>Jika Tidak Ada Sinergi Bersama:</strong>
+                    <p className="m-0 text-gray-600 text-[8.5px]">Barang yang tersedia tidak sesuai kebutuhan anggota dinas sehingga modal tertahan pada barang yang lambat laku (slow-moving).</p>
+                  </td>
+                </tr>
+              </tbody>
             </table>
           </div>
 
