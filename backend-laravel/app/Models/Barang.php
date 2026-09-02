@@ -15,8 +15,26 @@ class Barang extends Model
     protected $fillable = [
         'nama_barang',
         'stok',
+        'stok_toko',
+        'stok_gudang',
         'pkm',
         'harga_modal',
         'harga_jual',
     ];
+
+    public static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($model) {
+            if ($model->isDirty(['stok_toko', 'stok_gudang'])) {
+                $model->stok = ((int) $model->stok_toko) + ((int) $model->stok_gudang);
+            } elseif ($model->isDirty('stok')) {
+                $pkm = (int) ($model->pkm ?: 1);
+                $stok = (int) $model->stok;
+                $model->stok_toko = min($stok, $pkm);
+                $model->stok_gudang = max(0, $stok - $model->stok_toko);
+            }
+        });
+    }
 }

@@ -190,5 +190,20 @@ export const adminService = {
   }): Promise<ApiResponse<any>> => {
     const { data } = await api.post('/laravel/api/admin/jabatan/revoke', payload)
     return data
+  },
+
+  mutasiStok: async (payload: {
+    barang_id: number
+    tipe: 'gudang_ke_toko' | 'toko_ke_gudang'
+    jumlah: number
+    catatan?: string
+  }): Promise<ApiResponse<any>> => {
+    const { data } = await api.post('/laravel/api/admin/mutasi-stok', payload)
+    return data
+  },
+
+  autoRefillDisplay: async (): Promise<ApiResponse<any>> => {
+    const { data } = await api.post('/laravel/api/admin/auto-refill-display')
+    return data
   }
 }

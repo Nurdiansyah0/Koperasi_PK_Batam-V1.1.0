@@ -104,12 +104,31 @@ class AdminController extends Controller
         $this->checkAdmin($request);
         $request->validate([
             'nama_barang' => 'required|string',
-            'stok' => 'required|integer',
+            'stok' => 'nullable|integer',
+            'stok_toko' => 'nullable|integer|min:0',
+            'stok_gudang' => 'nullable|integer|min:0',
+            'pkm' => 'nullable|integer|min:1',
             'harga_modal' => 'required|numeric',
             'harga_jual' => 'required|numeric',
         ]);
-        Barang::create($request->all());
-        return response()->json(['success' => true, 'message' => 'Barang berhasil ditambah']);
+
+        $pkm = (int) ($request->pkm ?: 1);
+        $inputStok = (int) ($request->stok ?: 0);
+        $stokToko = $request->has('stok_toko') ? (int) $request->stok_toko : min($inputStok, $pkm);
+        $stokGudang = $request->has('stok_gudang') ? (int) $request->stok_gudang : max(0, $inputStok - $stokToko);
+        $totalStok = $stokToko + $stokGudang;
+
+        Barang::create([
+            'nama_barang' => $request->nama_barang,
+            'stok' => $totalStok,
+            'stok_toko' => $stokToko,
+            'stok_gudang' => $stokGudang,
+            'pkm' => $pkm,
+            'harga_modal' => $request->harga_modal,
+            'harga_jual' => $request->harga_jual,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Barang berhasil ditambah dengan alokasi Toko & Gudang']);
     }
 
     public function updateBarang(Request $request)
@@ -117,7 +136,24 @@ class AdminController extends Controller
         $this->checkAdmin($request);
         $barang = Barang::find($request->barang_id);
         if (!$barang) return response()->json(['success' => false, 'message' => 'Barang tidak ditemukan'], 404);
-        $barang->update($request->all());
+
+        $pkm = $request->has('pkm') ? (int) $request->pkm : (int) ($barang->pkm ?: 1);
+        $stokToko = $request->has('stok_toko') ? (int) $request->stok_toko : (int) $barang->stok_toko;
+        $stokGudang = $request->has('stok_gudang') ? (int) $request->stok_gudang : (int) $barang->stok_gudang;
+
+        if ($request->has('stok') && !$request->has('stok_toko') && !$request->has('stok_gudang')) {
+            $inputStok = (int) $request->stok;
+            $stokToko = min($inputStok, $pkm);
+            $stokGudang = max(0, $inputStok - $stokToko);
+        }
+
+        $totalStok = $stokToko + $stokGudang;
+        $data = $request->all();
+        $data['stok_toko'] = $stokToko;
+        $data['stok_gudang'] = $stokGudang;
+        $data['stok'] = $totalStok;
+        $barang->update($data);
+
         return response()->json(['success' => true, 'message' => 'Barang berhasil diupdate']);
     }
 
@@ -128,7 +164,7 @@ class AdminController extends Controller
         return response()->json(['success' => true, 'message' => 'Barang berhasil dihapus']);
     }
 
-        public function restockBarang(Request $request)
+    public function restockBarang(Request $request)
     {
         $adminId = $this->checkAdmin($request);
         $request->validate([
@@ -136,6 +172,7 @@ class AdminController extends Controller
             'jumlah_tambah' => 'required|integer|min:1',
             'harga_beli_satuan' => 'required|numeric|min:0',
             'sumber_dana' => 'required|string',
+            'alokasi' => 'nullable|string|in:gudang,toko,auto',
             'catatan' => 'nullable|string'
         ]);
 
@@ -145,30 +182,139 @@ class AdminController extends Controller
             if (!$barang) throw new \Exception("Barang tidak ditemukan");
 
             $totalBiaya = $request->jumlah_tambah * $request->harga_beli_satuan;
-
-            // Optional: If Koperasi has a general cash ledger, deduct it here.
-            // For now, we record it in RiwayatRestock.
+            $alokasi = $request->input('alokasi', 'gudang');
+            $jumlahTambah = (int) $request->jumlah_tambah;
 
             RiwayatRestock::create([
                 'barang_id' => $barang->barang_id,
                 'admin_id' => $adminId,
-                'jumlah_tambah' => $request->jumlah_tambah,
+                'jumlah_tambah' => $jumlahTambah,
                 'harga_beli_satuan' => $request->harga_beli_satuan,
                 'total_biaya' => $totalBiaya,
                 'sumber_dana' => $request->sumber_dana,
-                'catatan' => $request->catatan
+                'catatan' => $request->catatan ? ($request->catatan . " [Alokasi: {$alokasi}]") : "Alokasi: {$alokasi}"
             ]);
 
-            // Update Stok
-            $barang->stok += $request->jumlah_tambah;
-            
-            // Update harga_modal if they want to track the latest purchase price as modal
-            // (Standard retail practice: update modal to latest, or moving average. We'll update to latest)
+            // 2-Tier allocation
+            if ($alokasi === 'toko') {
+                $barang->stok_toko += $jumlahTambah;
+            } elseif ($alokasi === 'auto') {
+                $pkm = (int) ($barang->pkm ?: 1);
+                $neededForDisplay = max(0, $pkm - ((int) $barang->stok_toko));
+                $fillToko = min($jumlahTambah, $neededForDisplay);
+                $barang->stok_toko += $fillToko;
+                $barang->stok_gudang += ($jumlahTambah - $fillToko);
+            } else {
+                // Default to warehouse stock
+                $barang->stok_gudang += $jumlahTambah;
+            }
+
+            $barang->stok = $barang->stok_toko + $barang->stok_gudang;
             $barang->harga_modal = $request->harga_beli_satuan;
             $barang->save();
 
             \Illuminate\Support\Facades\DB::commit();
-            return response()->json(['success' => true, 'message' => 'Restock berhasil dan tercatat!']);
+            return response()->json([
+                'success' => true,
+                'message' => "Restock berhasil: {$jumlahTambah} pcs dialokasikan ke {$alokasi}",
+                'data' => [
+                    'barang_id' => $barang->barang_id,
+                    'stok_toko' => $barang->stok_toko,
+                    'stok_gudang' => $barang->stok_gudang,
+                    'total_stok' => $barang->stok
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function mutasiStok(Request $request)
+    {
+        $this->checkAdmin($request);
+        $request->validate([
+            'barang_id' => 'required|integer|exists:barang,barang_id',
+            'tipe' => 'required|in:gudang_ke_toko,toko_ke_gudang',
+            'jumlah' => 'required|integer|min:1',
+            'catatan' => 'nullable|string'
+        ]);
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $barang = Barang::where('barang_id', $request->barang_id)->lockForUpdate()->first();
+            if (!$barang) throw new \Exception("Barang tidak ditemukan");
+
+            $jumlah = (int) $request->jumlah;
+            if ($request->tipe === 'gudang_ke_toko') {
+                if ($barang->stok_gudang < $jumlah) {
+                    throw new \Exception("Stok gudang tidak mencukupi (Tersedia di gudang: {$barang->stok_gudang} pcs)");
+                }
+                $barang->stok_gudang -= $jumlah;
+                $barang->stok_toko += $jumlah;
+            } else {
+                if ($barang->stok_toko < $jumlah) {
+                    throw new \Exception("Stok toko tidak mencukupi (Tersedia di etalase toko: {$barang->stok_toko} pcs)");
+                }
+                $barang->stok_toko -= $jumlah;
+                $barang->stok_gudang += $jumlah;
+            }
+
+            $barang->stok = $barang->stok_toko + $barang->stok_gudang;
+            $barang->save();
+
+            \Illuminate\Support\Facades\DB::commit();
+            $arah = $request->tipe === 'gudang_ke_toko' ? 'Gudang ➔ Toko' : 'Toko ➔ Gudang';
+            return response()->json([
+                'success' => true,
+                'message' => "Mutasi stok {$barang->nama_barang} ({$jumlah} pcs, {$arah}) berhasil!",
+                'data' => [
+                    'barang_id' => $barang->barang_id,
+                    'stok_toko' => $barang->stok_toko,
+                    'stok_gudang' => $barang->stok_gudang,
+                    'total_stok' => $barang->stok
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function autoRefillDisplay(Request $request)
+    {
+        $this->checkAdmin($request);
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $barangs = Barang::where('stok_gudang', '>', 0)->lockForUpdate()->get();
+            $totalRefilled = 0;
+            $itemsRefilled = 0;
+
+            foreach ($barangs as $barang) {
+                $pkm = (int) ($barang->pkm ?: 1);
+                $currentToko = (int) $barang->stok_toko;
+                if ($currentToko < $pkm) {
+                    $deficit = $pkm - $currentToko;
+                    $canTransfer = min($deficit, (int) $barang->stok_gudang);
+                    if ($canTransfer > 0) {
+                        $barang->stok_gudang -= $canTransfer;
+                        $barang->stok_toko += $canTransfer;
+                        $barang->stok = $barang->stok_toko + $barang->stok_gudang;
+                        $barang->save();
+
+                        $totalRefilled += $canTransfer;
+                        $itemsRefilled++;
+                    }
+                }
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => "Auto-Refill selesai: {$totalRefilled} pcs berhasil dipindahkan dari gudang ke display toko ({$itemsRefilled} SKU)",
+                'total_refilled' => $totalRefilled,
+                'items_refilled' => $itemsRefilled
+            ]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);

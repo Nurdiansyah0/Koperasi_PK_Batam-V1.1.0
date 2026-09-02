@@ -37,6 +37,8 @@ export interface Barang {
   barang_id: number
   nama_barang: string
   stok: number
+  stok_toko?: number
+  stok_gudang?: number
   pkm?: number
   harga_modal?: number
   harga_jual?: number

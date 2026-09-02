@@ -47,7 +47,6 @@ class AdminOpnameTest extends TestCase
                          ->postJson('/laravel/api/admin/opname', $payload);
 
         // 3. Assert
-        if ($response->status() !== 200) dd($response->getContent());
         $response->assertStatus(200)->assertJson(['success' => true]);
 
         // Verify stock was updated in DB

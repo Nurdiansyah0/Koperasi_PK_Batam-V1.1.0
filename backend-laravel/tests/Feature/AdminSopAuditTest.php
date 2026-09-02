@@ -403,4 +403,76 @@ class AdminSopAuditTest extends TestCase
         $resKasir->assertStatus(200)->assertJson(['success' => true]);
         $this->assertIsArray($resKasir->json('data'));
     }
+
+    /** @test */
+    public function audit_12_two_tier_inventory_mutation_and_auto_refill()
+    {
+        // 1. Create a product with 2-Tier stock allocation
+        $barang = Barang::create([
+            'nama_barang' => 'Minyak Goreng Sania 2L',
+            'stok' => 20,
+            'stok_toko' => 4,
+            'stok_gudang' => 16,
+            'pkm' => 6,
+            'harga_modal' => 30000,
+            'harga_jual' => 35000
+        ]);
+
+        $this->assertEquals(20, $barang->stok);
+        $this->assertEquals(4, $barang->stok_toko);
+        $this->assertEquals(16, $barang->stok_gudang);
+
+        // 2. Test Mutasi Stok: Gudang -> Toko (Refill 2 pcs)
+        $resMutasi = $this->authPost('/laravel/api/admin/mutasi-stok', [
+            'barang_id' => $barang->barang_id,
+            'tipe' => 'gudang_ke_toko',
+            'jumlah' => 2,
+            'catatan' => 'Refill etalase minyak'
+        ]);
+        $resMutasi->assertStatus(200)->assertJson(['success' => true]);
+
+        $barang->refresh();
+        $this->assertEquals(6, $barang->stok_toko); // 4 + 2
+        $this->assertEquals(14, $barang->stok_gudang); // 16 - 2
+        $this->assertEquals(20, $barang->stok);
+
+        // 3. Test Mutasi Stok: Toko -> Gudang (Return 1 pcs)
+        $resReturn = $this->authPost('/laravel/api/admin/mutasi-stok', [
+            'barang_id' => $barang->barang_id,
+            'tipe' => 'toko_ke_gudang',
+            'jumlah' => 1,
+            'catatan' => 'Kembalikan ke kardus'
+        ]);
+        $resReturn->assertStatus(200)->assertJson(['success' => true]);
+
+        $barang->refresh();
+        $this->assertEquals(5, $barang->stok_toko); // 6 - 1
+        $this->assertEquals(15, $barang->stok_gudang); // 14 + 1
+        $this->assertEquals(20, $barang->stok);
+
+        // 4. Test Auto-Refill Display Toko
+        $resAuto = $this->authPost('/laravel/api/admin/auto-refill-display', []);
+        $resAuto->assertStatus(200)->assertJson(['success' => true]);
+
+        $barang->refresh();
+        // Because PKM is 6 and current toko is 5, auto-refill should transfer 1 pc
+        $this->assertEquals(6, $barang->stok_toko);
+        $this->assertEquals(14, $barang->stok_gudang);
+
+        // 5. Test Restock with 2-Tier allocation modes ('gudang', 'toko', 'auto')
+        $resRestock = $this->authPost('/laravel/api/admin/restock-barang', [
+            'barang_id' => $barang->barang_id,
+            'jumlah_tambah' => 10,
+            'harga_beli_satuan' => 31000,
+            'sumber_dana' => 'kas_koperasi',
+            'alokasi' => 'gudang',
+            'catatan' => 'Kulakan kartonan supplier'
+        ]);
+        $resRestock->assertStatus(200)->assertJson(['success' => true]);
+
+        $barang->refresh();
+        $this->assertEquals(6, $barang->stok_toko);
+        $this->assertEquals(24, $barang->stok_gudang); // 14 + 10
+        $this->assertEquals(30, $barang->stok);
+    }
 }

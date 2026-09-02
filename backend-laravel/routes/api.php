@@ -93,6 +93,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/laporan-tarik-tunai', [AdminController::class, 'getLaporanTarikTunai']);
         Route::get('/shu-management', [AdminController::class, 'getShuManagement']);
         Route::post('/konversi-shu', [AdminController::class, 'prosesKonversiShu']);
+        Route::post('/mutasi-stok', [AdminController::class, 'mutasiStok']);
+        Route::post('/auto-refill-display', [AdminController::class, 'autoRefillDisplay']);
         Route::get('/jabatan', [AdminController::class, 'getDaftarJabatan']);
         Route::post('/jabatan/assign', [AdminController::class, 'assignJabatan']);
         Route::post('/jabatan/revoke', [AdminController::class, 'revokeJabatan']);
