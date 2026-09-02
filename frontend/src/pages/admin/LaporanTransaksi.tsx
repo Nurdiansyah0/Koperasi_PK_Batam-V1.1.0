@@ -17,14 +17,49 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+// Helper date formatting YYYY-MM-DD
+const formatYmd = (d: Date) => {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// Set Preset Dates
+const getPresetDates = (preset: string) => {
+  const now = new Date()
+  if (preset === 'today') {
+    const todayStr = formatYmd(now)
+    return { start: todayStr, end: todayStr }
+  } else if (preset === 'yesterday') {
+    const yest = new Date(now)
+    yest.setDate(yest.getDate() - 1)
+    const yestStr = formatYmd(yest)
+    return { start: yestStr, end: yestStr }
+  } else if (preset === '7days') {
+    const past = new Date(now)
+    past.setDate(past.getDate() - 6)
+    return { start: formatYmd(past), end: formatYmd(now) }
+  } else if (preset === 'this_month') {
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+    return { start: formatYmd(firstDay), end: formatYmd(now) }
+  } else if (preset === 'last_month') {
+    const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+    return { start: formatYmd(firstDayLastMonth), end: formatYmd(lastDayLastMonth) }
+  }
+  return { start: '', end: '' }
+}
+
 export function LaporanTransaksi() {
   const [data, setData] = useState<LaporanTransaksiType | null>(null)
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'transaksi' | 'pengeluaran' | 'kasir' | 'harian'>('transaksi')
   
-  // Filter States
-  const [tglMulai, setTglMulai] = useState('')
-  const [tglSelesai, setTglSelesai] = useState('')
+  // Filter States initialized with 'this_month'
+  const initialDates = getPresetDates('this_month')
+  const [tglMulai, setTglMulai] = useState(initialDates.start)
+  const [tglSelesai, setTglSelesai] = useState(initialDates.end)
   const [metode, setMetode] = useState('all')
   const [pembeliType, setPembeliType] = useState('all')
   const [kasirId, setKasirId] = useState('all')
@@ -38,8 +73,8 @@ export function LaporanTransaksi() {
 
   // Temporary filter state for bottom sheet before applying
   const [draftFilters, setDraftFilters] = useState({
-    tglMulai: '',
-    tglSelesai: '',
+    tglMulai: initialDates.start,
+    tglSelesai: initialDates.end,
     metode: 'all',
     pembeliType: 'all',
     kasirId: 'all',
@@ -63,42 +98,6 @@ export function LaporanTransaksi() {
 
   // Corporate Statement Print Modal State
   const [isCorporateModalOpen, setIsCorporateModalOpen] = useState(false)
-
-  // Helper date formatting YYYY-MM-DD
-  const formatYmd = (d: Date) => {
-    const year = d.getFullYear()
-    const month = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
-
-  // Set Preset Dates
-  const getPresetDates = (preset: string) => {
-    const now = new Date()
-    if (preset === 'today') {
-      const todayStr = formatYmd(now)
-      return { start: todayStr, end: todayStr }
-    } else if (preset === 'yesterday') {
-      const yest = new Date(now)
-      yest.setDate(yest.getDate() - 1)
-      const yestStr = formatYmd(yest)
-      return { start: yestStr, end: yestStr }
-    } else if (preset === '7days') {
-      const past = new Date(now)
-      past.setDate(past.getDate() - 6)
-      return { start: formatYmd(past), end: formatYmd(now) }
-    } else if (preset === 'this_month') {
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
-      return { start: formatYmd(firstDay), end: formatYmd(now) }
-    } else if (preset === 'last_month') {
-      const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
-      return { start: formatYmd(firstDayLastMonth), end: formatYmd(lastDayLastMonth) }
-    }
-    return { start: '', end: '' }
-  }
-
-
 
   const applyPreset = (preset: string) => {
     setActivePreset(preset)
@@ -129,11 +128,6 @@ export function LaporanTransaksi() {
       setLoading(false)
     }
   }
-
-  // Load default preset on initial mount
-  useEffect(() => {
-    applyPreset('this_month')
-  }, [])
 
   // Refetch when filters or page change
   useEffect(() => {
