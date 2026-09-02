@@ -859,23 +859,13 @@ export function LaporanTransaksi() {
               <p className="m-0 text-gray-800 leading-tight">
                 <strong>Diagnosa Sistem:</strong> {ksh.kesimpulan_evaluasi}
               </p>
-              <div className="grid grid-cols-2 gap-2 pt-0.5 text-[8px]">
-                <div>
-                  <strong>• Aksi Bagi Anggota Unit PKP-PK:</strong>
-                  <p className="m-0 text-gray-700">
-                    {ksh.total_piutang_berjalan > 0 
-                      ? `Selesaikan total piutang bon berjalan sebesar ${formatRupiah(ksh.total_piutang_berjalan)} saat payroll agar kas kulakan tetap lancar.`
-                      : `Disiplin pembayaran lunas terjaga 100%. Pertahankan keaktifan belanja kebutuhan dinas di koperasi.`}
-                  </p>
-                </div>
-                <div>
-                  <strong>• Konsekuensi Operasional:</strong>
-                  <p className="m-0 text-rose-900 font-medium">
-                    {ksh.rasio_piutang_omset_persen > 30 
-                      ? `Jika piutang tertunda, kas likuid Rp ${formatRupiah(ksh.kas_likuid_masuk)} tidak mencukupi untuk restock kulakan ke agen pos bandara.`
-                      : `Jika anggota belanja di luar koperasi, perolehan hak SHU 60% menyusut dan perputaran modal unit kerja menjadi pasif.`}
-                  </p>
-                </div>
+              <div className="pt-0.5 text-[8px]">
+                <strong>• Aksi Bagi Anggota Unit PKP-PK:</strong>
+                <p className="m-0 text-gray-700">
+                  {ksh.total_piutang_berjalan > 0 
+                    ? `Selesaikan total piutang bon berjalan sebesar ${formatRupiah(ksh.total_piutang_berjalan)} saat payroll agar kas kulakan tetap lancar.`
+                    : `Disiplin pembayaran lunas terjaga 100%. Pertahankan keaktifan belanja kebutuhan dinas di koperasi.`}
+                </p>
               </div>
             </div>
           </div>
@@ -2030,23 +2020,13 @@ export function LaporanTransaksi() {
               <p className="m-0 text-gray-800 leading-tight">
                 <strong>Diagnosa Sistem:</strong> {ksh.kesimpulan_evaluasi}
               </p>
-              <div className="grid grid-cols-2 gap-3 pt-1 text-[9px]">
-                <div>
-                  <strong>• Aksi Bagi Anggota Unit PKP-PK:</strong>
-                  <p className="m-0 text-gray-700">
-                    {ksh.total_piutang_berjalan > 0 
-                      ? `Segera selesaikan total piutang bon berjalan sebesar ${formatRupiah(ksh.total_piutang_berjalan)} saat payroll agar perputaran kas kulakan barang toko tetap lancar.`
-                      : `Disiplin pembayaran lunas terjaga 100%. Pertahankan keaktifan belanja kebutuhan dinas 24 Jam di koperasi.`}
-                  </p>
-                </div>
-                <div>
-                  <strong>• Konsekuensi Bila Tidak Dilaksanakan:</strong>
-                  <p className="m-0 text-rose-900 font-medium">
-                    {ksh.rasio_piutang_omset_persen > 30 
-                      ? `Jika piutang tertunda, kas likuid Rp ${formatRupiah(ksh.kas_likuid_masuk)} tidak mencukupi untuk restock kulakan ke agen, sehingga stok barang toko pos bandara akan mengalami kekosongan.`
-                      : `Jika anggota beralih belanja ke luar koperasi, perolehan hak SHU 60% akan menyusut dan perputaran modal unit kerja menjadi pasif.`}
-                  </p>
-                </div>
+              <div className="pt-1 text-[9px]">
+                <strong>• Aksi Bagi Anggota Unit PKP-PK:</strong>
+                <p className="m-0 text-gray-700">
+                  {ksh.total_piutang_berjalan > 0 
+                    ? `Segera selesaikan total piutang bon berjalan sebesar ${formatRupiah(ksh.total_piutang_berjalan)} saat payroll agar perputaran kas kulakan barang toko tetap lancar.`
+                    : `Disiplin pembayaran lunas terjaga 100%. Pertahankan keaktifan belanja kebutuhan dinas 24 Jam di koperasi.`}
+                </p>
               </div>
             </div>
           </div>
