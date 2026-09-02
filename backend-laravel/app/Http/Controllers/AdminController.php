@@ -882,13 +882,16 @@ class AdminController extends Controller
                 ];
             });
 
+        $withRelations = [
+            'kasir:user_id,username',
+            'anggota:anggota_id,nama_lengkap,nomor_anggota',
+            'details:detail_id,transaksi_id,barang_id,jumlah,harga_satuan,subtotal,keuntungan',
+            'details.barang:barang_id,nama_barang,satuan'
+        ];
+
         // Pagination or All records
         if ($perPage === 'all' || $perPage == -1) {
-            $transaksiList = $q->with([
-                'kasir:user_id,username',
-                'anggota:anggota_id,nama_lengkap,nomor_anggota',
-                'details.barang:barang_id,nama_barang,satuan,harga_beli,harga_jual,barcode'
-            ])->orderBy('created_at', 'desc')->get();
+            $transaksiList = $q->with($withRelations)->orderBy('created_at', 'desc')->get();
 
             $paginated = [
                 'current_page' => 1,
@@ -898,11 +901,7 @@ class AdminController extends Controller
             ];
             $items = $transaksiList;
         } else {
-            $paginator = $q->with([
-                'kasir:user_id,username',
-                'anggota:anggota_id,nama_lengkap,nomor_anggota',
-                'details.barang:barang_id,nama_barang,satuan,harga_beli,harga_jual,barcode'
-            ])->orderBy('created_at', 'desc')->paginate((int) $perPage);
+            $paginator = $q->with($withRelations)->orderBy('created_at', 'desc')->paginate((int) $perPage);
 
             $paginated = [
                 'current_page' => $paginator->currentPage(),
