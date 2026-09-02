@@ -1204,21 +1204,37 @@ class KasirController extends Controller
         $kasirId = $this->checkKasir($request);
         $request->validate([
             'kasir_to' => 'required|integer',
-            'hasil_opname' => 'required'
+            'hasil_opname' => 'nullable'
         ]);
         
         if ($kasirId == $request->kasir_to) {
             return response()->json(['success' => false, 'message' => 'Tidak bisa serah terima ke diri sendiri'], 400);
         }
 
-        SerahTerimaKasir::create([
+        $hasilOpname = $request->hasil_opname;
+        if (empty($hasilOpname) && ($request->has('items') || $request->has('uang_fisik'))) {
+            $hasilOpname = [
+                'uang_fisik' => (float) ($request->uang_fisik ?? 0),
+                'catatan' => $request->catatan ?? '',
+                'items' => $request->items ?? [],
+            ];
+        }
+
+        $st = SerahTerimaKasir::create([
             'kasir_from' => $kasirId,
             'kasir_to' => $request->kasir_to,
-            'hasil_opname' => is_string($request->hasil_opname) ? json_decode($request->hasil_opname, true) : $request->hasil_opname,
+            'hasil_opname' => is_string($hasilOpname) ? json_decode($hasilOpname, true) : $hasilOpname,
             'status' => 'pending',
             'created_at' => Carbon::now()
         ]);
-        return response()->json(['success' => true, 'message' => 'Serah terima berhasil dibuat']);
+        return response()->json([
+            'success' => true, 
+            'message' => 'Serah terima berhasil dibuat',
+            'data' => [
+                'serah_id' => $st->serah_id,
+                'serah_terima_id' => $st->serah_id,
+            ]
+        ]);
     }
 
     public function approveSerahTerima(Request $request)
@@ -1244,10 +1260,11 @@ class KasirController extends Controller
             $opname = $this->parseHasilOpname($st->hasil_opname);
             if (isset($opname['items']) && is_array($opname['items'])) {
                 foreach ($opname['items'] as $item) {
-                    if (isset($item['barang_id']) && isset($item['stok_aktual'])) {
+                    if (isset($item['barang_id']) && (isset($item['stok_aktual']) || isset($item['stok_input']))) {
+                        $targetStock = isset($item['stok_input']) ? (int)$item['stok_input'] : (int)$item['stok_aktual'];
                         $barang = Barang::where('barang_id', $item['barang_id'])->lockForUpdate()->first();
                         if ($barang) {
-                            $barang->stok = max(0, (int)$item['stok_aktual']);
+                            $barang->stok = max(0, $targetStock);
                             $barang->save();
                         }
                     }
@@ -1268,6 +1285,16 @@ class KasirController extends Controller
     public function rejectSerahTerima(Request $request)
     {
         $kasirId = $this->checkKasir($request);
+        $request->validate([
+            'serah_id' => 'required',
+            'alasan_penolakan' => 'nullable|string',
+            'alasan' => 'nullable|string'
+        ]);
+
+        $alasan = $request->alasan_penolakan ?: $request->alasan;
+        if (empty($alasan)) {
+            return response()->json(['success' => false, 'message' => 'Alasan penolakan wajib diisi secara jelas'], 422);
+        }
 
         DB::beginTransaction();
         try {
@@ -1282,7 +1309,7 @@ class KasirController extends Controller
             }
 
             $st->status = 'rejected';
-            $st->alasan_penolakan = $request->alasan;
+            $st->alasan_penolakan = $alasan;
             $st->save();
 
             DB::commit();
