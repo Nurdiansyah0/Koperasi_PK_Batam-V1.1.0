@@ -1009,8 +1009,10 @@ class KasirController extends Controller
             });
         }
 
+        $barangsCache = Barang::all()->keyBy('barang_id');
+
         $paginator = $query->paginate(15);
-        $paginator->getCollection()->transform(function($s) {
+        $paginator->getCollection()->transform(function($s) use ($barangsCache) {
             return [
                 'serah_id' => $s->serah_id,
                 'serah_terima_id' => $s->serah_id,
@@ -1020,7 +1022,7 @@ class KasirController extends Controller
                 'kasir_from_username' => $s->kasirFrom ? $s->kasirFrom->username : '',
                 'kasir_to_name' => $s->kasirTo ? ($s->kasirTo->nama_lengkap ?: $s->kasirTo->username) : '',
                 'kasir_to_username' => $s->kasirTo ? $s->kasirTo->username : '',
-                'hasil_opname' => $this->parseHasilOpname($s->hasil_opname),
+                'hasil_opname' => $this->parseHasilOpname($s->hasil_opname, $barangsCache),
                 'status' => $s->status,
                 'alasan_penolakan' => $s->alasan_penolakan,
                 'created_at' => $s->created_at,
@@ -1030,7 +1032,7 @@ class KasirController extends Controller
         return response()->json(['success' => true, 'data' => $paginator]);
     }
 
-    private function parseHasilOpname($raw)
+    private function parseHasilOpname($raw, $barangs = null)
     {
         if (empty($raw)) return null;
         if (is_array($raw)) {
@@ -1049,8 +1051,10 @@ class KasirController extends Controller
 
         // Auto-enrich items with harga_jual, selisih_nominal, risk_badge, and summary stats
         if (isset($decoded['items']) && is_array($decoded['items'])) {
-            $itemIds = array_filter(array_column($decoded['items'], 'barang_id'));
-            $barangs = !empty($itemIds) ? Barang::whereIn('barang_id', $itemIds)->get()->keyBy('barang_id') : collect();
+            if ($barangs === null) {
+                $itemIds = array_filter(array_column($decoded['items'], 'barang_id'));
+                $barangs = !empty($itemIds) ? Barang::whereIn('barang_id', $itemIds)->get()->keyBy('barang_id') : collect();
+            }
 
             $totalMinusNominal = 0;
             $barangSelisih = 0;
