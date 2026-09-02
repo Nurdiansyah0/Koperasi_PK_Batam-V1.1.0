@@ -79,6 +79,10 @@ class KasirController extends Controller
             ->where('status', 'selesai')
             ->count();
 
+        $totalTransaksiDilayani = Transaksi::where('kasir_id', $kasirId)
+            ->where('status', 'selesai')
+            ->count();
+
         $uangCashMasuk = $this->calculateSaldoKasKasir($kasirId);
 
         $pendingSerahTerima = SerahTerimaKasir::where('kasir_to', $kasirId)
@@ -129,6 +133,7 @@ class KasirController extends Controller
             'data' => [
                 'total_pendapatan_hari_ini' => (float) $penjualanHariIni,
                 'total_transaksi_hari_ini' => (int) $transaksiHariIni,
+                'total_transaksi_dilayani' => (int) $totalTransaksiDilayani,
                 'saldo_kas' => (float) $uangCashMasuk,
                 'pending_serah_terima' => (int) $pendingSerahTerima,
                 'pending_pesanan' => (int) $pendingPesanan,
@@ -139,6 +144,7 @@ class KasirController extends Controller
                 // Keep old keys just in case
                 'totalPenjualanHariIni' => (float) $penjualanHariIni,
                 'totalTransaksiHariIni' => (int) $transaksiHariIni,
+                'totalTransaksiDilayani' => (int) $totalTransaksiDilayani,
             ]
         ]);
     }

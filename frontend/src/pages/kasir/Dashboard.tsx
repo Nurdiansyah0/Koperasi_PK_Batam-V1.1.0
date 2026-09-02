@@ -75,18 +75,18 @@ export function KasirDashboard() {
       bg: 'from-emerald-500/10 to-teal-500/10 border-emerald-500/20' 
     },
     { 
-      label: 'Transaksi Selesai', 
+      label: 'Transaksi Hari Ini', 
       value: `${data?.total_transaksi_hari_ini || 0} Struk`, 
-      desc: 'Transaksi berhasil tercatat',
+      desc: 'Transaksi berhasil hari ini',
       icon: ReceiptText, 
       color: 'text-blue-600 dark:text-blue-400', 
       bg: 'from-blue-500/10 to-indigo-500/10 border-blue-500/20' 
     },
     { 
-      label: 'Saldo Kas Laci', 
-      value: formatRupiah(data?.saldo_kas || 0), 
-      desc: 'Uang fisik tunai di laci',
-      icon: Banknote, 
+      label: 'Total Transaksi Dilayani', 
+      value: `${(data?.total_transaksi_dilayani ?? data?.total_transaksi_hari_ini ?? 0).toLocaleString('id-ID')} Trx`, 
+      desc: 'Akumulasi transaksi sukses kasir',
+      icon: ShoppingBag, 
       color: 'text-indigo-600 dark:text-indigo-400', 
       bg: 'from-indigo-500/10 to-purple-500/10 border-indigo-500/20' 
     },

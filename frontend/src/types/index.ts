@@ -153,12 +153,14 @@ export type PesananAnggota = Transaksi
 export interface DashboardKasir {
   total_transaksi_hari_ini: number
   total_pendapatan_hari_ini: number
+  total_transaksi_dilayani?: number
   saldo_kas: number
   pending_serah_terima: number
   pending_pesanan?: number
   pending_hutang?: number
   totalPenjualanHariIni?: number
   totalTransaksiHariIni?: number
+  totalTransaksiDilayani?: number
   hutangBelumLunas?: number
   stokMenipis?: number
 }
