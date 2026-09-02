@@ -887,7 +887,7 @@ class AdminController extends Controller
 
             $withRelations = [
                 'kasir:user_id,username',
-                'anggota:anggota_id,nama_lengkap,nomor_anggota',
+                'anggota:anggota_id,nama_lengkap',
                 'details:detail_id,transaksi_id,barang_id,jumlah,harga_satuan,subtotal,keuntungan',
                 'details.barang:barang_id,nama_barang,satuan'
             ];
@@ -974,7 +974,7 @@ class AdminController extends Controller
             // Rekapitulasi Partisipasi Belanja & Hak SHU Seluruh Anggota Koperasi (Sub-Ledger SHU)
             $totalOmsetAnggota = (float) ($summaryAgg->omset_anggota ?? 0);
 
-            $allAnggota = Anggota::select('anggota_id', 'nomor_anggota', 'nama_lengkap', 'email', 'saldo', 'hutang')
+            $allAnggota = Anggota::select('anggota_id', 'nama_lengkap', 'email', 'saldo', 'hutang')
                 ->orderBy('nama_lengkap', 'asc')
                 ->get();
 
@@ -1006,7 +1006,6 @@ class AdminController extends Controller
 
                 return [
                     'anggota_id' => $a->anggota_id,
-                    'nomor_anggota' => $a->nomor_anggota,
                     'nama_lengkap' => $a->nama_lengkap ?: 'Anggota #' . $a->anggota_id,
                     'frekuensi_belanja' => $frek,
                     'total_belanja' => $belanja,
