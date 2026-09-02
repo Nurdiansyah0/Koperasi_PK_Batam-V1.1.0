@@ -380,7 +380,7 @@ export function LaporanTransaksi() {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 10mm 12mm;
+            margin: 8mm 10mm;
           }
           *, *::before, *::after {
             box-sizing: border-box !important;
@@ -416,12 +416,26 @@ export function LaporanTransaksi() {
             z-index: 999999 !important;
             font-family: Arial, Helvetica, sans-serif !important;
           }
+          .print-sheet {
+            page-break-after: always !important;
+            break-after: page !important;
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 272mm !important;
+            box-sizing: border-box !important;
+            padding-bottom: 2mm !important;
+            clear: both !important;
+          }
+          .print-sheet-last {
+            page-break-after: auto !important;
+            break-after: auto !important;
+            min-height: auto !important;
+          }
           table.print-table {
             width: 100% !important;
             max-width: 100% !important;
             table-layout: fixed !important;
             border-collapse: collapse !important;
-            page-break-inside: auto !important;
             border: 1.5px solid #000000 !important;
           }
           table.print-table thead {
@@ -432,7 +446,7 @@ export function LaporanTransaksi() {
           }
           table.print-table th, table.print-table td {
             border: 1px solid #000000 !important;
-            padding: 5px 6px !important;
+            padding: 4.5px 5.5px !important;
           }
           table.print-table tr {
             page-break-inside: avoid !important;
@@ -440,377 +454,468 @@ export function LaporanTransaksi() {
           }
           .avoid-break {
             page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
         }
       `}} />
 
-      {/* DEDICATED PRINTABLE A4 LAPORAN (STANDAR KOP RESMI A4 TANPA OVERFLOW) */}
+      {/* DEDICATED PRINTABLE A4 LAPORAN (STANDAR KOP RESMI A4 DENGAN PEMBAGIAN LEMBAR I, II, III SERASI) */}
       <div id="printable-laporan" className="text-black bg-white">
-        {/* OFFICIAL LETTERHEAD (KOP SURAT) */}
-        <div className="border-b-2 border-black pb-2.5 mb-3">
-          <div className="flex items-center justify-between gap-3">
-            {/* Logo Resmi Koperasi (Matching App Icon Blue & Gold) */}
-            <div className="w-14 h-14 shrink-0 flex items-center justify-center">
-              <img src="/Logo.svg" alt="Logo Koperasi PKP-PK BTH" className="w-14 h-14 object-contain drop-shadow-xs" />
-            </div>
+        
+        {/* ══════════════════════════════════════════════════════════════════════════ */}
+        {/* ── LEMBAR 1 (SHEET 1): KOP SURAT UTAMA, PHU OPERASIONAL & ALOKASI SHU ── */}
+        {/* ══════════════════════════════════════════════════════════════════════════ */}
+        <div className="print-sheet">
+          {/* OFFICIAL LETTERHEAD (KOP SURAT UTAMA) */}
+          <div className="border-b-2 border-black pb-2 mb-2.5">
+            <div className="flex items-center justify-between gap-3">
+              {/* Logo Resmi Koperasi */}
+              <div className="w-14 h-14 shrink-0 flex items-center justify-center">
+                <img src="/Logo.svg" alt="Logo Koperasi PKP-PK BTH" className="w-14 h-14 object-contain" />
+              </div>
 
-            {/* Teks Kop Surat Tengah */}
-            <div className="text-center flex-1">
-              <h1 className="text-[15px] font-black tracking-wider uppercase m-0 p-0 text-black leading-tight">
-                KOPERASI KARYAWAN PKP-PK BTH
-              </h1>
-              <p className="text-[12px] font-bold text-gray-800 m-0 mt-0.5 tracking-wide uppercase">
-                LAPORAN PERHITUNGAN HASIL USAHA (PHU) & REALISASI KAS
-              </p>
-              <p className="text-[10px] text-gray-600 m-0">
-                Unit PKP-PK Hang Nadim Batam — Jl. Hang Nadim No.01, Batu Besar, Kecamatan Nongsa, Kota Batam, Kepulauan Riau 29466
-              </p>
-            </div>
+              {/* Teks Kop Surat Tengah */}
+              <div className="text-center flex-1">
+                <h1 className="text-[14px] font-black tracking-wider uppercase m-0 p-0 text-black leading-tight">
+                  KOPERASI KARYAWAN PKP-PK BTH
+                </h1>
+                <p className="text-[11.5px] font-bold text-gray-800 m-0 mt-0.5 tracking-wide uppercase">
+                  LAPORAN PERHITUNGAN HASIL USAHA (PHU) & REALISASI KAS
+                </p>
+                <p className="text-[9.5px] text-gray-600 m-0 leading-tight">
+                  Unit PKP-PK Hang Nadim Batam — Jl. Hang Nadim No.01, Nongsa, Batam, Kepri 29466
+                </p>
+              </div>
 
-            {/* Dokumen Meta Box Kanan */}
-            <div className="border border-black p-1.5 rounded text-[10px] text-left shrink-0 min-w-[155px] space-y-0.5 bg-gray-50/40">
-              <div><strong>No. Surat:</strong> {(() => {
-                const d = tglSelesai ? new Date(tglSelesai) : new Date()
-                const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
-                const monthRoman = romanMonths[d.getMonth()] || 'IX'
-                const year = d.getFullYear() || 2026
-                const seq = String(summary.total_transaksi > 0 ? (summary.total_transaksi % 999) + 1 : 1).padStart(3, '0')
-                return `${seq}/KOPKAR-PKP-PK/PHU/${monthRoman}/${year}`
-              })()}</div>
-              <div><strong>Periode:</strong> {tglMulai ? formatDateOnly(tglMulai) : 'Awal'} s/d {tglSelesai ? formatDateOnly(tglSelesai) : 'Kini'}</div>
-              <div><strong>Tanggal Cetak:</strong> {formatDateOnly(new Date())}</div>
+              {/* Dokumen Meta Box Kanan */}
+              <div className="border border-black p-1.5 rounded text-[9.5px] text-left shrink-0 min-w-[155px] space-y-0.5 bg-gray-50/40">
+                <div><strong>No. Surat:</strong> {(() => {
+                  const d = tglSelesai ? new Date(tglSelesai) : new Date()
+                  const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
+                  const monthRoman = romanMonths[d.getMonth()] || 'IX'
+                  const year = d.getFullYear() || 2026
+                  const seq = String(summary.total_transaksi > 0 ? (summary.total_transaksi % 999) + 1 : 1).padStart(3, '0')
+                  return `${seq}/KOPKAR-PKP-PK/PHU/${monthRoman}/${year}`
+                })()}</div>
+                <div><strong>Periode:</strong> {tglMulai ? formatDateOnly(tglMulai) : 'Awal'} s/d {tglSelesai ? formatDateOnly(tglSelesai) : 'Kini'}</div>
+                <div><strong>Tanggal Cetak:</strong> {formatDateOnly(new Date())}</div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Table I: Laba Rugi Operasional */}
-        <table className="print-table w-full border border-black text-[11px] mb-3">
-          <thead>
-            <tr className="bg-gray-100 font-bold border-b border-black text-[10px]">
-              <th className="border border-black p-1.5 text-center" style={{ width: '6%' }}>No</th>
-              <th className="border border-black p-1.5 text-left" style={{ width: '54%' }}>Uraian Pos Keuangan</th>
-              <th className="border border-black p-1.5 text-center" style={{ width: '18%' }}>Keterangan</th>
-              <th className="border border-black p-1.5 text-right" style={{ width: '22%' }}>Jumlah Nominal (Rp)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="bg-gray-100 font-bold border-b border-black">
-              <td className="border border-black p-1.5 text-center font-bold">A</td>
-              <td colSpan={3} className="border border-black p-1.5 uppercase">PENDAPATAN OPERASIONAL TOKO (OMSET PARTISIPASI BELANJA)</td>
-            </tr>
-            <tr className="border-b border-black">
-              <td className="border border-black p-1.5 text-center">1</td>
-              <td className="border border-black p-1.5 pl-4">Pendapatan Partisipasi Belanja Anggota Koperasi</td>
-              <td className="border border-black p-1.5 text-center text-[10px] text-gray-600">Berhak SHU</td>
-              <td className="border border-black p-1.5 text-right font-mono font-bold">{formatRupiah(summary.omset_anggota || summary.total_pendapatan)}</td>
-            </tr>
-            <tr className="bg-gray-50 font-bold border-b border-black">
-              <td className="border border-black p-1.5"></td>
-              <td colSpan={2} className="border border-black p-1.5 text-right uppercase">TOTAL PENDAPATAN OPERASIONAL (OMSET BRUTO):</td>
-              <td className="border border-black p-1.5 text-right font-mono font-bold">{formatRupiah(summary.total_pendapatan)}</td>
-            </tr>
-
-            <tr className="bg-gray-100 font-bold border-b border-black">
-              <td className="border border-black p-1.5 text-center font-bold">B</td>
-              <td colSpan={3} className="border border-black p-1.5 uppercase">BEBAN POKOK PENJUALAN (HPP / MODAL BARANG)</td>
-            </tr>
-            <tr className="border-b border-black">
-              <td className="border border-black p-1.5 text-center">1</td>
-              <td className="border border-black p-1.5 pl-4 text-rose-700">Beban Pokok Barang Terjual (COGS / Modal Kulakan)</td>
-              <td className="border border-black p-1.5 text-center text-[10px] text-rose-600">Pengurang</td>
-              <td className="border border-black p-1.5 text-right font-mono font-bold text-rose-700">({formatRupiah(summary.total_hpp)})</td>
-            </tr>
-            <tr className="bg-gray-200 font-bold border-b-2 border-black">
-              <td className="border border-black p-1.5"></td>
-              <td colSpan={2} className="border border-black p-1.5 text-right uppercase">LABA KOTOR USAHA (GROSS PROFIT MARGIN: {marginGrossPercent}%):</td>
-              <td className="border border-black p-1.5 text-right font-mono font-bold">{formatRupiah(summary.total_keuntungan)}</td>
-            </tr>
-
-            <tr className="bg-gray-100 font-bold border-b border-black">
-              <td className="border border-black p-1.5 text-center font-bold">C</td>
-              <td colSpan={3} className="border border-black p-1.5 uppercase">BEBAN OPERASIONAL KAS KOPERASI (OPEX)</td>
-            </tr>
-            {!pengeluaranList.length ? (
-              <tr className="border-b border-black">
-                <td className="border border-black p-1.5 text-center">-</td>
-                <td colSpan={2} className="border border-black p-1.5 pl-4 italic text-gray-500">Tidak ada transaksi beban kas operasional tercatat pada periode ini.</td>
-                <td className="border border-black p-1.5 text-right font-mono font-bold">Rp 0</td>
-              </tr>
-            ) : (
-              pengeluaranList.map((p, idx) => (
-                <tr key={p.pengeluaran_id} className="border-b border-black">
-                  <td className="border border-black p-1.5 text-center">{idx + 1}</td>
-                  <td className="border border-black p-1.5 pl-4">{p.nama_pengeluaran}</td>
-                  <td className="border border-black p-1.5 text-center text-[10px] text-gray-600">{p.kategori || 'Operasional'} ({formatDateOnly(p.tanggal)})</td>
-                  <td className="border border-black p-1.5 text-right font-mono font-bold text-rose-700">-{formatRupiah(p.nominal)}</td>
-                </tr>
-              ))
-            )}
-            <tr className="bg-gray-50 font-bold border-b border-black">
-              <td className="border border-black p-1.5"></td>
-              <td colSpan={2} className="border border-black p-1.5 text-right uppercase">TOTAL BEBAN OPERASIONAL KAS (OPEX):</td>
-              <td className="border border-black p-1.5 text-right font-mono font-bold text-rose-700">-{formatRupiah(summary.total_beban_operasional)}</td>
-            </tr>
-
-            <tr className="bg-gray-100 font-bold border-t-2 border-b-2 border-black">
-              <td className="border border-black p-1.5 text-center font-bold">D</td>
-              <td colSpan={2} className="border border-black p-1.5 uppercase font-bold">SISA HASIL USAHA BERSIH (NET SHU TAHUN BERJALAN):</td>
-              <td className="border border-black p-1.5 text-right font-mono font-bold">{formatRupiah(summary.total_laba_bersih)}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        {/* Table II: Alokasi SHU */}
-        <table className="print-table w-full border border-black text-[11px] mb-4 avoid-break">
-          <thead>
-            <tr className="bg-gray-100 font-bold border-b border-black text-[10px]">
-              <th className="border border-black p-1.5 text-left" style={{ width: '50%' }}>Pilar Alokasi SHU (AD/ART Koperasi)</th>
-              <th className="border border-black p-1.5 text-center" style={{ width: '20%' }}>Porsi Rasio (%)</th>
-              <th className="border border-black p-1.5 text-right" style={{ width: '30%' }}>Alokasi Nominal (Rp)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="border-b border-black">
-              <td className="border border-black p-1.5 pl-3">👥 Hak Bagian Anggota (Jasa Modal & Belanja Partisipasi)</td>
-              <td className="border border-black p-1.5 text-center font-bold">60.0%</td>
-              <td className="border border-black p-1.5 text-right font-mono font-bold">{formatRupiah(summary.shu_anggota_60)}</td>
-            </tr>
-            <tr className="border-b border-black">
-              <td className="border border-black p-1.5 pl-3">🏢 Cadangan Modal Koperasi (Retained Capital)</td>
-              <td className="border border-black p-1.5 text-center font-bold">30.0%</td>
-              <td className="border border-black p-1.5 text-right font-mono font-bold">{formatRupiah(summary.shu_cadangan_30)}</td>
-            </tr>
-            <tr className="border-b border-black">
-              <td className="border border-black p-1.5 pl-3">🎖️ Jasa Pengurus, Pengawas & Karyawan</td>
-              <td className="border border-black p-1.5 text-center font-bold">10.0%</td>
-              <td className="border border-black p-1.5 text-right font-mono font-bold">{formatRupiah(summary.shu_pengurus_10)}</td>
-            </tr>
-            <tr className="bg-gray-100 font-bold border-t-2 border-black">
-              <td className="border border-black p-1.5 uppercase">TOTAL REALISASI ALOKASI SHU:</td>
-              <td className="border border-black p-1.5 text-center font-bold">100.0%</td>
-              <td className="border border-black p-1.5 text-right font-mono font-bold">{formatRupiah(summary.total_laba_bersih)}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        {/* ── LEMBAR KE-2 / BAGIAN III: BUKU PEMBANTU RINCIAN PARTISIPASI BELANJA & HAK SHU PER ANGGOTA ── */}
-        <div className="avoid-break mt-4 pt-2">
-          <div className="border-b-2 border-black pb-1 mb-2 flex justify-between items-end">
-            <div>
-              <h2 className="text-[12px] font-black uppercase text-black m-0">
-                III. BUKU PEMBANTU PARTISIPASI BELANJA & ESTIMASI HAK SHU PER ANGGOTA
+          {/* ── BAGIAN I: PERHITUNGAN HASIL USAHA (LABA RUGI OPERASIONAL) ── */}
+          <div className="mb-2">
+            <div className="border-b border-black pb-0.5 mb-1.5 flex justify-between items-end">
+              <h2 className="text-[11.5px] font-black uppercase text-black m-0 tracking-wide">
+                I. PERHITUNGAN HASIL USAHA (PHU / LABA RUGI OPERASIONAL)
               </h2>
-              <p className="text-[9px] text-gray-600 m-0">
-                Sub-Ledger Real-Time Berdasarkan Akumulasi Nilai Transaksi & Mutasi Piutang Anggota
-              </p>
-            </div>
-            <span className="text-[9px] font-mono text-gray-600">
-              Total: {(data?.rekap_anggota || []).length} Anggota Terdata
-            </span>
-          </div>
-
-          <table className="print-table w-full border border-black text-[10px] mb-3">
-            <thead>
-              <tr className="bg-gray-100 font-bold border-b border-black text-[9px] uppercase">
-                <th className="border border-black p-1 text-center" style={{ width: '4%' }}>No</th>
-                <th className="border border-black p-1 text-left" style={{ width: '26%' }}>Nama Lengkap Anggota</th>
-                <th className="border border-black p-1 text-center" style={{ width: '6%' }}>Frek</th>
-                <th className="border border-black p-1 text-right" style={{ width: '14%' }}>Total Belanja</th>
-                <th className="border border-black p-1 text-right" style={{ width: '13%' }}>Bayar Lunas</th>
-                <th className="border border-black p-1 text-right" style={{ width: '13%' }}>Piutang Baru</th>
-                <th className="border border-black p-1 text-center" style={{ width: '8%' }}>Porsi (%)</th>
-                <th className="border border-black p-1 text-right" style={{ width: '16%' }}>Hak SHU Belanja</th>
-              </tr>
-            </thead>
-            <tbody>
-              {!(data?.rekap_anggota || []).length ? (
-                <tr>
-                  <td colSpan={8} className="border border-black p-3 text-center text-gray-500 italic">
-                    Belum ada data partisipasi belanja anggota pada rentang periode ini.
-                  </td>
-                </tr>
-              ) : (
-                (data?.rekap_anggota || []).map((m, idx) => (
-                  <tr key={m.anggota_id} className="border-b border-gray-300">
-                    <td className="border border-black p-1 text-center font-medium">{idx + 1}</td>
-                    <td className="border border-black p-1 text-left font-bold">{m.nama_lengkap}</td>
-                    <td className="border border-black p-1 text-center">{m.frekuensi_belanja}x</td>
-                    <td className="border border-black p-1 text-right font-mono font-semibold">{formatRupiah(m.total_belanja)}</td>
-                    <td className="border border-black p-1 text-right font-mono text-emerald-700">{formatRupiah(m.total_lunas)}</td>
-                    <td className="border border-black p-1 text-right font-mono text-rose-700">{m.total_hutang > 0 ? formatRupiah(m.total_hutang) : '-'}</td>
-                    <td className="border border-black p-1 text-center font-semibold">{m.porsi_persen}%</td>
-                    <td className="border border-black p-1 text-right font-mono font-black text-blue-900">{formatRupiah(m.hak_shu)}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-            <tfoot>
-              <tr className="bg-gray-100 font-bold border-t-2 border-black text-[10px]">
-                <td colSpan={3} className="border border-black p-1 text-right uppercase">TOTAL REKAPITULASI:</td>
-                <td className="border border-black p-1 text-right font-mono font-black">
-                  {formatRupiah((data?.rekap_anggota || []).reduce((acc, c) => acc + c.total_belanja, 0))}
-                </td>
-                <td className="border border-black p-1 text-right font-mono font-bold text-emerald-800">
-                  {formatRupiah((data?.rekap_anggota || []).reduce((acc, c) => acc + c.total_lunas, 0))}
-                </td>
-                <td className="border border-black p-1 text-right font-mono font-bold text-rose-800">
-                  {formatRupiah((data?.rekap_anggota || []).reduce((acc, c) => acc + c.total_hutang, 0))}
-                </td>
-                <td className="border border-black p-1 text-center font-black">100.0%</td>
-                <td className="border border-black p-1 text-right font-mono font-black text-blue-950">
-                  {formatRupiah(summary.shu_anggota_60)}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-
-        {/* ── BAGIAN IV: EVALUASI TINGKAT KESEHATAN KOPERASI & HIMBAUAN PARTISIPASI ANGGOTA PKP-PK ── */}
-        {/* ── BAGIAN IV: EVALUASI TINGKAT KESEHATAN KOPERASI & MANAJEMEN KEUANGAN (PERMENKOP & SAK STANDARD) ── */}
-        <div className="avoid-break mt-3 pt-1 border-t-2 border-black">
-          <div className="border-b border-black pb-1 mb-2 flex justify-between items-end">
-            <div>
-              <h2 className="text-[12px] font-black uppercase text-black m-0 flex items-center gap-1.5">
-                IV. EVALUASI TINGKAT KESEHATAN KOPERASI & MANAJEMEN KEUANGAN UNIT PKP-PK
-              </h2>
-              <p className="text-[9px] text-gray-600 m-0">
-                Diagnosis Real-Time Berdasarkan Rasio Likuiditas, Efisiensi OPEX, dan Keaktifan Anggota
-              </p>
-            </div>
-            <div className="text-right">
-              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 border border-black rounded bg-gray-100 font-mono">
-                SKOR: {ksh.skor_kesehatan}/100 — {ksh.status_kesehatan}
+              <span className="text-[9px] font-semibold text-gray-600 uppercase font-mono">
+                Basis Akuntansi Kas
               </span>
             </div>
+
+            <table className="print-table w-full border border-black text-[10.5px]">
+              <thead>
+                <tr className="bg-gray-100 font-bold border-b border-black text-[9.5px]">
+                  <th className="border border-black p-1 text-center" style={{ width: '6%' }}>No</th>
+                  <th className="border border-black p-1 text-left" style={{ width: '54%' }}>Uraian Pos Keuangan</th>
+                  <th className="border border-black p-1 text-center" style={{ width: '18%' }}>Keterangan</th>
+                  <th className="border border-black p-1 text-right" style={{ width: '22%' }}>Jumlah Nominal (Rp)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="bg-gray-100/80 font-bold border-b border-black">
+                  <td className="border border-black p-1 text-center font-bold">A</td>
+                  <td colSpan={3} className="border border-black p-1 uppercase">PENDAPATAN OPERASIONAL TOKO (OMSET BELANJA ANGGOTA)</td>
+                </tr>
+                <tr className="border-b border-black">
+                  <td className="border border-black p-1 text-center">1</td>
+                  <td className="border border-black p-1 pl-4">Pendapatan Partisipasi Belanja Anggota Koperasi</td>
+                  <td className="border border-black p-1 text-center text-[9.5px] text-gray-600">Berhak SHU</td>
+                  <td className="border border-black p-1 text-right font-mono font-bold">{formatRupiah(summary.omset_anggota || summary.total_pendapatan)}</td>
+                </tr>
+                <tr className="bg-gray-50 font-bold border-b border-black">
+                  <td className="border border-black p-1"></td>
+                  <td colSpan={2} className="border border-black p-1 text-right uppercase">TOTAL PENDAPATAN OPERASIONAL (OMSET BRUTO):</td>
+                  <td className="border border-black p-1 text-right font-mono font-bold">{formatRupiah(summary.total_pendapatan)}</td>
+                </tr>
+
+                <tr className="bg-gray-100/80 font-bold border-b border-black">
+                  <td className="border border-black p-1 text-center font-bold">B</td>
+                  <td colSpan={3} className="border border-black p-1 uppercase">BEBAN POKOK PENJUALAN (HPP / MODAL BARANG)</td>
+                </tr>
+                <tr className="border-b border-black">
+                  <td className="border border-black p-1 text-center">1</td>
+                  <td className="border border-black p-1 pl-4 text-rose-700">Beban Pokok Barang Terjual (COGS / Modal Kulakan)</td>
+                  <td className="border border-black p-1 text-center text-[9.5px] text-rose-600">Pengurang</td>
+                  <td className="border border-black p-1 text-right font-mono font-bold text-rose-700">({formatRupiah(summary.total_hpp)})</td>
+                </tr>
+                <tr className="bg-gray-200/80 font-bold border-b-2 border-black">
+                  <td className="border border-black p-1"></td>
+                  <td colSpan={2} className="border border-black p-1 text-right uppercase">LABA KOTOR USAHA (GROSS MARGIN: {marginGrossPercent}%):</td>
+                  <td className="border border-black p-1 text-right font-mono font-bold">{formatRupiah(summary.total_keuntungan)}</td>
+                </tr>
+
+                <tr className="bg-gray-100/80 font-bold border-b border-black">
+                  <td className="border border-black p-1 text-center font-bold">C</td>
+                  <td colSpan={3} className="border border-black p-1 uppercase">BEBAN OPERASIONAL KAS KOPERASI (OPEX)</td>
+                </tr>
+                {!pengeluaranList.length ? (
+                  <tr className="border-b border-black">
+                    <td className="border border-black p-1 text-center">-</td>
+                    <td colSpan={2} className="border border-black p-1 pl-4 italic text-gray-500 text-[9.5px]">Tidak ada transaksi beban kas operasional tercatat pada periode ini.</td>
+                    <td className="border border-black p-1 text-right font-mono font-bold">Rp 0</td>
+                  </tr>
+                ) : (
+                  pengeluaranList.map((p, idx) => (
+                    <tr key={p.pengeluaran_id} className="border-b border-black">
+                      <td className="border border-black p-1 text-center">{idx + 1}</td>
+                      <td className="border border-black p-1 pl-4">{p.nama_pengeluaran}</td>
+                      <td className="border border-black p-1 text-center text-[9.5px] text-gray-600">{p.kategori || 'Operasional'} ({formatDateOnly(p.tanggal)})</td>
+                      <td className="border border-black p-1 text-right font-mono font-bold text-rose-700">-{formatRupiah(p.nominal)}</td>
+                    </tr>
+                  ))
+                )}
+                <tr className="bg-gray-50 font-bold border-b border-black">
+                  <td className="border border-black p-1"></td>
+                  <td colSpan={2} className="border border-black p-1 text-right uppercase">TOTAL BEBAN OPERASIONAL KAS (OPEX):</td>
+                  <td className="border border-black p-1 text-right font-mono font-bold text-rose-700">-{formatRupiah(summary.total_beban_operasional)}</td>
+                </tr>
+
+                <tr className="bg-gray-100 font-bold border-t-2 border-b-2 border-black">
+                  <td className="border border-black p-1 text-center font-bold">D</td>
+                  <td colSpan={2} className="border border-black p-1 uppercase font-bold">SISA HASIL USAHA BERSIH (NET SHU TAHUN BERJALAN):</td>
+                  <td className="border border-black p-1 text-right font-mono font-bold">{formatRupiah(summary.total_laba_bersih)}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          {/* Tabel Rasio Keuangan Koperasi Berstandar Manajemen Finansial */}
-          <table className="print-table w-full border border-black text-[9.5px] mb-2">
-            <thead>
-              <tr className="bg-gray-100 font-bold border-b border-black text-[9px] uppercase">
-                <th className="border border-black p-1 text-center" style={{ width: '4%' }}>No</th>
-                <th className="border border-black p-1 text-left" style={{ width: '28%' }}>Indikator Rasio Finansial</th>
-                <th className="border border-black p-1 text-left" style={{ width: '30%' }}>Formula Manajemen Keuangan</th>
-                <th className="border border-black p-1 text-center" style={{ width: '15%' }}>Hasil Hitung Riil</th>
-                <th className="border border-black p-1 text-center" style={{ width: '23%' }}>Status / Evaluasi Rasio</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-gray-300">
-                <td className="border border-black p-1 text-center font-bold">1</td>
-                <td className="border border-black p-1 font-semibold">Cash Coverage / Rasio Kas Likuid</td>
-                <td className="border border-black p-1 font-mono text-[8.5px]">Kas Masuk / (OPEX + Piutang)</td>
-                <td className="border border-black p-1 text-center font-mono font-bold">{ksh.cash_coverage_ratio_persen}%</td>
-                <td className="border border-black p-1 text-center font-semibold text-[8.5px]">
-                  {ksh.cash_coverage_ratio_persen >= 100 ? '✅ Sangat Likuid (Kas Aman)' : ksh.cash_coverage_ratio_persen >= 50 ? '⚠️ Cukup Likuid (Waspada)' : '❌ Kritis Likuiditas'}
-                </td>
-              </tr>
-              <tr className="border-b border-gray-300">
-                <td className="border border-black p-1 text-center font-bold">2</td>
-                <td className="border border-black p-1 font-semibold">Beban Piutang (A/R to Sales)</td>
-                <td className="border border-black p-1 font-mono text-[8.5px]">Total Piutang / Omset Total</td>
-                <td className="border border-black p-1 text-center font-mono font-bold text-rose-700">{ksh.rasio_piutang_omset_persen}%</td>
-                <td className="border border-black p-1 text-center font-semibold text-[8.5px]">
-                  {ksh.rasio_piutang_omset_persen <= 20 ? '✅ Kolektibilitas Prima' : ksh.rasio_piutang_omset_persen <= 40 ? '⚠️ Beban Bon Sedang' : '❌ Bon Terlalu Tinggi'}
-                </td>
-              </tr>
-              <tr className="border-b border-gray-300">
-                <td className="border border-black p-1 text-center font-bold">3</td>
-                <td className="border border-black p-1 font-semibold">Gross Profit Margin (GPM)</td>
-                <td className="border border-black p-1 font-mono text-[8.5px]">Laba Kotor / Total Omset</td>
-                <td className="border border-black p-1 text-center font-mono font-bold">{ksh.gross_profit_margin_persen}%</td>
-                <td className="border border-black p-1 text-center font-semibold text-[8.5px]">
-                  {ksh.gross_profit_margin_persen >= 12 ? '✅ Margin Sehat (Standar Retail)' : '⚠️ Margin Rendah'}
-                </td>
-              </tr>
-              <tr className="border-b border-gray-300">
-                <td className="border border-black p-1 text-center font-bold">4</td>
-                <td className="border border-black p-1 font-semibold">Operating Expense Ratio (OER)</td>
-                <td className="border border-black p-1 font-mono text-[8.5px]">Beban OPEX / Laba Kotor</td>
-                <td className="border border-black p-1 text-center font-mono font-bold">{ksh.operating_expense_ratio_persen}%</td>
-                <td className="border border-black p-1 text-center font-semibold text-[8.5px]">
-                  {ksh.operating_expense_ratio_persen <= 40 ? '✅ Biaya Sangat Efisien' : ksh.operating_expense_ratio_persen <= 70 ? '⚠️ Biaya Wajar' : '❌ Biaya Boros / Tinggi'}
-                </td>
-              </tr>
-              <tr className="border-b border-gray-300">
-                <td className="border border-black p-1 text-center font-bold">5</td>
-                <td className="border border-black p-1 font-semibold">Net SHU Margin (NPM)</td>
-                <td className="border border-black p-1 font-mono text-[8.5px]">Net SHU Riil / Total Omset</td>
-                <td className="border border-black p-1 text-center font-mono font-bold text-emerald-800">{ksh.net_profit_margin_persen}%</td>
-                <td className="border border-black p-1 text-center font-semibold text-[8.5px]">
-                  {ksh.net_profit_margin_persen >= 5 ? '✅ Hasil Usaha Prima' : '⚠️ Hasil Usaha Minim'}
-                </td>
-              </tr>
-              <tr>
-                <td className="border border-black p-1 text-center font-bold">6</td>
-                <td className="border border-black p-1 font-semibold">Tingkat Partisipasi Anggota</td>
-                <td className="border border-black p-1 font-mono text-[8.5px]">Anggota Aktif / Total Anggota</td>
-                <td className="border border-black p-1 text-center font-mono font-bold">{ksh.jumlah_anggota_aktif}/{ksh.total_anggota_terdaftar} ({ksh.rasio_partisipasi_persen}%)</td>
-                <td className="border border-black p-1 text-center font-semibold text-[8.5px]">
-                  {ksh.rasio_partisipasi_persen >= 80 ? '✅ Partisipasi Sangat Solid' : '⚠️ Perlu Dorongan Belanja'}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          {/* Matriks Tindakan Manajemen Berdasarkan Kondisi Angka Riil */}
-          <div className="border border-black p-2 rounded bg-gray-50/70 text-[9.5px] space-y-1 mb-2">
-            <div className="font-bold text-black border-b border-gray-300 pb-0.5 uppercase flex justify-between">
-              <span>📋 Kesimpulan Audit Manajemen Finansial:</span>
-              <span className="font-mono text-[9px] text-gray-700">Status: {ksh.status_kesehatan}</span>
+          {/* ── BAGIAN II: ALOKASI DISTRIBUSI SISA HASIL USAHA (AD/ART TRIPARTITE) ── */}
+          <div className="mb-2">
+            <div className="border-b border-black pb-0.5 mb-1.5 flex justify-between items-end">
+              <h2 className="text-[11.5px] font-black uppercase text-black m-0 tracking-wide">
+                II. ALOKASI DISTRIBUSI SISA HASIL USAHA (AD/ART KOPERASI)
+              </h2>
+              <span className="text-[9px] font-semibold text-gray-600 uppercase font-mono">
+                Porsi Statutory
+              </span>
             </div>
-            <p className="m-0 text-gray-800 leading-tight">
-              <strong>Diagnosa Sistem:</strong> {ksh.kesimpulan_evaluasi}
+
+            <table className="print-table w-full border border-black text-[10.5px]">
+              <thead>
+                <tr className="bg-gray-100 font-bold border-b border-black text-[9.5px]">
+                  <th className="border border-black p-1 text-left" style={{ width: '50%' }}>Pilar Alokasi SHU (AD/ART Koperasi)</th>
+                  <th className="border border-black p-1 text-center" style={{ width: '20%' }}>Porsi Rasio (%)</th>
+                  <th className="border border-black p-1 text-right" style={{ width: '30%' }}>Alokasi Nominal (Rp)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-black">
+                  <td className="border border-black p-1 pl-3 font-semibold">👥 Bagian Jasa Partisipasi Belanja Anggota</td>
+                  <td className="border border-black p-1 text-center font-bold">60.0%</td>
+                  <td className="border border-black p-1 text-right font-mono font-bold">{formatRupiah(summary.shu_anggota_60)}</td>
+                </tr>
+                <tr className="border-b border-black">
+                  <td className="border border-black p-1 pl-3 font-semibold">🏢 Cadangan Modal Koperasi (Retained Capital)</td>
+                  <td className="border border-black p-1 text-center font-bold">30.0%</td>
+                  <td className="border border-black p-1 text-right font-mono font-bold">{formatRupiah(summary.shu_cadangan_30)}</td>
+                </tr>
+                <tr className="border-b border-black">
+                  <td className="border border-black p-1 pl-3 font-semibold">🎖️ Bagian Pengurus, Pengawas & Karyawan</td>
+                  <td className="border border-black p-1 text-center font-bold">10.0%</td>
+                  <td className="border border-black p-1 text-right font-mono font-bold">{formatRupiah(summary.shu_pengurus_10)}</td>
+                </tr>
+                <tr className="bg-gray-100 font-bold border-t-2 border-black">
+                  <td className="border border-black p-1 uppercase font-bold">TOTAL REALISASI ALOKASI SHU:</td>
+                  <td className="border border-black p-1 text-center font-bold">100.0%</td>
+                  <td className="border border-black p-1 text-right font-mono font-bold">{formatRupiah(summary.total_laba_bersih)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Running Footer Lembar 1 */}
+          <div className="mt-auto pt-2 border-t border-gray-400 flex justify-between items-center text-[8.5px] text-gray-500 font-mono">
+            <span>KOPERASI KARYAWAN PKP-PK BTH — Core Engine Accounting Laporan Real-Time</span>
+            <span className="font-bold text-black">Lembar 1 dari 3</span>
+          </div>
+        </div>
+
+        {/* ══════════════════════════════════════════════════════════════════════════ */}
+        {/* ── LEMBAR 2 (SHEET 2): SUB-LEDGER PARTISIPASI BELANJA & HAK SHU ANGGOTA ── */}
+        {/* ══════════════════════════════════════════════════════════════════════════ */}
+        <div className="print-sheet">
+          {/* Running Sub-Header Lembar 2 */}
+          <div className="border-b-2 border-black pb-1 mb-2 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <img src="/Logo.svg" alt="Logo" className="w-7 h-7 object-contain" />
+              <div>
+                <h1 className="text-[11px] font-black uppercase text-black m-0 leading-tight">
+                  KOPERASI KARYAWAN PKP-PK BTH
+                </h1>
+                <p className="text-[8.5px] text-gray-600 m-0">Lampiran Laporan: Sub-Ledger Partisipasi Belanja & Hak SHU Anggota</p>
+              </div>
+            </div>
+            <div className="text-right text-[8.5px] font-mono">
+              <div>Periode: {tglMulai ? formatDateOnly(tglMulai) : 'Awal'} s/d {tglSelesai ? formatDateOnly(tglSelesai) : 'Kini'}</div>
+              <div className="font-bold text-black">Lembar 2 dari 3</div>
+            </div>
+          </div>
+
+          {/* ── BAGIAN III: BUKU PEMBANTU PARTISIPASI BELANJA & ESTIMASI HAK SHU PER ANGGOTA ── */}
+          <div className="mb-2">
+            <div className="border-b border-black pb-0.5 mb-1.5 flex justify-between items-end">
+              <div>
+                <h2 className="text-[11.5px] font-black uppercase text-black m-0 tracking-wide">
+                  III. BUKU PEMBANTU PARTISIPASI BELANJA & ESTIMASI HAK SHU PER ANGGOTA
+                </h2>
+                <p className="text-[8.5px] text-gray-600 m-0">
+                  Sub-Ledger Real-Time Berdasarkan Akumulasi Nilai Transaksi & Mutasi Piutang Anggota
+                </p>
+              </div>
+              <span className="text-[8.5px] font-mono font-bold text-gray-700">
+                Total: {(data?.rekap_anggota || []).length} Anggota Terdata
+              </span>
+            </div>
+
+            <table className="print-table w-full border border-black text-[9.5px] mb-2">
+              <thead>
+                <tr className="bg-gray-100 font-bold border-b border-black text-[8.5px] uppercase">
+                  <th className="border border-black p-1 text-center" style={{ width: '4%' }}>No</th>
+                  <th className="border border-black p-1 text-left" style={{ width: '26%' }}>Nama Lengkap Anggota</th>
+                  <th className="border border-black p-1 text-center" style={{ width: '6%' }}>Frek</th>
+                  <th className="border border-black p-1 text-right" style={{ width: '14%' }}>Total Belanja</th>
+                  <th className="border border-black p-1 text-right" style={{ width: '13%' }}>Bayar Lunas</th>
+                  <th className="border border-black p-1 text-right" style={{ width: '13%' }}>Piutang Baru</th>
+                  <th className="border border-black p-1 text-center" style={{ width: '8%' }}>Porsi (%)</th>
+                  <th className="border border-black p-1 text-right" style={{ width: '16%' }}>Hak SHU Belanja</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!(data?.rekap_anggota || []).length ? (
+                  <tr>
+                    <td colSpan={8} className="border border-black p-3 text-center text-gray-500 italic">
+                      Belum ada data partisipasi belanja anggota pada rentang periode ini.
+                    </td>
+                  </tr>
+                ) : (
+                  (data?.rekap_anggota || []).map((m, idx) => (
+                    <tr key={m.anggota_id} className="border-b border-gray-300">
+                      <td className="border border-black p-1 text-center font-medium">{idx + 1}</td>
+                      <td className="border border-black p-1 text-left font-bold">{m.nama_lengkap}</td>
+                      <td className="border border-black p-1 text-center">{m.frekuensi_belanja}x</td>
+                      <td className="border border-black p-1 text-right font-mono font-semibold">{formatRupiah(m.total_belanja)}</td>
+                      <td className="border border-black p-1 text-right font-mono text-emerald-700">{formatRupiah(m.total_lunas)}</td>
+                      <td className="border border-black p-1 text-right font-mono text-rose-700">{m.total_hutang > 0 ? formatRupiah(m.total_hutang) : '-'}</td>
+                      <td className="border border-black p-1 text-center font-semibold">{m.porsi_persen}%</td>
+                      <td className="border border-black p-1 text-right font-mono font-black text-blue-900">{formatRupiah(m.hak_shu)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              <tfoot>
+                <tr className="bg-gray-100 font-bold border-t-2 border-black text-[9.5px]">
+                  <td colSpan={3} className="border border-black p-1 text-right uppercase">TOTAL REKAPITULASI:</td>
+                  <td className="border border-black p-1 text-right font-mono font-black">
+                    {formatRupiah((data?.rekap_anggota || []).reduce((acc, c) => acc + c.total_belanja, 0))}
+                  </td>
+                  <td className="border border-black p-1 text-right font-mono font-bold text-emerald-800">
+                    {formatRupiah((data?.rekap_anggota || []).reduce((acc, c) => acc + c.total_lunas, 0))}
+                  </td>
+                  <td className="border border-black p-1 text-right font-mono font-bold text-rose-800">
+                    {formatRupiah((data?.rekap_anggota || []).reduce((acc, c) => acc + c.total_hutang, 0))}
+                  </td>
+                  <td className="border border-black p-1 text-center font-black">100.0%</td>
+                  <td className="border border-black p-1 text-right font-mono font-black text-blue-950">
+                    {formatRupiah(summary.shu_anggota_60)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {/* Running Footer Lembar 2 */}
+          <div className="mt-auto pt-2 border-t border-gray-400 flex justify-between items-center text-[8.5px] text-gray-500 font-mono">
+            <span>KOPERASI KARYAWAN PKP-PK BTH — Core Engine Accounting Laporan Real-Time</span>
+            <span className="font-bold text-black">Lembar 2 dari 3</span>
+          </div>
+        </div>
+
+        {/* ══════════════════════════════════════════════════════════════════════════ */}
+        {/* ── LEMBAR 3 (SHEET 3): EVALUASI TINGKAT KESEHATAN & DISCLAIMER AUDIT ── */}
+        {/* ══════════════════════════════════════════════════════════════════════════ */}
+        <div className="print-sheet print-sheet-last">
+          {/* Running Sub-Header Lembar 3 */}
+          <div className="border-b-2 border-black pb-1 mb-2 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <img src="/Logo.svg" alt="Logo" className="w-7 h-7 object-contain" />
+              <div>
+                <h1 className="text-[11px] font-black uppercase text-black m-0 leading-tight">
+                  KOPERASI KARYAWAN PKP-PK BTH
+                </h1>
+                <p className="text-[8.5px] text-gray-600 m-0">Lampiran Laporan: Analisis Manajemen Keuangan & Audit Trail Akuntansi</p>
+              </div>
+            </div>
+            <div className="text-right text-[8.5px] font-mono">
+              <div>Periode: {tglMulai ? formatDateOnly(tglMulai) : 'Awal'} s/d {tglSelesai ? formatDateOnly(tglSelesai) : 'Kini'}</div>
+              <div className="font-bold text-black">Lembar 3 dari 3</div>
+            </div>
+          </div>
+
+          {/* ── BAGIAN IV: EVALUASI TINGKAT KESEHATAN KOPERASI & MANAJEMEN KEUANGAN UNIT PKP-PK ── */}
+          <div className="mb-2">
+            <div className="border-b border-black pb-0.5 mb-1.5 flex justify-between items-end">
+              <div>
+                <h2 className="text-[11.5px] font-black uppercase text-black m-0 tracking-wide">
+                  IV. EVALUASI TINGKAT KESEHATAN KOPERASI & MANAJEMEN KEUANGAN UNIT PKP-PK
+                </h2>
+                <p className="text-[8.5px] text-gray-600 m-0">
+                  Diagnosis Real-Time Berdasarkan Rasio Likuiditas, Efisiensi OPEX, dan Keaktifan Anggota
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="text-[8.5px] font-bold uppercase px-1.5 py-0.5 border border-black rounded bg-gray-100 font-mono">
+                  SKOR: {ksh.skor_kesehatan}/100 — {ksh.status_kesehatan}
+                </span>
+              </div>
+            </div>
+
+            {/* Tabel Rasio Keuangan Koperasi Berstandar Manajemen Finansial */}
+            <table className="print-table w-full border border-black text-[9px] mb-2">
+              <thead>
+                <tr className="bg-gray-100 font-bold border-b border-black text-[8.5px] uppercase">
+                  <th className="border border-black p-1 text-center" style={{ width: '4%' }}>No</th>
+                  <th className="border border-black p-1 text-left" style={{ width: '28%' }}>Indikator Rasio Finansial</th>
+                  <th className="border border-black p-1 text-left" style={{ width: '30%' }}>Formula Manajemen Keuangan</th>
+                  <th className="border border-black p-1 text-center" style={{ width: '15%' }}>Hasil Hitung Riil</th>
+                  <th className="border border-black p-1 text-center" style={{ width: '23%' }}>Status / Evaluasi Rasio</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-gray-300">
+                  <td className="border border-black p-1 text-center font-bold">1</td>
+                  <td className="border border-black p-1 font-semibold">Cash Coverage / Rasio Kas Likuid</td>
+                  <td className="border border-black p-1 font-mono text-[8px]">Kas Masuk / (OPEX + Piutang)</td>
+                  <td className="border border-black p-1 text-center font-mono font-bold">{ksh.cash_coverage_ratio_persen}%</td>
+                  <td className="border border-black p-1 text-center font-semibold text-[8px]">
+                    {ksh.cash_coverage_ratio_persen >= 100 ? '✅ Sangat Likuid (Kas Aman)' : ksh.cash_coverage_ratio_persen >= 50 ? '⚠️ Cukup Likuid (Waspada)' : '❌ Kritis Likuiditas'}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-300">
+                  <td className="border border-black p-1 text-center font-bold">2</td>
+                  <td className="border border-black p-1 font-semibold">Beban Piutang (A/R to Sales)</td>
+                  <td className="border border-black p-1 font-mono text-[8px]">Total Piutang / Omset Total</td>
+                  <td className="border border-black p-1 text-center font-mono font-bold text-rose-700">{ksh.rasio_piutang_omset_persen}%</td>
+                  <td className="border border-black p-1 text-center font-semibold text-[8px]">
+                    {ksh.rasio_piutang_omset_persen <= 20 ? '✅ Kolektibilitas Prima' : ksh.rasio_piutang_omset_persen <= 40 ? '⚠️ Beban Bon Sedang' : '❌ Bon Terlalu Tinggi'}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-300">
+                  <td className="border border-black p-1 text-center font-bold">3</td>
+                  <td className="border border-black p-1 font-semibold">Gross Profit Margin (GPM)</td>
+                  <td className="border border-black p-1 font-mono text-[8px]">Laba Kotor / Total Omset</td>
+                  <td className="border border-black p-1 text-center font-mono font-bold">{ksh.gross_profit_margin_persen}%</td>
+                  <td className="border border-black p-1 text-center font-semibold text-[8px]">
+                    {ksh.gross_profit_margin_persen >= 12 ? '✅ Margin Sehat (Standar Retail)' : '⚠️ Margin Rendah'}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-300">
+                  <td className="border border-black p-1 text-center font-bold">4</td>
+                  <td className="border border-black p-1 font-semibold">Operating Expense Ratio (OER)</td>
+                  <td className="border border-black p-1 font-mono text-[8px]">Beban OPEX / Laba Kotor</td>
+                  <td className="border border-black p-1 text-center font-mono font-bold">{ksh.operating_expense_ratio_persen}%</td>
+                  <td className="border border-black p-1 text-center font-semibold text-[8px]">
+                    {ksh.operating_expense_ratio_persen <= 40 ? '✅ Biaya Sangat Efisien' : ksh.operating_expense_ratio_persen <= 70 ? '⚠️ Biaya Wajar' : '❌ Biaya Boros / Tinggi'}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-300">
+                  <td className="border border-black p-1 text-center font-bold">5</td>
+                  <td className="border border-black p-1 font-semibold">Net SHU Margin (NPM)</td>
+                  <td className="border border-black p-1 font-mono text-[8px]">Net SHU Riil / Total Omset</td>
+                  <td className="border border-black p-1 text-center font-mono font-bold text-emerald-800">{ksh.net_profit_margin_persen}%</td>
+                  <td className="border border-black p-1 text-center font-semibold text-[8px]">
+                    {ksh.net_profit_margin_persen >= 5 ? '✅ Hasil Usaha Prima' : '⚠️ Hasil Usaha Minim'}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border border-black p-1 text-center font-bold">6</td>
+                  <td className="border border-black p-1 font-semibold">Tingkat Partisipasi Anggota</td>
+                  <td className="border border-black p-1 font-mono text-[8px]">Anggota Aktif / Total Anggota</td>
+                  <td className="border border-black p-1 text-center font-mono font-bold">{ksh.jumlah_anggota_aktif}/{ksh.total_anggota_terdaftar} ({ksh.rasio_partisipasi_persen}%)</td>
+                  <td className="border border-black p-1 text-center font-semibold text-[8px]">
+                    {ksh.rasio_partisipasi_persen >= 80 ? '✅ Partisipasi Sangat Solid' : '⚠️ Perlu Dorongan Belanja'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            {/* Matriks Tindakan Manajemen Berdasarkan Kondisi Angka Riil */}
+            <div className="border border-black p-1.5 rounded bg-gray-50/70 text-[8.5px] space-y-0.5 mb-2">
+              <div className="font-bold text-black border-b border-gray-300 pb-0.5 uppercase flex justify-between">
+                <span>📋 Kesimpulan Audit Manajemen Finansial:</span>
+                <span className="font-mono text-[8px] text-gray-700">Status: {ksh.status_kesehatan}</span>
+              </div>
+              <p className="m-0 text-gray-800 leading-tight">
+                <strong>Diagnosa Sistem:</strong> {ksh.kesimpulan_evaluasi}
+              </p>
+              <div className="grid grid-cols-2 gap-2 pt-0.5 text-[8px]">
+                <div>
+                  <strong>• Aksi Bagi Anggota Unit PKP-PK:</strong>
+                  <p className="m-0 text-gray-700">
+                    {ksh.total_piutang_berjalan > 0 
+                      ? `Selesaikan total piutang bon berjalan sebesar ${formatRupiah(ksh.total_piutang_berjalan)} saat payroll agar kas kulakan tetap lancar.`
+                      : `Disiplin pembayaran lunas terjaga 100%. Pertahankan keaktifan belanja kebutuhan dinas di koperasi.`}
+                  </p>
+                </div>
+                <div>
+                  <strong>• Konsekuensi Operasional:</strong>
+                  <p className="m-0 text-rose-900 font-medium">
+                    {ksh.rasio_piutang_omset_persen > 30 
+                      ? `Jika piutang tertunda, kas likuid Rp ${formatRupiah(ksh.kas_likuid_masuk)} tidak mencukupi untuk restock kulakan ke agen pos bandara.`
+                      : `Jika anggota belanja di luar koperasi, perolehan hak SHU 60% menyusut dan perputaran modal unit kerja menjadi pasif.`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── BAGIAN V: LEMBAR TRANSPARANSI & INTEGRITAS SISTEM (AUDIT TRAIL & VERIFIKASI AKUNTANSI) ── */}
+          <div className="p-2 border-2 border-dashed border-gray-400 bg-gray-50/60 rounded text-[8.5px] text-gray-800 space-y-1 mb-2">
+            <div className="flex items-center justify-between border-b border-gray-300 pb-0.5 font-bold">
+              <span className="uppercase text-black flex items-center gap-1">
+                🛡️ V. LEMBAR TRANSPARANSI & INTEGRITAS SISTEM (AUDIT TRAIL)
+              </span>
+              <span className="font-mono text-[8px] text-gray-600">REF ID: KOP-PK/{Date.now().toString(36).toUpperCase()}</span>
+            </div>
+            <p className="m-0 text-gray-700 leading-tight">
+              <strong>1. Sumber & Keabsahan Data:</strong> Laporan pertanggungjawaban operasional dan perhitungan SHU ini diterbitkan secara otomatis oleh <em>Core Engine Koperasi PKP-PK BTH</em> secara <strong>real-time</strong> berdasarkan <em>immutable transaction logs</em> (tabel <code>transaksi</code>, <code>transaksi_detail</code>, dan <code>pengeluaran_operasional</code>) yang tercatat di sistem kasir POS Koperasi.
             </p>
-            <div className="grid grid-cols-2 gap-3 pt-1 text-[9px]">
-              <div>
-                <strong>• Aksi Bagi Anggota Unit PKP-PK:</strong>
-                <p className="m-0 text-gray-700">
-                  {ksh.total_piutang_berjalan > 0 
-                    ? `Segera selesaikan total piutang bon berjalan sebesar ${formatRupiah(ksh.total_piutang_berjalan)} saat payroll agar perputaran kas kulakan barang toko tetap lancar.`
-                    : `Disiplin pembayaran lunas terjaga 100%. Pertahankan keaktifan belanja kebutuhan dinas 24 Jam di koperasi.`}
-                </p>
-              </div>
-              <div>
-                <strong>• Konsekuensi Bila Tidak Dilaksanakan:</strong>
-                <p className="m-0 text-rose-900 font-medium">
-                  {ksh.rasio_piutang_omset_persen > 30 
-                    ? `Jika piutang tertunda, kas likuid Rp ${formatRupiah(ksh.kas_likuid_masuk)} tidak mencukupi untuk restock kulakan ke agen, sehingga stok barang toko pos bandara akan mengalami kekosongan.`
-                    : `Jika anggota beralih belanja ke luar koperasi, perolehan hak SHU 60% akan menyusut dan perputaran modal unit kerja menjadi pasif.`}
-                </p>
-              </div>
+            <p className="m-0 text-gray-700 leading-tight">
+              <strong>2. Metodologi Komputasi SHU:</strong> Perhitungan mengacu pada standar <strong>SAK Entitas Privat Koperasi Indonesia</strong> & Anggaran Dasar Koperasi (AD/ART) Bab Perhitungan SHU:
+              <br />
+              • <em>Laba Kotor</em> = Total Omset Penjualan Anggota − Beban Pokok Penjualan (HPP Modal Kulakan).
+              <br />
+              • <em>Net SHU Riil</em> = Laba Kotor − Total Realisasi Pengeluaran Kas Operasional (OPEX).
+              <br />
+              • <em>Hak SHU Anggota (60%)</em> dibagikan secara proporsional berdasarkan rumus matematis: <code>(Total Belanja Anggota / Total Omset Anggota) × 60% Net SHU</code>.
+            </p>
+            <p className="m-0 text-gray-700 leading-tight">
+              <strong>3. Hak Uji & Rekonsiliasi Anggota:</strong> Laporan ini disajikan terbuka kepada Pengurus, Badan Pengawas, dan seluruh Anggota Koperasi. Apabila terdapat ketidaksesuaian nilai transaksi, riwayat pembayaran, atau saldo piutang, Anggota berhak mengajukan verifikasi/koreksi dengan melampirkan nomor referensi transaksi atau struk belanja ke Pengurus Koperasi.
+            </p>
+            <div className="pt-0.5 border-t border-gray-200 flex justify-between items-center text-[7.5px] text-gray-500 font-mono">
+              <span>Status Verifikasi: VALID & REALTIME (TERAUTENTIKASI SISTEM)</span>
+              <span>Diterbitkan: {new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'medium' })}</span>
             </div>
+          </div>
+
+          {/* Running Footer Lembar 3 */}
+          <div className="mt-auto pt-2 border-t border-gray-400 flex justify-between items-center text-[8.5px] text-gray-500 font-mono">
+            <span>KOPERASI KARYAWAN PKP-PK BTH — Core Engine Accounting Laporan Real-Time</span>
+            <span className="font-bold text-black">Lembar 3 dari 3</span>
           </div>
         </div>
 
-        {/* ── KOTAK DISCLAIMER & INTEGRITAS SISTEM (AUDIT TRAIL & VERIFIKASI AKUNTANSI) ── */}
-        <div className="avoid-break mt-3 p-3 border-2 border-dashed border-gray-400 bg-gray-50/60 rounded text-[10px] text-gray-800 space-y-1.5">
-          <div className="flex items-center justify-between border-b border-gray-300 pb-1 font-bold">
-            <span className="uppercase text-black flex items-center gap-1.5">
-              🛡️ LEMBAR TRANSPARANSI & INTEGRITAS SISTEM (SYSTEM GENERATED AUDIT TRAIL)
-            </span>
-            <span className="font-mono text-[9px] text-gray-600">REF ID: KOP-PK/{Date.now().toString(36).toUpperCase()}</span>
-          </div>
-          <p className="m-0 text-gray-700 leading-relaxed">
-            <strong>1. Sumber & Keabsahan Data:</strong> Laporan pertanggungjawaban operasional dan perhitungan SHU ini diterbitkan secara otomatis oleh <em>Core Engine Koperasi PKP-PK BTH</em> secara <strong>real-time</strong> berdasarkan <em>immutable transaction logs</em> (tabel <code>transaksi</code>, <code>transaksi_detail</code>, dan <code>pengeluaran_operasional</code>) yang tercatat di sistem kasir POS Koperasi.
-          </p>
-          <p className="m-0 text-gray-700 leading-relaxed">
-            <strong>2. Metodologi Komputasi SHU:</strong> Perhitungan mengacu pada standar <strong>SAK Entitas Privat Koperasi Indonesia</strong> & Anggaran Dasar Koperasi (AD/ART) Bab Perhitungan SHU:
-            <br />
-            • <em>Laba Kotor</em> = Total Omset Penjualan Anggota − Beban Pokok Penjualan (HPP Modal Kulakan).
-            <br />
-            • <em>Net SHU Riil</em> = Laba Kotor − Total Realisasi Pengeluaran Kas Operasional (OPEX).
-            <br />
-            • <em>Hak SHU Anggota (60%)</em> dibagikan secara proporsional berdasarkan rumus matematis: <code>(Total Belanja Anggota / Total Omset Anggota) × 60% Net SHU</code>.
-          </p>
-          <p className="m-0 text-gray-700 leading-relaxed">
-            <strong>3. Hak Uji & Rekonsiliasi Anggota:</strong> Laporan ini disajikan terbuka kepada Pengurus, Badan Pengawas, dan seluruh Anggota Koperasi. Apabila terdapat ketidaksesuaian nilai transaksi, riwayat pembayaran, atau saldo piutang, Anggota berhak mengajukan verifikasi/koreksi dengan melampirkan nomor referensi transaksi atau struk belanja ke Pengurus Koperasi.
-          </p>
-          <div className="pt-1 border-t border-gray-200 flex justify-between items-center text-[9px] text-gray-500 font-mono">
-            <span>Status Verifikasi: VALID & REALTIME (TERAUTENTIKASI SISTEM)</span>
-            <span>Diterbitkan: {new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'medium' })}</span>
-          </div>
-        </div>
       </div>
 
       {/* ── SCREEN UI (FOR NORMAL BROWSER VIEW) ── */}
@@ -1627,7 +1732,10 @@ export function LaporanTransaksi() {
           </div>
 
           {/* ── TABEL I: PERHITUNGAN LABA RUGI OPERASIONAL (ACCOUNTING COLUMNAR TABLE) ── */}
-          <div className="avoid-break">
+          <div className="avoid-break space-y-1">
+            <h3 className="font-black text-[11px] uppercase tracking-wider text-black border-b border-black pb-0.5">
+              I. PERHITUNGAN HASIL USAHA (PHU / LABA RUGI OPERASIONAL)
+            </h3>
             <table className="w-full border-collapse border border-black text-[11px]">
               <thead>
                 <tr className="bg-gray-100 border-b border-black font-black text-[10px] uppercase text-black">
@@ -1947,7 +2055,7 @@ export function LaporanTransaksi() {
           <div className="avoid-break mt-3 p-3 border-2 border-dashed border-gray-400 bg-gray-50/60 rounded text-[10px] text-gray-800 space-y-1.5">
             <div className="flex items-center justify-between border-b border-gray-300 pb-1 font-bold">
               <span className="uppercase text-black flex items-center gap-1.5">
-                🛡️ LEMBAR TRANSPARANSI & INTEGRITAS SISTEM (SYSTEM GENERATED AUDIT TRAIL)
+                🛡️ V. LEMBAR TRANSPARANSI & INTEGRITAS SISTEM (SYSTEM GENERATED AUDIT TRAIL)
               </span>
               <span className="font-mono text-[9px] text-gray-600">REF ID: KOP-PK/{Date.now().toString(36).toUpperCase()}</span>
             </div>
