@@ -1017,6 +1017,73 @@ class AdminController extends Controller
                 ];
             });
 
+        // ── 1. RASIO MANAJEMEN KEUANGAN & KESEHATAN KOPERASI (Permenkop UKM & Financial Ratio Analysis) ──
+        $totalSeluruhAnggota = Anggota::count();
+        $jumlahAnggotaAktif = $rekapAnggota->count();
+        $rasioPartisipasiAnggota = $totalSeluruhAnggota > 0 
+            ? round(($jumlahAnggotaAktif / $totalSeluruhAnggota) * 100, 1) 
+            : 0;
+
+        $kasLikuidMasuk = (float) (($summaryAgg->total_cash ?? 0) + ($summaryAgg->total_ewallet ?? 0) + ($summaryAgg->total_qr ?? 0) + ($summaryAgg->total_transfer ?? 0));
+        $totalPiutang = (float) ($summaryAgg->total_hutang ?? 0);
+
+        // Rasio Piutang terhadap Omset (A/R to Sales Ratio)
+        $rasioPiutang = $totalPendapatan > 0 ? round(($totalPiutang / $totalPendapatan) * 100, 1) : 0;
+
+        // Cash Coverage Ratio: Kas Masuk / (Beban OPEX + Piutang)
+        $pembagiKas = $totalBebanOperasional + $totalPiutang;
+        $cashCoverageRatio = $pembagiKas > 0 ? round(($kasLikuidMasuk / $pembagiKas) * 100, 1) : 100;
+
+        // Gross Profit Margin (GPM) & Net Profit Margin (NPM)
+        $gpm = $totalPendapatan > 0 ? round(($totalLabaKotor / $totalPendapatan) * 100, 1) : 0;
+        $npm = $totalPendapatan > 0 ? round(($totalLabaBersih / $totalPendapatan) * 100, 1) : 0;
+
+        // Operating Expense Ratio (OER): Beban Operasional / Laba Kotor
+        $oer = $totalLabaKotor > 0 ? round(($totalBebanOperasional / $totalLabaKotor) * 100, 1) : 0;
+
+        // ── 2. SCORING KESEHATAN FINANSIAL KOMPREHENSIF (Skala 0 - 100) ──
+        $skorLikuiditas = $cashCoverageRatio >= 100 ? 30 : ($cashCoverageRatio >= 50 ? 20 : 10);
+        $skorPiutang = $rasioPiutang <= 15 ? 25 : ($rasioPiutang <= 35 ? 18 : ($rasioPiutang <= 50 ? 10 : 5));
+        $skorProfitabilitas = $npm >= 10 ? 25 : ($npm >= 5 ? 18 : ($npm > 0 ? 12 : 0));
+        $skorEfisiensi = $oer <= 35 ? 20 : ($oer <= 60 ? 15 : ($oer <= 85 ? 10 : 5));
+
+        $totalSkorKesehatan = $skorLikuiditas + $skorPiutang + $skorProfitabilitas + $skorEfisiensi;
+        
+        if ($totalSkorKesehatan >= 80) {
+            $statusKesehatan = 'SEHAT (GRADE A)';
+            $badgeColor = 'green';
+            $kesimpulan = 'Perputaran kas, margin kotor, dan kolektibilitas sangat prima. Koperasi mandiri dan kuat menopang pasokan kebutuhan unit kerja PKP-PK.';
+        } elseif ($totalSkorKesehatan >= 60) {
+            $statusKesehatan = 'CUKUP SEHAT (GRADE B)';
+            $badgeColor = 'blue';
+            $kesimpulan = 'Kondisi operasional stabil dan menghasilkan laba, namun perlu penertiban batas kasbon piutang belanja anggota.';
+        } elseif ($totalSkorKesehatan >= 40) {
+            $statusKesehatan = 'KURANG SEHAT (GRADE C)';
+            $badgeColor = 'yellow';
+            $kesimpulan = 'Terjadi tekanan likuiditas. Modal kulakan terhambat oleh besarnya akumulasi piutang belanja yang belum dilunasi.';
+        } else {
+            $statusKesehatan = 'KRITIS / DALAM PENGAWASAN (GRADE D)';
+            $badgeColor = 'red';
+            $kesimpulan = 'Arus kas terganggu signifikan. Diperlukan tindakan darurat pembatasan kasbon belanja dan penagihan piutang anggota.';
+        }
+
+        $analisisKesehatan = [
+            'total_anggota_terdaftar' => $totalSeluruhAnggota,
+            'jumlah_anggota_aktif' => $jumlahAnggotaAktif,
+            'rasio_partisipasi_persen' => $rasioPartisipasiAnggota,
+            'kas_likuid_masuk' => $kasLikuidMasuk,
+            'total_piutang_berjalan' => $totalPiutang,
+            'rasio_piutang_omset_persen' => $rasioPiutang,
+            'cash_coverage_ratio_persen' => $cashCoverageRatio,
+            'gross_profit_margin_persen' => $gpm,
+            'net_profit_margin_persen' => $npm,
+            'operating_expense_ratio_persen' => $oer,
+            'skor_kesehatan' => $totalSkorKesehatan,
+            'status_kesehatan' => $statusKesehatan,
+            'badge_color' => $badgeColor,
+            'kesimpulan_evaluasi' => $kesimpulan,
+        ];
+
         return response()->json([
             'success' => true,
             'summary' => [
@@ -1038,10 +1105,12 @@ class AdminController extends Controller
                 'omset_anggota' => (float) ($summaryAgg->omset_anggota ?? 0),
                 'omset_umum' => (float) ($summaryAgg->omset_umum ?? 0),
                 'avg_transaksi' => $avgTransaksi,
+                'analisis_kesehatan' => $analisisKesehatan,
             ],
             'data' => $data,
             'rekap_anggota' => $rekapAnggota,
             'rekap_bulanan' => $rekapBulanan,
+            'analisis_kesehatan' => $analisisKesehatan,
             'pengeluaran_operasional' => $daftarPengeluaran,
             'pagination' => $paginated,
             'breakdown_pembayaran' => $breakdownPembayaran,

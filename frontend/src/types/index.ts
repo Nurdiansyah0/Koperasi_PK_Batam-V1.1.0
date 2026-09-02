@@ -338,6 +338,38 @@ export interface LaporanTransaksi {
     omset_anggota: number
     omset_umum: number
     avg_transaksi: number
+    analisis_kesehatan?: {
+      total_anggota_terdaftar: number
+      jumlah_anggota_aktif: number
+      rasio_partisipasi_persen: number
+      kas_likuid_masuk: number
+      total_piutang_berjalan: number
+      rasio_piutang_omset_persen: number
+      cash_coverage_ratio_persen: number
+      gross_profit_margin_persen: number
+      net_profit_margin_persen: number
+      operating_expense_ratio_persen: number
+      skor_kesehatan: number
+      status_kesehatan: string
+      badge_color: string
+      kesimpulan_evaluasi: string
+    }
+  }
+  analisis_kesehatan?: {
+    total_anggota_terdaftar: number
+    jumlah_anggota_aktif: number
+    rasio_partisipasi_persen: number
+    kas_likuid_masuk: number
+    total_piutang_berjalan: number
+    rasio_piutang_omset_persen: number
+    cash_coverage_ratio_persen: number
+    gross_profit_margin_persen: number
+    net_profit_margin_persen: number
+    operating_expense_ratio_persen: number
+    skor_kesehatan: number
+    status_kesehatan: string
+    badge_color: string
+    kesimpulan_evaluasi: string
   }
   total_transaksi?: number
   total_pendapatan?: number
