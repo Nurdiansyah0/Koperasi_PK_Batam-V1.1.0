@@ -191,7 +191,81 @@ export function DataAnggota() {
           </div>
         </div>
         
-        <div className="overflow-x-auto">
+        {/* Mobile-First Card List (sm:hidden) */}
+        <div className="block sm:hidden divide-y divide-slate-100 dark:divide-slate-800">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="p-4 space-y-3 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-zinc-800" />
+                  <div className="space-y-1.5 flex-1">
+                    <div className="h-4 bg-slate-200 dark:bg-zinc-800 rounded w-1/2" />
+                    <div className="h-3 bg-slate-200 dark:bg-zinc-800 rounded w-1/3" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-2">
+                  <div className="h-10 bg-slate-100 dark:bg-zinc-800 rounded-xl" />
+                  <div className="h-10 bg-slate-100 dark:bg-zinc-800 rounded-xl" />
+                  <div className="h-10 bg-slate-100 dark:bg-zinc-800 rounded-xl" />
+                </div>
+              </div>
+            ))
+          ) : paginatedData.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-xs">Tidak ada anggota ditemukan</div>
+          ) : (
+            paginatedData.map((item) => (
+              <div key={item.anggota_id} className="p-4 space-y-3 hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center font-extrabold text-xs shrink-0 shadow-2xs">
+                      {getInitials(item.nama_lengkap || 'BN')}
+                    </div>
+                    <div className="truncate">
+                      <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                        {item.nama_lengkap || 'Belum Ada Nama'}
+                      </div>
+                      <div className="text-[11px] text-slate-400">@{item.username}</div>
+                    </div>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={item.shu <= 0}
+                    onClick={() => handleOpenTopup(item)}
+                    className="h-8 px-2.5 rounded-xl font-bold text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 shrink-0"
+                  >
+                    <HandCoins className="w-3.5 h-3.5 mr-1" /> Cairkan
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+                  <div className="p-2 rounded-2xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-100 dark:border-zinc-700/60">
+                    <div className="text-[9px] font-bold text-slate-400 uppercase">Saldo</div>
+                    <div className="text-xs font-black text-slate-800 dark:text-slate-200 truncate mt-0.5">
+                      {formatRupiah(item.saldo)}
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-2xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-100 dark:border-zinc-700/60">
+                    <div className="text-[9px] font-bold text-slate-400 uppercase">Hutang</div>
+                    <div className={`text-xs font-black truncate mt-0.5 ${item.hutang > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                      {formatRupiah(item.hutang)}
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-2xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-100 dark:border-zinc-700/60">
+                    <div className="text-[9px] font-bold text-slate-400 uppercase">SHU</div>
+                    <div className={`text-xs font-black truncate mt-0.5 ${item.shu > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {formatRupiah(item.shu)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View (hidden sm:block) */}
+        <div className="hidden sm:block overflow-x-auto">
           <Table>
             <TableHeader className="bg-slate-50/80 dark:bg-slate-800/80">
               <TableRow>

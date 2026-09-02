@@ -164,69 +164,112 @@ export const LaporanTarikTunai: React.FC = () => {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="p-0">
           {loading ? (
             <div className="p-12 text-center text-slate-400 text-xs">Memuat data penarikan...</div>
           ) : filteredList.length === 0 ? (
             <div className="p-12 text-center text-slate-400 text-xs">Belum ada riwayat penarikan tunai yang tercatat.</div>
           ) : (
-            <table className="w-full text-left border-collapse text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400">
-                <tr>
-                  <th className="px-4 py-3 font-bold">Waktu & ID</th>
-                  <th className="px-4 py-3 font-bold">Anggota</th>
-                  <th className="px-4 py-3 font-bold">Kasir Bertugas</th>
-                  <th className="px-4 py-3 font-bold text-right">Nominal Tarik</th>
-                  <th className="px-4 py-3 font-bold text-center">Sumber Dana</th>
-                  <th className="px-4 py-3 font-bold">Struk Belanja Toko</th>
-                  <th className="px-4 py-3 font-bold text-center">Persetujuan SHU</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <>
+              {/* Mobile-First Card List (sm:hidden) */}
+              <div className="block sm:hidden divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredList.map(item => (
-                  <tr key={item.tarik_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="font-mono text-slate-400 text-[10px]">#TRK-{item.tarik_id}</div>
-                      <div className="text-slate-600 dark:text-slate-400 text-[11px]">
-                        {new Date(item.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  <div key={item.tarik_id} className="p-4 space-y-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="text-[10px] font-mono text-slate-400">#TRK-{item.tarik_id}</span>
+                        <h4 className="font-bold text-xs text-slate-900 dark:text-white">
+                          {item.nama_anggota}
+                        </h4>
+                        <p className="text-[10px] text-slate-400">
+                          Kasir: @{item.kasir_name} &bull; {new Date(item.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </p>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
-                      {item.nama_anggota}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                      {item.kasir_name}
-                    </td>
-                    <td className="px-4 py-3 text-right font-black text-rose-600 text-sm">
-                      {formatRupiah(item.nominal)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${
-                        item.sumber_dana === 'shu' 
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                          : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
-                      }`}>
-                        {item.sumber_dana}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
+
+                      <div className="text-right">
+                        <span className="text-[10px] font-semibold text-slate-400 block uppercase">Ditarik</span>
+                        <span className="font-black text-rose-600 text-sm">
+                          {formatRupiah(item.nominal)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2 rounded-2xl bg-slate-50 dark:bg-zinc-800/60 text-xs">
                       <div className="flex items-center gap-1.5">
                         <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
-                        <span className="font-bold text-slate-800 dark:text-slate-200">
-                          {formatRupiah(item.belanja_nominal || 0)}
+                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                          Belanja: {formatRupiah(item.belanja_nominal || 0)}
                         </span>
-                        <span className="text-[10px] text-slate-400">(Trx #{item.transaksi_id || '-'})</span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">
-                        <CheckCircle2 className="w-3 h-3" /> Disetujui Sadar
+                      <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                        {item.sumber_dana}
                       </span>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+
+              {/* Desktop Table (hidden sm:table) */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400">
+                    <tr>
+                      <th className="px-4 py-3 font-bold">Waktu & ID</th>
+                      <th className="px-4 py-3 font-bold">Anggota</th>
+                      <th className="px-4 py-3 font-bold">Kasir Bertugas</th>
+                      <th className="px-4 py-3 font-bold text-right">Nominal Tarik</th>
+                      <th className="px-4 py-3 font-bold text-center">Sumber Dana</th>
+                      <th className="px-4 py-3 font-bold">Struk Belanja Toko</th>
+                      <th className="px-4 py-3 font-bold text-center">Persetujuan SHU</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {filteredList.map(item => (
+                      <tr key={item.tarik_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="font-mono text-slate-400 text-[10px]">#TRK-{item.tarik_id}</div>
+                          <div className="text-slate-600 dark:text-slate-400 text-[11px]">
+                            {new Date(item.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
+                          {item.nama_anggota}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                          {item.kasir_name}
+                        </td>
+                        <td className="px-4 py-3 text-right font-black text-rose-600 text-sm">
+                          {formatRupiah(item.nominal)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${
+                            item.sumber_dana === 'shu' 
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                          }`}>
+                            {item.sumber_dana}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="font-bold text-slate-800 dark:text-slate-200">
+                              {formatRupiah(item.belanja_nominal || 0)}
+                            </span>
+                            <span className="text-[10px] text-slate-400">(Trx #{item.transaksi_id || '-'})</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">
+                            <CheckCircle2 className="w-3 h-3" /> Disetujui Sadar
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

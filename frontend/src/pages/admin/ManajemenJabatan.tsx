@@ -285,9 +285,76 @@ export function ManajemenJabatan() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table & Mobile Cards */}
       <Card className="border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
+        {/* Mobile-First Card View (sm:hidden) */}
+        <div className="block sm:hidden divide-y divide-slate-100 dark:divide-slate-800">
+          {loading ? (
+            <div className="p-8 text-center text-slate-400 text-xs">Memuat data mandat...</div>
+          ) : filteredData.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-xs">Tidak ditemukan riwayat mandat.</div>
+          ) : (
+            filteredData.map(item => (
+              <div key={item.jabatan_id} className="p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-black text-xs flex items-center justify-center shrink-0">
+                      {item.nama_lengkap.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-xs text-slate-900 dark:text-white leading-tight">
+                        {item.nama_lengkap}
+                      </h4>
+                      <p className="text-[10px] text-slate-400">@{item.username}</p>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
+                      item.role === 'admin'
+                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300'
+                        : item.role === 'kasir'
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                        : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                    }`}
+                  >
+                    {item.role}
+                  </span>
+                </div>
+
+                <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-zinc-800/60 text-[11px] space-y-1">
+                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                    <span className="text-slate-400">Status:</span>
+                    <span className="font-bold">{item.status === 'aktif' ? '🟢 Aktif Bertugas' : '⚪ Selesai / Dicabut'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                    <span className="text-slate-400">Mulai:</span>
+                    <span>{item.assigned_at || '-'}</span>
+                  </div>
+                  {item.catatan && (
+                    <div className="text-[10px] text-slate-400 pt-0.5 border-t border-slate-200/50 dark:border-zinc-700/50">
+                      "{item.catatan}"
+                    </div>
+                  )}
+                </div>
+
+                {item.status === 'aktif' && (
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={() => handleOpenRevoke(item)}
+                    className="w-full h-8 text-xs font-bold rounded-xl"
+                  >
+                    Cabut Mandat
+                  </Button>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View (hidden sm:block) */}
+        <div className="hidden sm:block overflow-x-auto">
           <Table>
             <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
               <TableRow>
