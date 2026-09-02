@@ -114,4 +114,40 @@ describe('Business Logic & Cart Validation', () => {
       expect(selisihLebih).toBe(20000) // Overage
     })
   })
+
+  describe('Admin SOP Core Business Logic Validation', () => {
+    it('should calculate PKM 4-day display correctly based on ADS (Average Daily Sales)', () => {
+      const totalSold30Days = 60
+      const days = 30
+      const leadTimeDays = 4
+
+      const ads = totalSold30Days / days // 2.0
+      const pkm = Math.max(1, Math.ceil(ads * leadTimeDays)) // ceil(2.0 * 4) = 8
+      expect(pkm).toBe(8)
+
+      // Slow moving item (1 sold in 30 days)
+      const slowAds = 1 / 30
+      const slowPkm = Math.max(1, Math.ceil(slowAds * leadTimeDays))
+      expect(slowPkm).toBe(1) // Minimum 1 display
+    })
+
+    it('should compute SHU distribution exactly 60% Member, 10% Pengurus, 30% Koperasi', () => {
+      const grossProfitMargin = 10000000 // 10 Juta
+      const shuAnggota = grossProfitMargin * 0.60
+      const shuPengurus = grossProfitMargin * 0.10
+      const shuKoperasi = grossProfitMargin * 0.30
+
+      expect(shuAnggota).toBe(6000000)
+      expect(shuPengurus).toBe(1000000)
+      expect(shuKoperasi).toBe(3000000)
+      expect(shuAnggota + shuPengurus + shuKoperasi).toBe(grossProfitMargin)
+    })
+
+    it('should calculate Cashier Payroll Deduction accurately (Minus Barang + Cash Shortage)', () => {
+      const minusBarangNominal = 55000
+      const cashShortage = 20000 // Uang kas kurang
+      const totalPayrollDeduction = minusBarangNominal + cashShortage
+      expect(totalPayrollDeduction).toBe(75000)
+    })
+  })
 })

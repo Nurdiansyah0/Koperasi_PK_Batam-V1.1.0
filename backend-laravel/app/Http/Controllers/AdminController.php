@@ -269,14 +269,17 @@ class AdminController extends Controller
             // Sync jabatan_anggota if role changed
             if ($newRole !== $oldRole) {
                 // Deactivate old active mandate of this specific role
-                JabatanAnggota::where('user_id', $user->user_id)
+                $oldMandates = JabatanAnggota::where('user_id', $user->user_id)
                     ->where('role', $oldRole)
                     ->where('status', 'aktif')
-                    ->update([
-                        'status' => 'nonaktif',
-                        'revoked_at' => now(),
-                        'catatan' => DB::raw("CONCAT(COALESCE(catatan, ''), ' | Diubah melalui update user')"),
-                    ]);
+                    ->get();
+
+                foreach ($oldMandates as $om) {
+                    $om->status = 'nonaktif';
+                    $om->revoked_at = now();
+                    $om->catatan = ($om->catatan ? $om->catatan . ' | ' : '') . 'Diubah melalui update user';
+                    $om->save();
+                }
 
                 if (in_array($newRole, ['admin', 'kasir', 'pengurus'])) {
                     JabatanAnggota::create([
@@ -796,7 +799,7 @@ class AdminController extends Controller
     {
         $adminId = $this->checkAdmin($request);
         $request->validate([
-            'mode' => 'required|in:individual,pelunasan_hutang,massal_ke_saldo',
+            'mode' => 'required|in:individual,ke_saldo_belanja,pelunasan_hutang,massal_ke_saldo',
             'anggota_id' => 'nullable|integer|exists:anggota,anggota_id',
             'nominal' => 'nullable|numeric|min:1',
             'persentase' => 'nullable|numeric|min:1|max:100',
@@ -807,7 +810,7 @@ class AdminController extends Controller
         try {
             $mode = $request->mode;
 
-            if ($mode === 'individual') {
+            if ($mode === 'individual' || $mode === 'ke_saldo_belanja') {
                 $anggota = Anggota::lockForUpdate()->find($request->anggota_id);
                 if (!$anggota) throw new \Exception("Data anggota tidak ditemukan.");
 
