@@ -1158,13 +1158,13 @@ export function LaporanTransaksi() {
               {/* Teks Kop Tengah */}
               <div className="text-center flex-1">
                 <h1 className="text-sm sm:text-base font-black tracking-wider uppercase m-0 p-0 text-slate-900 dark:text-white leading-tight">
-                  KOPERASI KARYAWAN PKPPK BTH
+                  KOPERASI KARYAWAN PKP-PK BTH
                 </h1>
                 <p className="text-xs font-black text-blue-700 dark:text-blue-400 m-0 mt-0.5 tracking-wide uppercase">
                   LAPORAN PERHITUNGAN HASIL USAHA (PHU) & KAS TOKO
                 </p>
                 <p className="text-[10px] text-slate-500 m-0">
-                  Unit PKPPK Hang Nadim Batam — Jl. Hang Nadim No.01, Batu Besar, Kecamatan Nongsa, Kota Batam, Kepulauan Riau 29466
+                  Unit PKP-PK Hang Nadim Batam — Jl. Hang Nadim No.01, Batu Besar, Kecamatan Nongsa, Kota Batam, Kepulauan Riau 29466
                 </p>
               </div>
 
@@ -1176,7 +1176,7 @@ export function LaporanTransaksi() {
                   const monthRoman = romanMonths[d.getMonth()] || 'IX'
                   const year = d.getFullYear() || 2026
                   const seq = String(summary.total_transaksi > 0 ? (summary.total_transaksi % 999) + 1 : 1).padStart(3, '0')
-                  return `${seq}/KOPKAR-PK/PHU/${monthRoman}/${year}`
+                  return `${seq}/KOPKAR-PKP-PK/PHU/${monthRoman}/${year}`
                 })()}</span></div>
                 <div><strong>Periode:</strong> {tglMulai ? formatDateOnly(tglMulai) : 'Awal'} s/d {tglSelesai ? formatDateOnly(tglSelesai) : 'Kini'}</div>
                 <div><strong>Tanggal Cetak:</strong> {formatDateOnly(new Date())}</div>

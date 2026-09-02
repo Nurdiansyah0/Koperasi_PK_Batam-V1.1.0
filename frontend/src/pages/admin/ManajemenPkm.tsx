@@ -153,7 +153,7 @@ export function ManajemenPkmPage() {
 
     const lines = [
       `🛒 *DAFTAR KULAKAN BELANJA*`,
-      `*KOPKAR PKPPK BTH*`,
+      `*KOPKAR PKP-PK BTH*`,
       `📅 ${new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })} (Basis ${days} Hari)`,
       `---------------------------------------`,
       ...activeSelectedItems.map((item, idx) => {
@@ -401,13 +401,13 @@ export function ManajemenPkmPage() {
             {/* Teks Kop Surat Tengah */}
             <div className="text-center flex-1">
               <h1 className="text-[15px] font-black tracking-wider uppercase m-0 p-0 text-black leading-tight">
-                KOPERASI KARYAWAN PKPPK BTH
+                KOPERASI KARYAWAN PKP-PK BTH
               </h1>
               <p className="text-[12px] font-bold text-gray-800 m-0 mt-0.5 tracking-wide uppercase">
                 LEMBAR RENCANA KULAKAN BELANJA TOKO
               </p>
               <p className="text-[10px] text-gray-600 m-0">
-                Unit PKPPK Hang Nadim Batam — Jl. Hang Nadim No.01, Batu Besar, Kecamatan Nongsa, Kota Batam, Kepulauan Riau 29466
+                Unit PKP-PK Hang Nadim Batam — Jl. Hang Nadim No.01, Batu Besar, Kecamatan Nongsa, Kota Batam, Kepulauan Riau 29466
               </p>
             </div>
 
