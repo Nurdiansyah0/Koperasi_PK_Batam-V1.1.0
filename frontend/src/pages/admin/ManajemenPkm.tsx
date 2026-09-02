@@ -77,7 +77,8 @@ export function ManajemenPkmPage() {
 
         // Initialize shopping cart items
         const cart: ShoppingCartItem[] = rawData.map(item => {
-          const buyQty = item.recommended_buy !== undefined ? item.recommended_buy : Math.max(0, (item.recommended_pkm * 2) - item.stok)
+          const isMoving = item.total_sold > 0
+          const buyQty = item.recommended_buy !== undefined ? item.recommended_buy : (isMoving ? Math.max(0, (item.recommended_pkm * 2) - item.stok) : 0)
           return {
             barang_id: item.barang_id,
             nama_barang: item.nama_barang,
@@ -88,8 +89,8 @@ export function ManajemenPkmPage() {
             pkm: item.pkm || 1,
             harga_modal: item.harga_modal,
             harga_jual: item.harga_jual,
-            jumlah_beli: buyQty > 0 ? buyQty : (item.total_sold > 0 ? Math.ceil(item.ads * leadTime) : 0),
-            is_selected: buyQty > 0 || (item.total_sold > 0 && item.stok < item.pkm * 2)
+            jumlah_beli: buyQty,
+            is_selected: buyQty > 0
           }
         })
         setShoppingItems(cart)
@@ -126,7 +127,7 @@ export function ManajemenPkmPage() {
   // Update purchase quantity
   const updateBuyQty = (barangId: number, qty: number) => {
     setShoppingItems(prev => prev.map(item => 
-      item.barang_id === barangId ? { ...item, jumlah_beli: Math.max(0, qty) } : item
+      item.barang_id === barangId ? { ...item, jumlah_beli: Math.max(0, qty), is_selected: qty > 0 } : item
     ))
   }
 
@@ -144,7 +145,7 @@ export function ManajemenPkmPage() {
     return activeSelectedItems.reduce((acc, curr) => acc + curr.jumlah_beli, 0)
   }, [activeSelectedItems])
 
-  // Copy shopping slip to WhatsApp
+  // Copy shopping slip to WhatsApp (Clean 1-Line Format)
   const handleCopyWhatsAppSlip = () => {
     if (activeSelectedItems.length === 0) {
       toast.error('Pilih minimal 1 barang untuk dimasukkan ke daftar belanja')
@@ -152,20 +153,19 @@ export function ManajemenPkmPage() {
     }
 
     const lines = [
-      `🛒 *DAFTAR RENCANA KULAKAN BELANJA*`,
-      `*KOPERASI KARYAWAN PT. PKPPK BATAM*`,
-      `Tanggal: ${new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })}`,
-      `Dasar Perhitungan: Penjualan ${days} Hari Terakhir`,
+      `🛒 *DAFTAR KULAKAN BELANJA*`,
+      `*KOPKAR PKPPK BTH*`,
+      `📅 ${new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })} (Basis ${days} Hari)`,
       `---------------------------------------`,
       ...activeSelectedItems.map((item, idx) => {
         const subtotal = item.jumlah_beli * item.harga_modal
-        return `${idx + 1}. [ ] *${item.nama_barang}*\n   ├ Laku: ${item.total_sold} pcs | Sisa: ${item.stok_total} pcs (Toko: ${item.stok_toko} / Gudang: ${item.stok_gudang})\n   └ ➔ Beli: *${item.jumlah_beli} pcs* @ ${formatRupiah(item.harga_modal)} = *${formatRupiah(subtotal)}*`
+        return `${idx + 1}. [ ] *${item.nama_barang}* ➔ *${item.jumlah_beli} pcs* (Laku ${item.total_sold} | Sisa ${item.stok_total}) ~ ${formatRupiah(subtotal)}`
       }),
       `---------------------------------------`,
-      `*TOTAL BARANG DIBELI:* ${totalPiecesToBuy} pcs (${activeSelectedItems.length} SKU)`,
-      `*ESTIMASI UANG BELANJA:* *${formatRupiah(totalBudgetSelected)}*`,
+      `*TOTAL DIBELI:* *${totalPiecesToBuy} pcs* (${activeSelectedItems.length} item)`,
+      `*ESTIMASI MODAL:* *${formatRupiah(totalBudgetSelected)}*`,
       `---------------------------------------`,
-      `_Catatan: Siapkan uang kas tunai / debit sesuai estimasi di atas._`
+      `_Bawa uang kas tunai / debit koperasi._`
     ]
 
     navigator.clipboard.writeText(lines.join('\n'))

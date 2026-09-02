@@ -921,17 +921,19 @@ class AdminController extends Controller
         $data = $barangs->map(function ($b) use ($sales, $days, $leadTimeDays) {
             $sold = (int) ($sales[$b->barang_id] ?? 0);
             $ads = round($sold / max(1, $days), 2);
-            $recommendedPkm = max(1, (int) ceil($ads * $leadTimeDays));
             $currentPkm = (int) ($b->pkm ?: 1);
+            $recommendedPkm = $sold > 0 ? max(1, (int) ceil($ads * $leadTimeDays)) : $currentPkm;
             $stokToko = (int) ($b->stok_toko ?? min($b->stok, $currentPkm));
             $stokGudang = (int) ($b->stok_gudang ?? max(0, $b->stok - $stokToko));
             $totalStok = (int) $b->stok;
 
-            // Recommended buy: target 2x PKM (display + safe warehouse buffer) minus current total stock
-            $targetBuffer = $recommendedPkm * 2;
-            $recommendedBuy = max(0, $targetBuffer - $totalStok);
-            if ($recommendedBuy === 0 && $stokToko < $recommendedPkm && $stokGudang === 0) {
-                $recommendedBuy = max(1, $recommendedPkm - $stokToko);
+            // Recommended buy: Only recommend buying if the item is moving (has sales)
+            if ($sold > 0) {
+                $targetBuffer = $recommendedPkm * 2;
+                $recommendedBuy = max(0, $targetBuffer - $totalStok);
+            } else {
+                // 0 sales in period -> Do not auto buy dead stock
+                $recommendedBuy = 0;
             }
 
             $hargaModal = (float) $b->harga_modal;

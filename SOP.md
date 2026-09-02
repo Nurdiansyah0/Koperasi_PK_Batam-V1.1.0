@@ -1,6 +1,6 @@
 # STANDAR OPERASIONAL PROSEDUR (SOP)
 ## OPERASIONAL SERAH TERIMA SHIFT & REKONSILIASI KASIR
-**KOPERASI KARYAWAN PT. PEMBINA KARYA PERDANA (PKPPK) BATAM**
+**KOPERASI KARYAWAN PKPPK BTH**
 *Dokumen Resmi Operasional Kasir — Versi 2.1 (Terintegrasi POS & Sistem PKM)*
 
 ---
@@ -326,7 +326,7 @@ flowchart LR
 ---
 
 **Disahkan oleh:**  
-*Pengurus & Manajemen Koperasi Karyawan PKPPK Batam*  
+*Pengurus & Manajemen Koperasi Karyawan PKPPK BTH*  
 *Tanggal Efektif: September 2026 (Revisi 2.3 - Closed-Loop Inbound Procurement)*
 
 
