@@ -446,7 +446,7 @@ export function ManajemenPkmPage() {
                 <tr key={item.barang_id} className="border-b border-black">
                   <td className="border border-black p-1.5 text-center">{idx + 1}</td>
                   <td className="border border-black p-1.5 text-center font-bold text-xs">[ &nbsp; ]</td>
-                  <td className="border border-black p-1.5 font-bold truncate" title={item.nama_barang}>{item.nama_barang}</td>
+                  <td className="border border-black p-1.5 font-bold text-left">{item.nama_barang}</td>
                   <td className="border border-black p-1.5 text-center">{item.total_sold} pcs</td>
                   <td className="border border-black p-1.5 text-center">{item.stok_total} pcs</td>
                   <td className="border border-black p-1.5 text-center font-black text-xs">{item.jumlah_beli} pcs</td>

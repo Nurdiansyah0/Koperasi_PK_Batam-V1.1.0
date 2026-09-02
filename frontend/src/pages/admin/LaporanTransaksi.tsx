@@ -1128,15 +1128,62 @@ export function LaporanTransaksi() {
         onClose={() => setIsCorporateModalOpen(false)}
         title="📑 Rekapitulasi Hasil Usaha & Kas Koperasi"
       >
-        <div className="space-y-5 text-xs max-h-[80vh] overflow-y-auto p-1">
+        {/* PRINT ISOLATION STYLES */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media print {
+            @page {
+              size: A4 portrait;
+              margin: 10mm 12mm;
+            }
+            body * {
+              visibility: hidden !important;
+            }
+            #printable-laporan, #printable-laporan * {
+              visibility: visible !important;
+            }
+            #printable-laporan {
+              display: block !important;
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+              z-index: 999999 !important;
+              font-family: Arial, Helvetica, sans-serif !important;
+              font-size: 11px !important;
+              line-height: 1.4 !important;
+            }
+            .no-print {
+              display: none !important;
+            }
+            .print-border {
+              border: 1px solid #000000 !important;
+            }
+            .print-border-b {
+              border-bottom: 1px solid #000000 !important;
+            }
+            .print-bg-gray {
+              background-color: #f3f4f6 !important;
+            }
+            .avoid-break {
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+          }
+        `}} />
+
+        <div id="printable-laporan" className="space-y-4 text-xs max-h-[80vh] overflow-y-auto p-1 bg-white text-black">
           
-          {/* Header Kop Surat Koperasi PKPPK BTH (Matching PKM Cetak Style) */}
-          <div className="border-b-2 border-slate-900 dark:border-zinc-400 pb-3 mb-4">
-            <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-3 text-center sm:text-left">
+          {/* Header Kop Surat Koperasi PKP-PK BTH (Matching PKM Cetak Style) */}
+          <div className="border-b-2 border-black pb-3 mb-3">
+            <div className="flex items-center justify-between gap-3 text-left">
               
-              {/* Logo Kiri */}
-              <div className="w-12 h-12 shrink-0 hidden sm:block">
-                <svg viewBox="0 0 512 512" className="w-full h-full drop-shadow-sm">
+              {/* Logo Kiri (48px x 48px Presisi) */}
+              <div className="w-12 h-12 shrink-0 flex items-center justify-center">
+                <svg viewBox="0 0 512 512" className="w-12 h-12 drop-shadow-xs">
                   <defs>
                     <linearGradient id="kopBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                       <stop offset="0%" stopColor="#047857" />
@@ -1157,20 +1204,20 @@ export function LaporanTransaksi() {
 
               {/* Teks Kop Tengah */}
               <div className="text-center flex-1">
-                <h1 className="text-sm sm:text-base font-black tracking-wider uppercase m-0 p-0 text-slate-900 dark:text-white leading-tight">
+                <h1 className="text-sm sm:text-base font-black tracking-wider uppercase m-0 p-0 text-black leading-tight">
                   KOPERASI KARYAWAN PKP-PK BTH
                 </h1>
-                <p className="text-xs font-black text-blue-700 dark:text-blue-400 m-0 mt-0.5 tracking-wide uppercase">
+                <p className="text-xs font-black text-black m-0 mt-0.5 tracking-wide uppercase">
                   LAPORAN PERHITUNGAN HASIL USAHA (PHU) & KAS TOKO
                 </p>
-                <p className="text-[10px] text-slate-500 m-0">
+                <p className="text-[10px] text-gray-700 m-0">
                   Unit PKP-PK Hang Nadim Batam — Jl. Hang Nadim No.01, Batu Besar, Kecamatan Nongsa, Kota Batam, Kepulauan Riau 29466
                 </p>
               </div>
 
               {/* Dokumen Meta Box Kanan */}
-              <div className="border border-slate-300 dark:border-zinc-700 p-2 rounded-xl text-[10px] text-left shrink-0 min-w-[170px] space-y-0.5 bg-slate-50 dark:bg-zinc-800/60 font-medium">
-                <div><strong>No. Surat:</strong> <span className="font-mono font-bold text-blue-700 dark:text-blue-400">{(() => {
+              <div className="border border-black p-1.5 rounded text-[10px] text-left shrink-0 min-w-[170px] space-y-0.5 bg-gray-50/60 font-medium">
+                <div><strong>No. Surat:</strong> <span className="font-mono font-bold text-black">{(() => {
                   const d = tglSelesai ? new Date(tglSelesai) : new Date()
                   const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
                   const monthRoman = romanMonths[d.getMonth()] || 'IX'
@@ -1186,51 +1233,52 @@ export function LaporanTransaksi() {
           </div>
 
           {/* Bagian 1: Laba Rugi Komprehensif */}
-          <div className="space-y-2">
-            <h4 className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-zinc-800 p-2 rounded-lg">
-              I. PENDAPATAN & BEBAN POKOK USAHA
-            </h4>
-            <div className="space-y-1.5 px-2">
-              <div className="flex justify-between">
+          <div className="space-y-1.5 avoid-break">
+            <div className="font-black text-[11px] uppercase tracking-wider text-black bg-gray-100 p-1.5 rounded border border-black flex justify-between items-center">
+              <span>I. PENDAPATAN & BEBAN POKOK USAHA (HPP)</span>
+              <span>Nominal (Rp)</span>
+            </div>
+            <div className="space-y-1 px-1 text-[11px]">
+              <div className="flex justify-between py-0.5 border-b border-gray-200">
                 <span>Omset Penjualan Anggota Koperasi (Partisipasi Belanja)</span>
-                <span className="font-bold">{formatRupiah(summary.omset_anggota)}</span>
+                <span className="font-mono font-semibold">{formatRupiah(summary.omset_anggota)}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between py-0.5 border-b border-gray-200">
                 <span>Omset Penjualan Pelanggan Umum (Non-Anggota)</span>
-                <span className="font-bold">{formatRupiah(summary.omset_umum)}</span>
+                <span className="font-mono font-semibold">{formatRupiah(summary.omset_umum)}</span>
               </div>
-              <div className="flex justify-between pt-1.5 border-t font-black text-slate-900 dark:text-white">
+              <div className="flex justify-between py-1 border-b border-black font-black text-black">
                 <span>TOTAL PENDAPATAN OPERASIONAL USAHA (OMSET BRUTO)</span>
-                <span>{formatRupiah(summary.total_pendapatan)}</span>
+                <span className="font-mono">{formatRupiah(summary.total_pendapatan)}</span>
               </div>
-              <div className="flex justify-between text-rose-600 font-semibold pt-1">
+              <div className="flex justify-between py-0.5 border-b border-gray-200 text-rose-700 font-semibold">
                 <span>Beban Pokok Penjualan (HPP / Modal Barang Terjual)</span>
-                <span>({formatRupiah(summary.total_hpp)})</span>
+                <span className="font-mono">({formatRupiah(summary.total_hpp)})</span>
               </div>
-              <div className="flex justify-between pt-2 border-t-2 border-slate-300 dark:border-zinc-700 font-black text-emerald-600 dark:text-emerald-400 text-sm">
-                <span>LABA KOTOR USAHA (GROSS PROFIT MARGIN: {marginGrossPercent}%)</span>
-                <span>{formatRupiah(summary.total_keuntungan)}</span>
+              <div className="flex justify-between py-1 border-t-2 border-b-2 border-black font-black text-black bg-gray-50/70 px-1">
+                <span>LABA KOTOR USAHA (GROSS MARGIN: {marginGrossPercent}%)</span>
+                <span className="font-mono text-sm">{formatRupiah(summary.total_keuntungan)}</span>
               </div>
             </div>
           </div>
 
           {/* Bagian 2: Beban Operasional Kas (OPEX) */}
-          <div className="space-y-2">
-            <h4 className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-zinc-800 p-2 rounded-lg flex justify-between items-center">
+          <div className="space-y-1.5 pt-1 avoid-break">
+            <div className="font-black text-[11px] uppercase tracking-wider text-black bg-gray-100 p-1.5 rounded border border-black flex justify-between items-center">
               <span>II. BEBAN OPERASIONAL KAS KOPERASI (OPEX)</span>
-              <span className="text-rose-600 font-bold">Total: -{formatRupiah(summary.total_beban_operasional)}</span>
-            </h4>
-            <div className="space-y-1 px-2 divide-y divide-slate-100 dark:divide-zinc-800">
+              <span>Total: -{formatRupiah(summary.total_beban_operasional)}</span>
+            </div>
+            <div className="space-y-0.5 px-1 divide-y divide-gray-200 text-[11px]">
               {!pengeluaranList.length ? (
-                <p className="text-slate-400 italic py-1">Tidak ada beban operasional kas yang tercatat pada periode ini.</p>
+                <p className="text-gray-500 italic py-1">Tidak ada beban operasional kas yang tercatat pada periode ini.</p>
               ) : (
                 pengeluaranList.map(p => (
-                  <div key={p.pengeluaran_id} className="flex justify-between py-1 text-[11px]">
+                  <div key={p.pengeluaran_id} className="flex justify-between py-1">
                     <div>
-                      <span className="font-semibold text-slate-800 dark:text-slate-200">{p.nama_pengeluaran}</span>
-                      <span className="text-[10px] text-slate-400 ml-1.5">({p.kategori || 'Operasional'} - {formatDateOnly(p.tanggal)})</span>
+                      <span className="font-semibold text-black">{p.nama_pengeluaran}</span>
+                      <span className="text-[10px] text-gray-500 ml-1.5">({p.kategori || 'Operasional'} — {formatDateOnly(p.tanggal)})</span>
                     </div>
-                    <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                    <span className="font-mono font-bold text-black">
                       -{formatRupiah(p.nominal)}
                     </span>
                   </div>
@@ -1240,25 +1288,25 @@ export function LaporanTransaksi() {
           </div>
 
           {/* Bagian 3: SHU Bersih & Alokasi Tripartite Koperasi */}
-          <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 space-y-3">
-            <div className="flex justify-between items-center text-sm font-black text-emerald-800 dark:text-emerald-300 pb-2 border-b border-emerald-200 dark:border-emerald-800">
+          <div className="p-3 bg-gray-50 rounded border border-black space-y-2.5 avoid-break">
+            <div className="flex justify-between items-center text-xs font-black text-black pb-1.5 border-b border-black">
               <span>SISA HASIL USAHA BERSIH (NET SHU TAHUN BERJALAN)</span>
-              <span className="text-base">{formatRupiah(summary.total_laba_bersih)}</span>
+              <span className="text-sm font-mono">{formatRupiah(summary.total_laba_bersih)}</span>
             </div>
 
-            <div className="space-y-1.5 text-xs text-emerald-900 dark:text-emerald-200">
-              <span className="font-bold uppercase tracking-wider text-[10px] text-emerald-700 block">
+            <div className="space-y-1 text-[11px] text-black">
+              <span className="font-bold uppercase tracking-wider text-[10px] text-gray-700 block">
                 Alokasi Distribusi Sesuai Anggaran Dasar Koperasi (AD/ART):
               </span>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center py-0.5 border-b border-gray-200">
                 <span>👥 <b>60% Hak SHU Anggota</b> (Jasa Modal & Belanja Partisipasi)</span>
                 <span className="font-black font-mono">{formatRupiah(summary.shu_anggota_60)}</span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center py-0.5 border-b border-gray-200">
                 <span>🏢 <b>30% Cadangan Modal Koperasi</b> (Retained Reserve Capital)</span>
                 <span className="font-black font-mono">{formatRupiah(summary.shu_cadangan_30)}</span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center py-0.5">
                 <span>🎖️ <b>10% Jasa Pengurus, Pengawas & Karyawan</b></span>
                 <span className="font-black font-mono">{formatRupiah(summary.shu_pengurus_10)}</span>
               </div>
@@ -1266,23 +1314,23 @@ export function LaporanTransaksi() {
           </div>
 
           {/* Bagian 4: Lembar Tanda Tangan Audit */}
-          <div className="pt-6 border-t border-slate-200 dark:border-zinc-700 grid grid-cols-3 gap-4 text-center text-[10px]">
+          <div className="pt-6 border-t border-black grid grid-cols-3 gap-4 text-center text-[10px] avoid-break">
             <div className="space-y-12">
-              <p className="font-semibold text-slate-500">Disusun Oleh,<br/><b>Bendahara Keuangan</b></p>
-              <p className="font-bold underline text-slate-800 dark:text-slate-200">( Bendahara Koperasi PK )</p>
+              <p className="font-semibold text-gray-700">Disusun Oleh,<br/><b>Bendahara Keuangan</b></p>
+              <p className="font-bold border-t border-black w-36 mx-auto pt-1">( ........................................ )</p>
             </div>
             <div className="space-y-12">
-              <p className="font-semibold text-slate-500">Diperiksa Oleh,<br/><b>Ketua Pengawas</b></p>
-              <p className="font-bold underline text-slate-800 dark:text-slate-200">( Pengawas Koperasi PK )</p>
+              <p className="font-semibold text-gray-700">Diperiksa Oleh,<br/><b>Ketua Pengawas</b></p>
+              <p className="font-bold border-t border-black w-36 mx-auto pt-1">( ........................................ )</p>
             </div>
             <div className="space-y-12">
-              <p className="font-semibold text-slate-500">Disetujui Oleh,<br/><b>Ketua Koperasi</b></p>
-              <p className="font-bold underline text-slate-800 dark:text-slate-200">( Ketua Koperasi PK )</p>
+              <p className="font-semibold text-gray-700">Disetujui Oleh,<br/><b>Ketua Koperasi</b></p>
+              <p className="font-bold border-t border-black w-36 mx-auto pt-1">( ........................................ )</p>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-zinc-800">
+          {/* Action Buttons (Screen Only - Hidden on Print) */}
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-zinc-800 no-print">
             <Button type="button" variant="ghost" onClick={() => setIsCorporateModalOpen(false)}>
               Tutup
             </Button>
