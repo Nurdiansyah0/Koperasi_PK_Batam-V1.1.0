@@ -889,7 +889,7 @@ class AdminController extends Controller
                 'kasir:user_id,username',
                 'anggota:anggota_id,nama_lengkap',
                 'details:detail_id,transaksi_id,barang_id,jumlah,harga_satuan,subtotal,keuntungan',
-                'details.barang:barang_id,nama_barang,satuan'
+                'details.barang:barang_id,nama_barang'
             ];
 
             // Pagination or All records
