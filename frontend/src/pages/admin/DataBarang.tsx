@@ -12,7 +12,7 @@ import {
   Plus, Edit, Trash2, ShoppingCart, History,
   Search, Box, Store, Warehouse, ArrowRightLeft,
   Zap, AlertTriangle, AlertCircle, Calendar,
-  CheckSquare, Square, Copy, Check, Printer
+  CheckSquare, Square, Copy, Check, Printer, ExternalLink
 } from 'lucide-react'
 
 const ITEMS_PER_PAGE = 12
@@ -43,6 +43,7 @@ export function DataBarang() {
 
   // Refill Picking Slip State (Work Order)
   const [isRefillModalOpen, setIsRefillModalOpen] = useState(false)
+  const [refillModalTab, setRefillModalTab] = useState<'available' | 'out_of_stock'>('available')
   const [refillItems, setRefillItems] = useState<RefillDraftItem[]>([])
   const [isConfirmingRefill, setIsConfirmingRefill] = useState(false)
   const [copiedSlip, setCopiedSlip] = useState(false)
@@ -51,6 +52,7 @@ export function DataBarang() {
   const [isRestockModalOpen, setIsRestockModalOpen] = useState(false)
   const [restockData, setRestockData] = useState({
     barang_id: 0,
+    nama_barang: '',
     jumlah_tambah: 1,
     harga_beli_satuan: 0,
     sumber_dana: 'kas_koperasi',
@@ -106,14 +108,30 @@ export function DataBarang() {
     return barang.filter(b => (b.status_kadaluarsa_toko === 'near_expiry' && (b.stok_toko || 0) > 0) || (b.status_kadaluarsa_gudang === 'near_expiry' && (b.stok_gudang || 0) > 0)).length
   }, [barang])
 
-  const refillNeededItems = useMemo(() => {
+  // All items where display toko < PKM (Total Deficit)
+  const allDeficitItems = useMemo(() => {
     return barang.filter(b => {
       const currentToko = b.stok_toko ?? Math.min(b.stok, b.pkm || 1)
       const pkm = b.pkm || 1
-      const gudang = b.stok_gudang ?? Math.max(0, b.stok - pkm)
-      return currentToko < pkm && gudang > 0
+      return currentToko < pkm
     })
   }, [barang])
+
+  // Items with deficit AND available warehouse stock (Can be refilled)
+  const refillAvailableItems = useMemo(() => {
+    return allDeficitItems.filter(b => {
+      const gudang = b.stok_gudang ?? Math.max(0, b.stok - (b.pkm || 1))
+      return gudang > 0
+    })
+  }, [allDeficitItems])
+
+  // Items with deficit BUT warehouse stock is empty (Needs distributor restock)
+  const outOfStockGudangItems = useMemo(() => {
+    return allDeficitItems.filter(b => {
+      const gudang = b.stok_gudang ?? Math.max(0, b.stok - (b.pkm || 1))
+      return gudang <= 0
+    })
+  }, [allDeficitItems])
 
   const filteredBarang = useMemo(() => {
     let result = barang
@@ -140,12 +158,12 @@ export function DataBarang() {
 
   // Open Picking Slip / Refill Modal
   const handleOpenRefillModal = () => {
-    if (refillNeededItems.length === 0) {
-      toast('Semua etalase toko sudah terisi penuh sesuai PKM atau stok gudang kosong.', { icon: '✨' })
+    if (allDeficitItems.length === 0) {
+      toast.success('Semua display toko sudah optimal terisi sesuai batas PKM 4 hari.', { icon: '✨' })
       return
     }
 
-    const initialList: RefillDraftItem[] = refillNeededItems.map(item => {
+    const initialList: RefillDraftItem[] = refillAvailableItems.map(item => {
       const currentToko = item.stok_toko ?? Math.min(item.stok, item.pkm || 1)
       const pkm = item.pkm || 1
       const gudang = item.stok_gudang ?? Math.max(0, item.stok - pkm)
@@ -165,6 +183,7 @@ export function DataBarang() {
     })
 
     setRefillItems(initialList)
+    setRefillModalTab(refillAvailableItems.length > 0 ? 'available' : 'out_of_stock')
     setIsRefillModalOpen(true)
   }
 
@@ -194,7 +213,7 @@ export function DataBarang() {
     const lines = [
       `📋 *DAFTAR PICKING REFILL TOKO (KOPERASI PK)*`,
       `Tanggal: ${new Date().toLocaleDateString('id-ID', { dateStyle: 'medium' })}`,
-      `Total Item: ${activeItems.length} SKU`,
+      `Total Item Siap Refill: ${activeItems.length} SKU`,
       `---------------------------------------`,
       ...activeItems.map((item, idx) => 
         `${idx + 1}. [ ] ${item.nama_barang} ➔ Ambil: *${item.jumlah_ambil} pcs* (Rak: ${item.stok_toko}/${item.pkm}, Sisa Gudang: ${item.stok_gudang})`
@@ -271,12 +290,13 @@ export function DataBarang() {
   const handleOpenRestock = (item: Barang) => {
     setRestockData({
       barang_id: item.barang_id,
-      jumlah_tambah: 1,
+      nama_barang: item.nama_barang,
+      jumlah_tambah: (item.pkm || 4) * 2, // Suggest ordering 2x PKM
       harga_beli_satuan: item.harga_modal || 0,
       sumber_dana: 'kas_koperasi',
       alokasi: 'gudang',
       tanggal_kadaluarsa: item.tgl_kadaluarsa_gudang ? item.tgl_kadaluarsa_gudang.split('T')[0] : '',
-      catatan: ''
+      catatan: `Kulakan pengadaan ${item.nama_barang}`
     })
     setIsRestockModalOpen(true)
   }
@@ -441,7 +461,7 @@ export function DataBarang() {
             className="flex-1 sm:flex-none h-10 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs"
           >
             <Zap className="w-3.5 h-3.5 mr-1.5" />
-            Rencanakan Refill ({refillNeededItems.length})
+            Rencanakan Refill ({allDeficitItems.length})
           </Button>
           <Button onClick={handleOpenHistory} variant="secondary" className="flex-1 sm:flex-none h-10 text-xs font-semibold">
             <History className="w-3.5 h-3.5 mr-1.5" /> Riwayat Kulakan
@@ -500,7 +520,7 @@ export function DataBarang() {
             }`}
           >
             <Zap className="w-3 h-3" />
-            ⚡ Butuh Refill ({refillNeededItems.length})
+            ⚡ Butuh Refill ({allDeficitItems.length})
           </button>
         </div>
 
@@ -568,8 +588,12 @@ export function DataBarang() {
                         </span>
                       )}
                       {isTokoUnderPkm && (
-                        <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <AlertTriangle className="w-2.5 h-2.5" /> Refill
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                          stokGudang > 0 
+                            ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' 
+                            : 'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300'
+                        }`}>
+                          <AlertTriangle className="w-2.5 h-2.5" /> {stokGudang > 0 ? 'Refill' : 'Gudang OOS'}
                         </span>
                       )}
                     </div>
@@ -609,8 +633,8 @@ export function DataBarang() {
                           <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-medium">
                             <Warehouse className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> Cadangan Gudang:
                           </span>
-                          <span className="font-bold text-slate-700 dark:text-slate-200">
-                            {stokGudang} pcs
+                          <span className={`font-bold ${stokGudang === 0 ? 'text-rose-500 font-black' : 'text-slate-700 dark:text-slate-200'}`}>
+                            {stokGudang === 0 ? '0 pcs (Habis)' : `${stokGudang} pcs`}
                           </span>
                         </div>
                         <div className="flex justify-between items-center text-[10px] text-slate-400 pl-4.5">
@@ -714,113 +738,205 @@ export function DataBarang() {
         </div>
       )}
 
-      {/* MODAL 2-LANGKAH: LEMBAR KERJA PICKING / REFILL TOKO */}
+      {/* MODAL 2-LANGKAH: LEMBAR KERJA PICKING & REFILL TOKO (DENGAN TABS ERROR HANDLING) */}
       <Modal 
         isOpen={isRefillModalOpen} 
         onClose={() => setIsRefillModalOpen(false)} 
         title="📋 Lembar Kerja Picking & Refill Display Toko"
       >
         <div className="space-y-4">
-          {/* Petunjuk Operasional */}
-          <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-900/60 text-xs text-amber-900 dark:text-amber-200 space-y-1">
-            <div className="font-bold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
-              <Zap className="w-4 h-4 text-amber-600" /> SOP Pemindahan Fisik Barang:
-            </div>
-            <p className="text-[11px] leading-relaxed">
-              1. Bawa daftar ini / salin ke HP saat staf menuju ke gudang belakang.<br />
-              2. Ambil barang dari kardus gudang sesuai jumlah yang tertera.<br />
-              3. Tata barang di rak display etalase kasir.<br />
-              4. Tekan tombol <strong>"Konfirmasi Selesai Ditata di Rak"</strong> di bawah untuk menyinkronkan data sistem.
-            </p>
-          </div>
-
-          {/* Quick Action Top Bar */}
-          <div className="flex items-center justify-between p-2.5 bg-slate-100 dark:bg-zinc-800 rounded-2xl text-xs">
-            <div className="font-semibold text-slate-700 dark:text-slate-300">
-              Terpilih: <strong className="text-blue-600 dark:text-blue-400">{selectedRefillCount} SKU</strong> ({totalRefillPieces} pcs fisik)
-            </div>
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={handleCopyPickingSlip}
-              className="h-7 text-xs font-bold gap-1 rounded-xl"
+          {/* Subtabs: Siap Refill vs Gudang Kosong */}
+          <div className="flex rounded-2xl bg-slate-100 dark:bg-zinc-800 p-1 text-xs">
+            <button
+              type="button"
+              onClick={() => setRefillModalTab('available')}
+              className={`flex-1 py-2 rounded-xl font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+                refillModalTab === 'available'
+                  ? 'bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
             >
-              {copiedSlip ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-              {copiedSlip ? 'Tersalin' : 'Salin Checklist'}
-            </Button>
+              <CheckSquare className="w-3.5 h-3.5" />
+              Siap Diambil dari Gudang ({refillAvailableItems.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setRefillModalTab('out_of_stock')}
+              className={`flex-1 py-2 rounded-xl font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+                refillModalTab === 'out_of_stock'
+                  ? 'bg-white dark:bg-zinc-900 text-rose-600 dark:text-rose-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              Gudang Kosong / Butuh Kulakan ({outOfStockGudangItems.length})
+            </button>
           </div>
 
-          {/* Picking Items Table / Checklist */}
-          <div className="max-h-[45vh] overflow-y-auto space-y-2 pr-1">
-            {refillItems.map(item => (
-              <div 
-                key={item.barang_id}
-                className={`p-3 rounded-2xl border text-xs transition-all ${
-                  item.is_selected 
-                    ? 'border-blue-300 dark:border-blue-900 bg-white dark:bg-zinc-800 shadow-2xs' 
-                    : 'border-slate-200 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-900/50 opacity-60'
-                }`}
-              >
-                <div className="flex items-start gap-2.5">
-                  <button 
-                    type="button"
-                    onClick={() => toggleRefillItem(item.barang_id)}
-                    className="mt-0.5 text-blue-600 dark:text-blue-400 shrink-0"
-                  >
-                    {item.is_selected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4 text-slate-400" />}
-                  </button>
-
-                  <div className="flex-1 space-y-1">
-                    <div className="flex justify-between items-start">
-                      <span className="font-extrabold text-slate-900 dark:text-white leading-tight">
-                        {item.nama_barang}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
-                      <span>Rak Toko: <strong className="text-amber-600">{item.stok_toko} / PKM {item.pkm}</strong></span>
-                      <span>Gudang: <strong className="text-slate-700 dark:text-slate-300">{item.stok_gudang} pcs</strong></span>
-                      {item.tgl_kadaluarsa_gudang && (
-                        <span className="text-[10px] text-orange-600 font-semibold">
-                          Exp: {item.tgl_kadaluarsa_gudang.split('T')[0]}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Quantity Input */}
-                  <div className="shrink-0 text-right">
-                    <span className="text-[10px] text-slate-400 block mb-0.5">Ambil Fisik:</span>
-                    <input 
-                      type="number" 
-                      min="1" 
-                      max={item.stok_gudang}
-                      value={item.jumlah_ambil}
-                      disabled={!item.is_selected}
-                      onChange={e => updateRefillQty(item.barang_id, Number(e.target.value))}
-                      className="w-16 px-2 py-1 border rounded-xl text-center text-xs font-black bg-slate-50 dark:bg-zinc-900 border-slate-300 dark:border-zinc-700 focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
-                  </div>
+          {refillModalTab === 'available' ? (
+            <>
+              {/* Petunjuk Operasional */}
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-900/60 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+                  <Zap className="w-4 h-4 text-amber-600" /> SOP Pemindahan Fisik Barang:
                 </div>
+                <p className="text-[11px] leading-relaxed">
+                  1. Salin checklist / bawa daftar ini saat staf menuju ke gudang belakang.<br />
+                  2. Ambil barang dari kardus gudang sesuai jumlah yang tertera.<br />
+                  3. Tata barang di rak display etalase kasir.<br />
+                  4. Tekan tombol <strong>"Konfirmasi Selesai Ditata di Rak"</strong> untuk menyinkronkan stok sistem.
+                </p>
               </div>
-            ))}
-          </div>
 
-          {/* Action Footer */}
-          <div className="flex items-center justify-between pt-3 border-t">
-            <Button type="button" variant="ghost" onClick={() => setIsRefillModalOpen(false)}>
-              Batal
-            </Button>
-            <Button 
-              type="button" 
-              onClick={handleConfirmRefill} 
-              loading={isConfirmingRefill}
-              disabled={selectedRefillCount === 0}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4"
-            >
-              <Check className="w-4 h-4 mr-1.5" /> Konfirmasi Selesai Ditata ({totalRefillPieces} pcs)
-            </Button>
-          </div>
+              {refillItems.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-xs bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-zinc-700">
+                  Tidak ada barang yang memiliki cadangan di gudang saat ini.
+                  <p className="mt-1 text-slate-500">Silakan cek tab <strong>"Gudang Kosong / Butuh Kulakan"</strong> untuk order ke supplier.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Quick Action Top Bar */}
+                  <div className="flex items-center justify-between p-2.5 bg-slate-100 dark:bg-zinc-800 rounded-2xl text-xs">
+                    <div className="font-semibold text-slate-700 dark:text-slate-300">
+                      Terpilih: <strong className="text-blue-600 dark:text-blue-400">{selectedRefillCount} SKU</strong> ({totalRefillPieces} pcs fisik)
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={handleCopyPickingSlip}
+                      className="h-7 text-xs font-bold gap-1 rounded-xl"
+                    >
+                      {copiedSlip ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedSlip ? 'Tersalin' : 'Salin Checklist'}
+                    </Button>
+                  </div>
+
+                  {/* Picking Items Table / Checklist */}
+                  <div className="max-h-[40vh] overflow-y-auto space-y-2 pr-1">
+                    {refillItems.map(item => (
+                      <div 
+                        key={item.barang_id}
+                        className={`p-3 rounded-2xl border text-xs transition-all ${
+                          item.is_selected 
+                            ? 'border-blue-300 dark:border-blue-900 bg-white dark:bg-zinc-800 shadow-2xs' 
+                            : 'border-slate-200 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-900/50 opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <button 
+                            type="button"
+                            onClick={() => toggleRefillItem(item.barang_id)}
+                            className="mt-0.5 text-blue-600 dark:text-blue-400 shrink-0"
+                          >
+                            {item.is_selected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4 text-slate-400" />}
+                          </button>
+
+                          <div className="flex-1 space-y-1">
+                            <div className="flex justify-between items-start">
+                              <span className="font-extrabold text-slate-900 dark:text-white leading-tight">
+                                {item.nama_barang}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                              <span>Rak Toko: <strong className="text-amber-600">{item.stok_toko} / PKM {item.pkm}</strong></span>
+                              <span>Gudang: <strong className="text-slate-700 dark:text-slate-300">{item.stok_gudang} pcs</strong></span>
+                              {item.tgl_kadaluarsa_gudang && (
+                                <span className="text-[10px] text-orange-600 font-semibold">
+                                  Exp: {item.tgl_kadaluarsa_gudang.split('T')[0]}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Quantity Input */}
+                          <div className="shrink-0 text-right">
+                            <span className="text-[10px] text-slate-400 block mb-0.5">Ambil Fisik:</span>
+                            <input 
+                              type="number" 
+                              min="1" 
+                              max={item.stok_gudang}
+                              value={item.jumlah_ambil}
+                              disabled={!item.is_selected}
+                              onChange={e => updateRefillQty(item.barang_id, Number(e.target.value))}
+                              className="w-16 px-2 py-1 border rounded-xl text-center text-xs font-black bg-slate-50 dark:bg-zinc-900 border-slate-300 dark:border-zinc-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Action Footer */}
+                  <div className="flex items-center justify-between pt-3 border-t">
+                    <Button type="button" variant="ghost" onClick={() => setIsRefillModalOpen(false)}>
+                      Batal
+                    </Button>
+                    <Button 
+                      type="button" 
+                      onClick={handleConfirmRefill} 
+                      loading={isConfirmingRefill}
+                      disabled={selectedRefillCount === 0}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4"
+                    >
+                      <Check className="w-4 h-4 mr-1.5" /> Konfirmasi Selesai Ditata ({totalRefillPieces} pcs)
+                    </Button>
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            /* TAB 2: GUDANG KOSONG / BUTUH KULAKAN DISTRIBUTOR */
+            <div className="space-y-3">
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/30 rounded-2xl border border-rose-200 dark:border-rose-900/60 text-xs text-rose-900 dark:text-rose-200">
+                Barang-barang di bawah ini stok display tokonya defisit (&lt; PKM) namun <strong>stok cadangan gudang habis (0 pcs)</strong>. Silakan klik tombol <strong>"Kulakan Sekarang"</strong> untuk membuat order restock pengadaan baru.
+              </div>
+
+              <div className="max-h-[45vh] overflow-y-auto space-y-2 pr-1">
+                {outOfStockGudangItems.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 text-xs">
+                    Tidak ada barang defisit yang gudangnya kosong. Semua cadangan gudang aman!
+                  </div>
+                ) : (
+                  outOfStockGudangItems.map(item => {
+                    const currentToko = item.stok_toko ?? Math.min(item.stok, item.pkm || 1)
+                    const pkm = item.pkm || 1
+                    return (
+                      <div 
+                        key={item.barang_id}
+                        className="p-3 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-white dark:bg-zinc-800 flex items-center justify-between gap-3 text-xs"
+                      >
+                        <div>
+                          <h5 className="font-extrabold text-slate-900 dark:text-white mb-0.5">{item.nama_barang}</h5>
+                          <div className="flex items-center gap-3 text-[11px] text-slate-500">
+                            <span>Display Toko: <strong className="text-amber-600">{currentToko} / PKM {pkm}</strong></span>
+                            <span>Gudang: <strong className="text-rose-600 font-bold">0 pcs (Kosong)</strong></span>
+                          </div>
+                        </div>
+
+                        <Button 
+                          size="sm"
+                          onClick={() => {
+                            setIsRefillModalOpen(false)
+                            handleOpenRestock(item)
+                          }}
+                          className="h-8 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shrink-0"
+                        >
+                          <ShoppingCart className="w-3 h-3 mr-1" /> Kulakan
+                        </Button>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+
+              <div className="flex justify-end pt-3 border-t">
+                <Button type="button" variant="ghost" onClick={() => setIsRefillModalOpen(false)}>
+                  Tutup
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -1024,7 +1140,7 @@ export function DataBarang() {
       </Modal>
 
       {/* MODAL RESTOCK / KULAKAN */}
-      <Modal isOpen={isRestockModalOpen} onClose={() => setIsRestockModalOpen(false)} title="🛒 Restock & Tanggal Kadaluarsa">
+      <Modal isOpen={isRestockModalOpen} onClose={() => setIsRestockModalOpen(false)} title={`🛒 Restock & Tanggal Kadaluarsa: ${restockData.nama_barang || ''}`}>
         <form onSubmit={handleRestockSubmit} className="space-y-3.5">
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-900 text-xs text-blue-800 dark:text-blue-300">
             Penambahan stok akan otomatis memperbarui harga modal dasar, mencatat buku pengeluaran kas, dan menyinkronkan tanggal expired batch baru.
