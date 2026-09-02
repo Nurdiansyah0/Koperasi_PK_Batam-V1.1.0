@@ -586,24 +586,28 @@ class KasirController extends Controller
         $this->checkKasir($request);
         
         $anggota = \Illuminate\Support\Facades\Cache::remember('kasir_all_anggota_slim', 120, function() {
+            // NOTE: limit_hutang, sisa_limit_hutang, allowance_hutang adalah computed attributes
+            // (accessor di Model Anggota via $appends), BUKAN kolom database.
+            // Jangan masukkan ke select() — Eloquent akan append otomatis setelah get().
             return Anggota::select(
-                    'anggota_id','user_id','nama_lengkap','saldo','hutang',
-                    'shu','limit_hutang','sisa_limit_hutang','allowance_hutang'
+                    'anggota_id', 'user_id', 'nama_lengkap',
+                    'saldo', 'hutang', 'shu'
                 )
                 ->with('user:user_id,username')
                 ->orderBy('nama_lengkap', 'asc')
                 ->get()
                 ->map(function($a) {
                     return [
-                        'anggota_id'       => $a->anggota_id,
-                        'nama_lengkap'     => $a->nama_lengkap,
-                        'username'         => $a->user?->username ?? '',
-                        'saldo'            => (float) $a->saldo,
-                        'hutang'           => (float) $a->hutang,
-                        'shu'              => (float) $a->shu,
-                        'limit_hutang'     => (float) $a->limit_hutang,
-                        'sisa_limit_hutang'=> (float) $a->sisa_limit_hutang,
-                        'allowance_hutang' => (bool)  $a->allowance_hutang,
+                        'anggota_id'        => $a->anggota_id,
+                        'nama_lengkap'      => $a->nama_lengkap,
+                        'username'          => $a->user?->username ?? '',
+                        'saldo'             => (float) $a->saldo,
+                        'hutang'            => (float) $a->hutang,
+                        'shu'               => (float) $a->shu,
+                        // Computed via accessor (simpanan_pokok + allowance_hutang):
+                        'limit_hutang'      => (float) $a->limit_hutang,
+                        'sisa_limit_hutang' => (float) $a->sisa_limit_hutang,
+                        'allowance_hutang'  => (float) $a->allowance_hutang,
                     ];
                 });
         });
