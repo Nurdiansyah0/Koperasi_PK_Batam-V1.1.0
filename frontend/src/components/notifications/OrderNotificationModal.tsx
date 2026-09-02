@@ -118,14 +118,16 @@ export function OrderNotificationModal() {
               </button>
             </div>
 
-            {/* Content Details: SIAPA, PESANAN, METODE */}
+            {/* Content Details */}
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-zinc-800/70 border border-slate-200/80 dark:border-zinc-700/80 space-y-3">
-              {/* 1. SIAPA */}
+              {/* 1. Pemesan */}
               <div className="flex items-start justify-between gap-2 border-b border-slate-200/60 dark:border-zinc-700/60 pb-2.5">
-                <div className="flex items-center gap-2 text-xs">
-                  <User className="w-4 h-4 text-blue-600 shrink-0" />
+                <div className="flex items-center gap-2.5 text-xs">
+                  <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm shrink-0">
+                    {activeOrder.nama_anggota.charAt(0).toUpperCase()}
+                  </div>
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Siapa (Pemesan):</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pemesan</span>
                     <strong className="text-slate-900 dark:text-white text-sm">
                       {activeOrder.nama_anggota}
                     </strong>
@@ -135,35 +137,33 @@ export function OrderNotificationModal() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-mono text-slate-400">#TRX-{activeOrder.transaksi_id}</span>
+                  <span className="text-[10px] font-mono font-bold bg-slate-200/60 dark:bg-zinc-700/60 px-2 py-0.5 rounded-md text-slate-600 dark:text-slate-300">
+                    #TRX-{activeOrder.transaksi_id}
+                  </span>
                 </div>
               </div>
 
-              {/* 2. PESANANNYA APA */}
+              {/* 2. Daftar Pesanan */}
               <div className="space-y-1 text-xs">
-                <div className="flex items-center gap-2">
-                  <ShoppingBag className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">Pesanannya Apa:</span>
-                </div>
-                <p className="font-extrabold text-slate-800 dark:text-slate-200 pl-6 leading-relaxed">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Rincian Pesanan
+                </span>
+                <p className="font-extrabold text-slate-800 dark:text-slate-200 leading-relaxed bg-white dark:bg-zinc-900/80 p-2.5 rounded-xl border border-slate-200/60 dark:border-zinc-700/60">
                   {activeOrder.items_summary || `${activeOrder.items_count} Barang Belanja`}
                 </p>
               </div>
 
-              {/* 3. METODENYA APA & TOTAL */}
-              <div className="flex items-center justify-between pt-2.5 border-t border-slate-200/60 dark:border-zinc-700/60">
-                <div className="flex items-center gap-1.5">
-                  <CreditCard className="w-4 h-4 text-purple-600 shrink-0" />
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Metode:</span>
-                    <span className="text-xs font-black uppercase px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300">
-                      {activeOrder.metode_pembayaran}
-                    </span>
-                  </div>
+              {/* 3. Metode Pembayaran & Total */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-zinc-700/60">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pembayaran</span>
+                  <span className="inline-block mt-0.5 text-xs font-black uppercase px-2.5 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                    {activeOrder.metode_pembayaran}
+                  </span>
                 </div>
 
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Total Nilai:</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Belanja</span>
                   <span className="text-base font-black text-blue-600 dark:text-blue-400">
                     {formatRupiah(activeOrder.total_harga)}
                   </span>

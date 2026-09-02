@@ -92,8 +92,8 @@ class RealtimeOrderManager {
       if (typeof window === 'undefined' || !('Notification' in window)) return
       if (Notification.permission !== 'granted') return
 
-      const title = `🚨 PESANAN BARU MASUK! (#TRX-${order.transaksi_id})`
-      const body = `👤 Siapa: ${order.nama_anggota}\n📦 Pesanan: ${order.items_summary || `${order.items_count} item`}\n💳 Metode: ${order.metode_pembayaran.toUpperCase()} (${formatRupiah(order.total_harga)})`
+      const title = `🛒 Pesanan Baru: ${order.nama_anggota}`
+      const body = `${order.items_summary || `${order.items_count} Barang Belanja`}\n${order.metode_pembayaran.toUpperCase()} • ${formatRupiah(order.total_harga)}`
 
       // If Service Worker is available (PWA mode), use showNotification
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
