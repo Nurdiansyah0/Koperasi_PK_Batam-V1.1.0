@@ -34,7 +34,7 @@ class GzipResponse
                 $response->setContent($compressed);
                 $response->headers->set('Content-Encoding', 'gzip');
                 $response->headers->set('Vary', 'Accept-Encoding');
-                $response->headers->remove('Content-Length');
+                $response->headers->set('Content-Length', (string) strlen($compressed));
             }
         }
 

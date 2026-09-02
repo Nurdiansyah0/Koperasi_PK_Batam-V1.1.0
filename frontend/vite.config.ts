@@ -40,10 +40,12 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api') || url.pathname.startsWith('/laravel'),
+            urlPattern: ({ request, url }) =>
+              request.method === 'GET' &&
+              (url.pathname.includes('/barang') || url.pathname.includes('/paket-belanja')),
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'api-cache',
+              cacheName: 'catalog-cache',
               expiration: {
                 maxEntries: 50,
                 maxAgeSeconds: 60 * 5,
@@ -81,11 +83,11 @@ export default defineConfig({
     proxy: {
       // All /laravel and /api traffic goes to the Laravel backend (port 8001)
       '/laravel': {
-        target: 'http://localhost:8001',
+        target: 'http://127.0.0.1:8001',
         changeOrigin: true,
       },
       '/api': {
-        target: 'http://localhost:8001',
+        target: 'http://127.0.0.1:8001',
         changeOrigin: true,
       },
     },
