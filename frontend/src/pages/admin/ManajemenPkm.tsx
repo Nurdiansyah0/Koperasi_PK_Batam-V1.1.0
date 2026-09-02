@@ -13,8 +13,7 @@ import {
   Square,
   FileCheck2,
   Trash2,
-  HelpCircle,
-  ArrowRight
+  HelpCircle
 } from 'lucide-react'
 import { adminService } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
@@ -174,8 +173,12 @@ export function ManajemenPkmPage() {
     setTimeout(() => setCopiedSlip(false), 3000)
   }
 
-  // Print Shopping List
+  // Print Shopping List (Clean Printable A4 Sheet)
   const handlePrintReceipt = () => {
+    if (activeSelectedItems.length === 0) {
+      toast.error('Pilih minimal 1 barang untuk dicetak')
+      return
+    }
     window.print()
   }
 
@@ -289,274 +292,368 @@ export function ManajemenPkmPage() {
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-20 max-w-5xl mx-auto">
-      {/* Header section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-            <ShoppingCart className="w-6 h-6 text-blue-600" />
-            Rencana Belanja Kulakan
-          </h1>
-          <p className="text-xs text-slate-500">
-            Daftar otomatis barang yang perlu dibeli ke supplier berdasarkan barang laku & sisa stok.
-          </p>
+      {/* PRINT-ONLY CSS */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @media screen {
+          #printable-shopping-sheet {
+            display: none !important;
+          }
+        }
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #printable-shopping-sheet, #printable-shopping-sheet * {
+            visibility: visible;
+          }
+          #printable-shopping-sheet {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            background: white !important;
+            color: black !important;
+            display: block !important;
+            padding: 24px;
+            font-family: Arial, sans-serif;
+          }
+        }
+      `}} />
+
+      {/* DEDICATED PRINTABLE A4 SHOPPING SHEET (CLEAN BLACK & WHITE FOR PRINTING) */}
+      <div id="printable-shopping-sheet" className="text-black bg-white">
+        {/* Header */}
+        <div className="border-b-2 border-black pb-3 mb-4 text-center">
+          <h1 className="text-xl font-black uppercase tracking-wider">KOPERASI KARYAWAN PKPPK BTH</h1>
+          <h2 className="text-sm font-bold mt-0.5">LEMBAR RENCANA KULAKAN BELANJA TOKO</h2>
+          <div className="flex justify-between text-[11px] mt-2 text-slate-700">
+            <span><strong>Tanggal Cetak:</strong> {new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })}</span>
+            <span><strong>Dasar Analisis:</strong> Penjualan {days} Hari Terakhir (Buffer {leadTime} Hari)</span>
+          </div>
         </div>
 
-        {/* Action Button: Catat Faktur Masuk Pasca Belanja */}
-        <Button
-          onClick={handleOpenInboundModal}
-          className="h-10 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl gap-2 shadow-sm w-full sm:w-auto"
-        >
-          <FileCheck2 className="w-4 h-4" />
-          📥 Catat Barang Masuk ({activeSelectedItems.length} SKU)
-        </Button>
+        {/* Clean Table */}
+        <table className="w-full border-collapse border border-black text-xs mb-6">
+          <thead>
+            <tr className="bg-slate-100 font-bold border-b border-black">
+              <th className="border border-black p-2 text-center w-8">No</th>
+              <th className="border border-black p-2 text-center w-12">[ ✓ ]</th>
+              <th className="border border-black p-2 text-left">Nama Barang</th>
+              <th className="border border-black p-2 text-center w-20">Laku ({days}H)</th>
+              <th className="border border-black p-2 text-center w-28">Sisa Stok (Toko/Gdg)</th>
+              <th className="border border-black p-2 text-center w-24">Rencana Beli</th>
+              <th className="border border-black p-2 text-right w-28">Harga Modal</th>
+              <th className="border border-black p-2 text-right w-32">Estimasi Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {activeSelectedItems.map((item, idx) => (
+              <tr key={item.barang_id} className="border-b border-black">
+                <td className="border border-black p-2 text-center">{idx + 1}</td>
+                <td className="border border-black p-2 text-center font-bold text-base">[ &nbsp; ]</td>
+                <td className="border border-black p-2 font-bold">{item.nama_barang}</td>
+                <td className="border border-black p-2 text-center">{item.total_sold} pcs</td>
+                <td className="border border-black p-2 text-center">{item.stok_toko} / {item.stok_gudang} ({item.stok_total})</td>
+                <td className="border border-black p-2 text-center font-black text-sm">{item.jumlah_beli} pcs</td>
+                <td className="border border-black p-2 text-right">{formatRupiah(item.harga_modal)}</td>
+                <td className="border border-black p-2 text-right font-bold">{formatRupiah(item.jumlah_beli * item.harga_modal)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="bg-slate-100 font-black border-t-2 border-black text-xs">
+              <td colSpan={5} className="border border-black p-2 text-right">TOTAL RENCANA BELANJA:</td>
+              <td className="border border-black p-2 text-center text-sm">{totalPiecesToBuy} pcs</td>
+              <td className="border border-black p-2 text-right">ESTIMASI BUDGET:</td>
+              <td className="border border-black p-2 text-right text-sm">{formatRupiah(totalBudgetSelected)}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        {/* Formal Signature Block */}
+        <div className="grid grid-cols-2 gap-8 pt-6 text-xs text-center">
+          <div>
+            <p className="font-semibold mb-16">Petugas Yang Berbelanja,</p>
+            <p className="font-bold border-t border-black w-48 mx-auto pt-1">( ........................................ )</p>
+          </div>
+          <div>
+            <p className="font-semibold mb-16">Pengurus / Bendahara Koperasi,</p>
+            <p className="font-bold border-t border-black w-48 mx-auto pt-1">( ........................................ )</p>
+          </div>
+        </div>
       </div>
 
-      {/* Panduan 3 Langkah Singkat (Zero-Confusion Guide) */}
-      <div className="p-3.5 bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/40 rounded-3xl text-xs space-y-1 text-slate-700 dark:text-slate-300">
-        <div className="font-bold flex items-center gap-1.5 text-blue-900 dark:text-blue-300">
-          <HelpCircle className="w-4 h-4 text-blue-600" /> Cara Pakai Halaman Ini:
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1">
-          <div className="p-2 bg-white/80 dark:bg-zinc-900/80 rounded-2xl border border-blue-100 dark:border-blue-900/30">
-            <strong className="text-blue-600 block">1. Cek & Sesuaikan</strong>
-            Lihat daftar di bawah. Centang barang yang mau dibeli hari ini dan sesuaikan jumlah pcs-nya.
-          </div>
-          <div className="p-2 bg-white/80 dark:bg-zinc-900/80 rounded-2xl border border-blue-100 dark:border-blue-900/30">
-            <strong className="text-blue-600 block">2. Bawa ke Pasar Grosir</strong>
-            Klik tombol <strong>"Salin ke WA"</strong> atau <strong>"Cetak"</strong> untuk membawa daftar di HP.
-          </div>
-          <div className="p-2 bg-white/80 dark:bg-zinc-900/80 rounded-2xl border border-blue-100 dark:border-blue-900/30">
-            <strong className="text-emerald-600 block">3. Pulang & Catat Stok</strong>
-            Setelah barang fisik tiba, klik tombol hijau <strong>"📥 Catat Barang Masuk"</strong> untuk menambah stok sistem.
-          </div>
-        </div>
-      </div>
-
-      {/* Control Bar: Periode Analisis & Buffer Days */}
-      <div className="p-3.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-xs space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-          {/* Period Selector */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-bold text-slate-500 mr-1 flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" /> Hitung Penjualan:
-            </span>
-            {[3, 7, 14, 30].map(d => (
-              <button
-                key={d}
-                onClick={() => setDays(d)}
-                className={`px-3 py-1 rounded-xl font-bold transition-all ${
-                  days === d
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                }`}
-              >
-                {d} Hari {d === 7 && '(Standar)'}
-              </button>
-            ))}
+      {/* SCREEN UI (FOR NORMAL BROWSER VIEW) */}
+      <div className="space-y-4 sm:space-y-5">
+        {/* Header section */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+              <ShoppingCart className="w-6 h-6 text-blue-600" />
+              Rencana Belanja Kulakan
+            </h1>
+            <p className="text-xs text-slate-500">
+              Daftar otomatis barang yang perlu dibeli ke supplier berdasarkan barang laku & sisa stok.
+            </p>
           </div>
 
-          {/* Buffer Lead Time */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-bold text-slate-500 mr-1">Target Stok:</span>
-            {[4, 7].map(lt => (
-              <button
-                key={lt}
-                onClick={() => setLeadTime(lt)}
-                className={`px-3 py-1 rounded-xl font-bold transition-all ${
-                  leadTime === lt
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                }`}
-              >
-                {lt} Hari {lt === 4 && '(PKM Toko)'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Search Filter */}
-        <form onSubmit={handleSearchSubmit} className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Cari nama barang..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 border rounded-2xl text-xs bg-slate-50 dark:bg-zinc-800/80 border-slate-200 dark:border-zinc-700 outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <Button type="submit" size="sm" variant="secondary" className="text-xs rounded-2xl px-4">
-            Cari
-          </Button>
-          <Button 
-            type="button" 
-            size="sm" 
-            onClick={handleAutoCalculateAll}
-            disabled={autoCalculating}
-            className="text-xs rounded-2xl bg-slate-800 dark:bg-zinc-700 text-white gap-1 shrink-0"
-            title="Sinkronkan batas PKM display toko"
+          {/* Action Button: Catat Faktur Masuk Pasca Belanja */}
+          <Button
+            onClick={handleOpenInboundModal}
+            className="h-10 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl gap-2 shadow-sm w-full sm:w-auto"
           >
-            <Zap className={`w-3.5 h-3.5 ${autoCalculating ? 'animate-spin' : ''}`} />
-            Sync PKM 4H
+            <FileCheck2 className="w-4 h-4" />
+            📥 Catat Barang Masuk ({activeSelectedItems.length} SKU)
           </Button>
-        </form>
-      </div>
-
-      {/* Summary Banner (Estimasi Budget & Total Fisik) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-4 rounded-3xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/60 flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 block uppercase tracking-wider">
-              Estimasi Uang Modal Dibawa
-            </span>
-            <span className="text-xl font-black text-blue-900 dark:text-blue-100">
-              {formatRupiah(totalBudgetSelected)}
-            </span>
-          </div>
-          <ShoppingCart className="w-7 h-7 text-blue-500 opacity-60" />
         </div>
 
-        <div className="p-4 rounded-3xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/60 flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 block uppercase tracking-wider">
-              Total Fisik yang Harus Dibeli
-            </span>
-            <span className="text-xl font-black text-emerald-900 dark:text-emerald-100">
-              {totalPiecesToBuy} <span className="text-xs font-normal text-slate-500">pcs ({activeSelectedItems.length} SKU)</span>
-            </span>
+        {/* Panduan 3 Langkah Singkat */}
+        <div className="p-3.5 bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/40 rounded-3xl text-xs space-y-1 text-slate-700 dark:text-slate-300">
+          <div className="font-bold flex items-center gap-1.5 text-blue-900 dark:text-blue-300">
+            <HelpCircle className="w-4 h-4 text-blue-600" /> Cara Pakai Halaman Ini:
           </div>
-          <CheckSquare className="w-7 h-7 text-emerald-500 opacity-60" />
-        </div>
-
-        <div className="p-4 rounded-3xl bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 flex items-center justify-between">
-          <div className="space-y-1.5 w-full">
-            <span className="text-[11px] font-bold text-slate-500 block uppercase tracking-wider">
-              Bawa Daftar Belanja:
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                onClick={handleCopyWhatsAppSlip}
-                className="flex-1 h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-1"
-              >
-                {copiedSlip ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                {copiedSlip ? 'Tersalin!' : 'Salin ke WA'}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handlePrintReceipt}
-                className="flex-1 h-8 text-xs font-bold rounded-xl gap-1"
-              >
-                <Printer className="w-3.5 h-3.5" /> Cetak Kertas
-              </Button>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1">
+            <div className="p-2 bg-white/80 dark:bg-zinc-900/80 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+              <strong className="text-blue-600 block">1. Cek & Sesuaikan</strong>
+              Lihat daftar di bawah. Centang barang yang mau dibeli hari ini dan sesuaikan jumlah pcs-nya.
+            </div>
+            <div className="p-2 bg-white/80 dark:bg-zinc-900/80 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+              <strong className="text-blue-600 block">2. Bawa ke Pasar Grosir</strong>
+              Klik tombol <strong>"Salin ke WA"</strong> atau <strong>"Cetak Kertas"</strong> untuk membawa daftar di HP/kertas.
+            </div>
+            <div className="p-2 bg-white/80 dark:bg-zinc-900/80 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+              <strong className="text-emerald-600 block">3. Pulang & Catat Stok</strong>
+              Setelah barang fisik tiba, klik tombol hijau <strong>"📥 Catat Barang Masuk"</strong> untuk menambah stok sistem.
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content Area: DAFTAR BARANG BELANJA */}
-      {loading ? (
-        <div className="p-12 text-center text-slate-500">
-          <div className="w-8 h-8 mx-auto mb-2 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
-          Menganalisis penjualan {days} hari terakhir...
-        </div>
-      ) : (
-        <div className="space-y-2.5">
-          <div className="flex justify-between items-center px-1 text-xs text-slate-500">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleToggleSelectAll}
-                className="font-bold text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                {shoppingItems.every(i => i.is_selected) ? 'Batal Pilih Semua' : 'Pilih Semua'}
-              </button>
-              <span>•</span>
-              <span>{shoppingItems.length} SKU terdaftar</span>
-            </div>
-            <span className="text-[11px]">Centang & ubah angka beli sebelum belanja</span>
-          </div>
-
-          <div className="space-y-2">
-            {shoppingItems.map(item => {
-              const subtotal = item.jumlah_beli * item.harga_modal
-              const isFastMoving = item.total_sold >= 10
-
-              return (
-                <div
-                  key={item.barang_id}
-                  className={`p-3.5 rounded-3xl border transition-all text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                    item.is_selected
-                      ? 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 shadow-xs'
-                      : 'bg-slate-50/60 dark:bg-zinc-900/40 border-slate-200/50 dark:border-zinc-800 opacity-60'
+        {/* Control Bar: Periode Analisis & Buffer Days */}
+        <div className="p-3.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-xs space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+            {/* Period Selector */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-bold text-slate-500 mr-1 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5" /> Hitung Penjualan:
+              </span>
+              {[3, 7, 14, 30].map(d => (
+                <button
+                  key={d}
+                  onClick={() => setDays(d)}
+                  className={`px-3 py-1 rounded-xl font-bold transition-all ${
+                    days === d
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                   }`}
                 >
-                  {/* Left: Checkbox & Name */}
-                  <div className="flex items-start gap-3 flex-1">
-                    <button
-                      type="button"
-                      onClick={() => toggleItemSelection(item.barang_id)}
-                      className="mt-0.5 text-blue-600 dark:text-blue-400 shrink-0"
-                    >
-                      {item.is_selected ? (
-                        <CheckSquare className="w-4 h-4" />
-                      ) : (
-                        <Square className="w-4 h-4 text-slate-400" />
-                      )}
-                    </button>
+                  {d} Hari {d === 7 && '(Standar)'}
+                </button>
+              ))}
+            </div>
 
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-                          {item.nama_barang}
-                        </span>
-                        {isFastMoving && (
-                          <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 text-[10px] font-black flex items-center gap-0.5">
-                            <Flame className="w-2.5 h-2.5" /> Laris
-                          </span>
-                        )}
-                      </div>
+            {/* Buffer Lead Time */}
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-slate-500 mr-1">Target Stok:</span>
+              {[4, 7].map(lt => (
+                <button
+                  key={lt}
+                  onClick={() => setLeadTime(lt)}
+                  className={`px-3 py-1 rounded-xl font-bold transition-all ${
+                    leadTime === lt
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                  }`}
+                >
+                  {lt} Hari {lt === 4 && '(PKM Toko)'}
+                </button>
+              ))}
+            </div>
+          </div>
 
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
-                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                          Laku: {item.total_sold} pcs
-                        </span>
-                        <span>Sisa: <strong>{item.stok_total} pcs</strong> (Toko: {item.stok_toko} / Gudang: {item.stok_gudang})</span>
-                        <span>Modal Kemarin: <strong>{formatRupiah(item.harga_modal)}</strong></span>
-                      </div>
-                    </div>
-                  </div>
+          {/* Search Filter */}
+          <form onSubmit={handleSearchSubmit} className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Cari nama barang..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 border rounded-2xl text-xs bg-slate-50 dark:bg-zinc-800/80 border-slate-200 dark:border-zinc-700 outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <Button type="submit" size="sm" variant="secondary" className="text-xs rounded-2xl px-4">
+              Cari
+            </Button>
+            <Button 
+              type="button" 
+              size="sm" 
+              onClick={handleAutoCalculateAll}
+              disabled={autoCalculating}
+              className="text-xs rounded-2xl bg-slate-800 dark:bg-zinc-700 text-white gap-1 shrink-0"
+              title="Sinkronkan batas PKM display toko"
+            >
+              <Zap className={`w-3.5 h-3.5 ${autoCalculating ? 'animate-spin' : ''}`} />
+              Sync PKM 4H
+            </Button>
+          </form>
+        </div>
 
-                  {/* Right: Quantity Input & Subtotal */}
-                  <div className="flex items-center justify-between sm:justify-end gap-3 pl-7 sm:pl-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-zinc-800">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] text-slate-400">Beli:</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={item.jumlah_beli}
-                        disabled={!item.is_selected}
-                        onChange={e => updateBuyQty(item.barang_id, Number(e.target.value))}
-                        className="w-16 px-2 py-1.5 border rounded-xl text-center text-xs font-black bg-slate-50 dark:bg-zinc-800 border-slate-300 dark:border-zinc-700 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                      <span className="text-[11px] text-slate-400">pcs</span>
-                    </div>
+        {/* Summary Banner (Estimasi Budget & Total Fisik) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-4 rounded-3xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/60 flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 block uppercase tracking-wider">
+                Estimasi Uang Modal Dibawa
+              </span>
+              <span className="text-xl font-black text-blue-900 dark:text-blue-100">
+                {formatRupiah(totalBudgetSelected)}
+              </span>
+            </div>
+            <ShoppingCart className="w-7 h-7 text-blue-500 opacity-60" />
+          </div>
 
-                    <div className="text-right min-w-[100px]">
-                      <span className="text-[10px] text-slate-400 block">Subtotal Modal</span>
-                      <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-                        {formatRupiah(subtotal)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+          <div className="p-4 rounded-3xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/60 flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 block uppercase tracking-wider">
+                Total Fisik yang Harus Dibeli
+              </span>
+              <span className="text-xl font-black text-emerald-900 dark:text-emerald-100">
+                {totalPiecesToBuy} <span className="text-xs font-normal text-slate-500">pcs ({activeSelectedItems.length} SKU)</span>
+              </span>
+            </div>
+            <CheckSquare className="w-7 h-7 text-emerald-500 opacity-60" />
+          </div>
+
+          <div className="p-4 rounded-3xl bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 flex items-center justify-between">
+            <div className="space-y-1.5 w-full">
+              <span className="text-[11px] font-bold text-slate-500 block uppercase tracking-wider">
+                Bawa Daftar Belanja:
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleCopyWhatsAppSlip}
+                  className="flex-1 h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-1"
+                >
+                  {copiedSlip ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedSlip ? 'Tersalin!' : 'Salin ke WA'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handlePrintReceipt}
+                  className="flex-1 h-8 text-xs font-bold rounded-xl gap-1"
+                >
+                  <Printer className="w-3.5 h-3.5" /> Cetak Kertas
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+
+        {/* Main Content Area: DAFTAR BARANG BELANJA */}
+        {loading ? (
+          <div className="p-12 text-center text-slate-500">
+            <div className="w-8 h-8 mx-auto mb-2 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
+            Menganalisis penjualan {days} hari terakhir...
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            <div className="flex justify-between items-center px-1 text-xs text-slate-500">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleToggleSelectAll}
+                  className="font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  {shoppingItems.every(i => i.is_selected) ? 'Batal Pilih Semua' : 'Pilih Semua'}
+                </button>
+                <span>•</span>
+                <span>{shoppingItems.length} SKU terdaftar</span>
+              </div>
+              <span className="text-[11px]">Centang & ubah angka beli sebelum belanja</span>
+            </div>
+
+            <div className="space-y-2">
+              {shoppingItems.map(item => {
+                const subtotal = item.jumlah_beli * item.harga_modal
+                const isFastMoving = item.total_sold >= 10
+
+                return (
+                  <div
+                    key={item.barang_id}
+                    className={`p-3.5 rounded-3xl border transition-all text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      item.is_selected
+                        ? 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 shadow-xs'
+                        : 'bg-slate-50/60 dark:bg-zinc-900/40 border-slate-200/50 dark:border-zinc-800 opacity-60'
+                    }`}
+                  >
+                    {/* Left: Checkbox & Name */}
+                    <div className="flex items-start gap-3 flex-1">
+                      <button
+                        type="button"
+                        onClick={() => toggleItemSelection(item.barang_id)}
+                        className="mt-0.5 text-blue-600 dark:text-blue-400 shrink-0"
+                      >
+                        {item.is_selected ? (
+                          <CheckSquare className="w-4 h-4" />
+                        ) : (
+                          <Square className="w-4 h-4 text-slate-400" />
+                        )}
+                      </button>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                            {item.nama_barang}
+                          </span>
+                          {isFastMoving && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 text-[10px] font-black flex items-center gap-0.5">
+                              <Flame className="w-2.5 h-2.5" /> Laris
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                            Laku: {item.total_sold} pcs
+                          </span>
+                          <span>Sisa: <strong>{item.stok_total} pcs</strong> (Toko: {item.stok_toko} / Gudang: {item.stok_gudang})</span>
+                          <span>Modal Kemarin: <strong>{formatRupiah(item.harga_modal)}</strong></span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Quantity Input & Subtotal */}
+                    <div className="flex items-center justify-between sm:justify-end gap-3 pl-7 sm:pl-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-zinc-800">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] text-slate-400">Beli:</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.jumlah_beli}
+                          disabled={!item.is_selected}
+                          onChange={e => updateBuyQty(item.barang_id, Number(e.target.value))}
+                          className="w-16 px-2 py-1.5 border rounded-xl text-center text-xs font-black bg-slate-50 dark:bg-zinc-800 border-slate-300 dark:border-zinc-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                        <span className="text-[11px] text-slate-400">pcs</span>
+                      </div>
+
+                      <div className="text-right min-w-[100px]">
+                        <span className="text-[10px] text-slate-400 block">Subtotal Modal</span>
+                        <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                          {formatRupiah(subtotal)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* MODAL INBOUND: CATAT PENERIMAAN BARANG MASUK (FAKTUR KULAKAN) */}
       <Modal
