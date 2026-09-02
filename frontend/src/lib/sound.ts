@@ -1,7 +1,8 @@
 /**
  * Universal Zero-Asset Web Audio API Synthesizer
- * Fully compatible with Chrome, Safari (iOS & macOS), Firefox, Edge, Android PWA.
- * Includes automatic user gesture audio unlocker for mobile Safari & Blink autoplay policy.
+ * Feature: SCATTER HIGGS DOMINO JACKPOT SOUND EFFECT (High-Volume & Punchy)
+ * 100% Zero-Asset (disintesis langsung via Web Audio Oscillator + DynamicsCompressor).
+ * Dijamin nyaring, jelas, dan kompatibel di Chrome, Safari iOS/macOS, Firefox, Android PWA.
  */
 
 let audioCtx: AudioContext | null = null
@@ -72,7 +73,10 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * Plays ultra-crisp POS double-chime alert (D5 -> A5)
+ * 🎰 SCATTER HIGGS DOMINO CASINO WIN SOUND SYNTHESIZER 🎰
+ * Suara super nyaring, energik, dan khas:
+ * 1. Rapid Ascending Coin Arpeggio (Ting-ting-ting-ting-ting)
+ * 2. Grand Jackpot Fanfare Climax (JREEENG C-Major Shimmer Chord)
  */
 export function playOrderAlertSound() {
   try {
@@ -85,45 +89,104 @@ export function playOrderAlertSound() {
 
     const now = ctx.currentTime
 
-    // Tone 1: 587.33 Hz (D5) - bright bell
-    const osc1 = ctx.createOscillator()
-    const gain1 = ctx.createGain()
-    osc1.type = 'sine'
-    osc1.frequency.setValueAtTime(587.33, now)
-    gain1.gain.setValueAtTime(0.4, now)
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35)
-    osc1.connect(gain1)
-    gain1.connect(ctx.destination)
-    osc1.start(now)
-    osc1.stop(now + 0.35)
+    // ── MASTER DYNAMICS COMPRESSOR & PUNCHY BOOSTER ──
+    const compressor = ctx.createDynamicsCompressor()
+    compressor.threshold.setValueAtTime(-10, now)
+    compressor.knee.setValueAtTime(12, now)
+    compressor.ratio.setValueAtTime(12, now)
+    compressor.attack.setValueAtTime(0.002, now)
+    compressor.release.setValueAtTime(0.2, now)
 
-    // Tone 2: 880 Hz (A5) - high alert ping (0.12s delay)
-    const osc2 = ctx.createOscillator()
-    const gain2 = ctx.createGain()
-    osc2.type = 'sine'
-    osc2.frequency.setValueAtTime(880.00, now + 0.12)
-    gain2.gain.setValueAtTime(0.5, now + 0.12)
-    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6)
-    osc2.connect(gain2)
-    gain2.connect(ctx.destination)
-    osc2.start(now + 0.12)
-    osc2.stop(now + 0.6)
+    const masterGain = ctx.createGain()
+    masterGain.gain.setValueAtTime(0.95, now) // Max loud volume
 
-    // Tone 3: Harmonic overtone for rich cash-register chime (1174.66 Hz)
-    const osc3 = ctx.createOscillator()
-    const gain3 = ctx.createGain()
-    osc3.type = 'triangle'
-    osc3.frequency.setValueAtTime(1174.66, now + 0.14)
-    gain3.gain.setValueAtTime(0.2, now + 0.14)
-    gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.7)
-    osc3.connect(gain3)
-    gain3.connect(ctx.destination)
-    osc3.start(now + 0.14)
-    osc3.stop(now + 0.7)
+    compressor.connect(masterGain)
+    masterGain.connect(ctx.destination)
 
-    // Haptic feedback (Vibrate on Android/Supported mobile devices)
+    // ── 1. RAPID SCATTER COIN ASCENDING ARPEGGIO ──
+    // Frequencies: C5 -> E5 -> G5 -> C6 -> E6 -> G6 -> B6 -> C7
+    const scatterNotes = [
+      523.25,  // C5
+      659.25,  // E5
+      783.99,  // G5
+      1046.50, // C6
+      1318.51, // E6
+      1567.98, // G6
+      1975.53, // B6
+      2093.00, // C7
+      2637.02  // E7
+    ]
+
+    const noteDuration = 0.055 // 55ms per rapid coin drop
+
+    scatterNotes.forEach((freq, idx) => {
+      const noteStart = now + idx * noteDuration
+
+      // Primary Crystal Bell (Sine)
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(freq, noteStart)
+
+      gain.gain.setValueAtTime(0.7, noteStart)
+      gain.gain.exponentialRampToValueAtTime(0.01, noteStart + 0.12)
+
+      osc.connect(gain)
+      gain.connect(compressor)
+
+      osc.start(noteStart)
+      osc.stop(noteStart + 0.12)
+
+      // Sparkling Triangle Harmonic Overtone
+      const overtone = ctx.createOscillator()
+      const overGain = ctx.createGain()
+      overtone.type = 'triangle'
+      overtone.frequency.setValueAtTime(freq * 1.5, noteStart)
+      overGain.gain.setValueAtTime(0.3, noteStart)
+      overGain.gain.exponentialRampToValueAtTime(0.01, noteStart + 0.08)
+
+      overtone.connect(overGain)
+      overGain.connect(compressor)
+
+      overtone.start(noteStart)
+      overtone.stop(noteStart + 0.08)
+    })
+
+    // ── 2. CLIMAX: GRAND SCATTER JACKPOT CHORD (JREEENG!) ──
+    const climaxStart = now + scatterNotes.length * noteDuration // ~0.50s mark
+    const chordFrequencies = [
+      523.25,  // C5 (Body)
+      783.99,  // G5 (Richness)
+      1046.50, // C6 (Bright lead)
+      1318.51, // E6 (Major 3rd fanfare)
+      1567.98, // G6 (High octave shimmer)
+      2093.00, // C7 (Top crystal bell)
+      3135.96  // G7 (Piercing presence)
+    ]
+
+    chordFrequencies.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+
+      // Mix saw/triangle on mid and sine on top for massive brass+bell punch
+      osc.type = i < 3 ? 'triangle' : (i === 3 ? 'sawtooth' : 'sine')
+      osc.frequency.setValueAtTime(freq, climaxStart)
+
+      const volume = i >= 4 ? 0.65 : (i === 3 ? 0.35 : 0.8)
+      gain.gain.setValueAtTime(volume, climaxStart)
+      gain.gain.exponentialRampToValueAtTime(0.001, climaxStart + 0.85) // Long resonant ring
+
+      osc.connect(gain)
+      gain.connect(compressor)
+
+      osc.start(climaxStart)
+      osc.stop(climaxStart + 0.85)
+    })
+
+    // Haptic Vibration: Rhythm matching Scatter slot jackpot
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate([150, 80, 200])
+      navigator.vibrate([60, 40, 60, 40, 80, 40, 100, 50, 350])
     }
   } catch (err) {
     console.warn('Audio chime playback error:', err)
