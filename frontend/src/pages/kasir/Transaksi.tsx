@@ -42,6 +42,7 @@ export function TransaksiKasir() {
   const [metodePembayaran, setMetodePembayaran] = useState<'cash' | 'qr' | 'transfer' | 'hutang' | 'ewallet'>('cash')
   const [uangDiterima, setUangDiterima] = useState<number | ''>('')
   const [loading, setLoading] = useState(false)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [selectedAnggota, setSelectedAnggota] = useState<number | ''>('')
   const [searchAnggota, setSearchAnggota] = useState('')
   const [showAnggotaDropdown, setShowAnggotaDropdown] = useState(false)
@@ -91,6 +92,7 @@ export function TransaksiKasir() {
   }, [anggotaList, searchAnggota, selectedAnggotaObj])
 
   const loadData = async () => {
+    setIsInitialLoad(true)
     try {
       const [brg, ang, bundles] = await Promise.all([
         kasirService.getDataBarang(),
@@ -113,6 +115,8 @@ export function TransaksiKasir() {
       setPaketList(bundles?.data || [])
     } catch (e) {
       toast.error('Gagal memuat data katalog POS')
+    } finally {
+      setIsInitialLoad(false)
     }
   }
 
@@ -367,9 +371,11 @@ export function TransaksiKasir() {
         </div>
 
         {/* Horizontal Auto-Advancing Smart Carousel: Paket Belanja Genap */}
-        {paketList.length > 0 && !search && (
+        {isInitialLoad && !search ? (
+          <div className="h-[90px] mb-3 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-xl w-full border border-slate-200 dark:border-slate-700" />
+        ) : paketList.length > 0 && !search && (
           <div 
-            className="relative group/carousel -mx-1 px-1"
+            className="relative group/carousel -mx-1 px-1 mb-3"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
             onTouchStart={() => setIsPaused(true)}
@@ -483,7 +489,15 @@ export function TransaksiKasir() {
 
         {/* Product Catalog Grid */}
         <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 pr-1 pb-4">
-          {paginatedBarang.length === 0 ? (
+          {isInitialLoad ? (
+            Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="h-[148px] rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse border border-slate-200 dark:border-slate-700 flex flex-col justify-between p-3.5">
+                <div className="w-full h-20 rounded-xl bg-slate-200 dark:bg-slate-700 mb-2" />
+                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mb-1" />
+                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
+              </div>
+            ))
+          ) : paginatedBarang.length === 0 ? (
             <div className="col-span-full text-center py-12 text-slate-400">
               Barang tidak ditemukan
             </div>
