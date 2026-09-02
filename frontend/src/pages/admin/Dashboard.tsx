@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { adminService } from '@/services/adminService'
 import { DashboardAdmin } from '@/types'
 import { formatRupiah } from '@/lib/utils'
-import { IosBottomSheet } from '@/components/ios/IosBottomSheet'
 import {
   TrendingUp, ArrowUpRight, ShoppingBag,
   CreditCard, Wallet, Package, Gift, Users,
@@ -17,7 +16,6 @@ export function AdminDashboard() {
   const [data, setData] = useState<DashboardAdmin | null>(null)
   const [loading, setLoading] = useState(true)
   const [isApplyingPkm, setIsApplyingPkm] = useState(false)
-  const [activeSheet, setActiveSheet] = useState<string | null>(null)
   const navigate = useNavigate()
 
   const loadDashboard = () => {
@@ -102,8 +100,9 @@ export function AdminDashboard() {
 
       {/* ── Hero: Pendapatan & Laba Hari Ini (Full Width) ── */}
       <div 
-        onClick={() => setActiveSheet('pendapatan')}
+        onClick={() => navigate('/admin/laporan')}
         className="rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 p-5 text-white shadow-lg shadow-blue-500/20 active:scale-[0.99] transition-transform cursor-pointer"
+        title="Klik untuk membuka Laporan Transaksi Lengkap"
       >
         <div className="flex items-start justify-between mb-3">
           <div>
@@ -282,8 +281,9 @@ export function AdminDashboard() {
       {/* ── 2-Col Grid: Anggota + Aset Barang ── */}
       <div className="grid grid-cols-2 gap-3">
         <div 
-          onClick={() => setActiveSheet('anggota')}
-          className="rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-4 shadow-xs active:bg-slate-50 dark:active:bg-zinc-800 transition-colors cursor-pointer"
+          onClick={() => navigate('/admin/anggota')}
+          className="rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-4 shadow-xs hover:border-blue-300 dark:hover:border-blue-800 active:bg-slate-50 dark:active:bg-zinc-800 transition-all cursor-pointer"
+          title="Buka Data Master Anggota"
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Anggota</span>
@@ -298,8 +298,9 @@ export function AdminDashboard() {
         </div>
 
         <div 
-          onClick={() => setActiveSheet('aset')}
-          className="rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-4 shadow-xs active:bg-slate-50 dark:active:bg-zinc-800 transition-colors cursor-pointer"
+          onClick={() => navigate('/admin/barang')}
+          className="rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-4 shadow-xs hover:border-amber-300 dark:hover:border-amber-800 active:bg-slate-50 dark:active:bg-zinc-800 transition-all cursor-pointer"
+          title="Buka Katalog Inventori & Expired Radar"
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Aset Barang</span>
@@ -319,8 +320,9 @@ export function AdminDashboard() {
       {/* ── 2-Col Grid: Simpanan + SHU ── */}
       <div className="grid grid-cols-2 gap-3">
         <div 
-          onClick={() => setActiveSheet('simpanan')}
-          className="rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-4 shadow-xs active:bg-slate-50 dark:active:bg-zinc-800 transition-colors cursor-pointer"
+          onClick={() => navigate('/admin/anggota')}
+          className="rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-4 shadow-xs hover:border-indigo-300 dark:hover:border-indigo-800 active:bg-slate-50 dark:active:bg-zinc-800 transition-all cursor-pointer"
+          title="Cek Saldo Anggota"
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Simpanan</span>
@@ -337,8 +339,9 @@ export function AdminDashboard() {
         </div>
 
         <div 
-          onClick={() => setActiveSheet('shu')}
-          className="rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-4 shadow-xs active:bg-slate-50 dark:active:bg-zinc-800 transition-colors cursor-pointer"
+          onClick={() => navigate('/admin/shu')}
+          className="rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-4 shadow-xs hover:border-pink-300 dark:hover:border-pink-800 active:bg-slate-50 dark:active:bg-zinc-800 transition-all cursor-pointer"
+          title="Buka Manajemen SHU Koperasi"
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Dana SHU</span>
@@ -357,14 +360,16 @@ export function AdminDashboard() {
 
       {/* ── Piutang Card (Full Width with Credit Risk Indicator) ── */}
       <div 
-        onClick={() => setActiveSheet('piutang')}
+        onClick={() => navigate('/admin/anggota')}
         className={`rounded-3xl p-4 shadow-xs border cursor-pointer active:scale-[0.98] transition-transform ${
         realHutangRatio > 80
           ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900'
           : realHutangRatio > 50
           ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900'
-          : 'bg-white dark:bg-zinc-900 border-slate-100 dark:border-zinc-800'
-      }`}>
+          : 'bg-white dark:bg-zinc-900 border-slate-100 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700'
+      }`}
+        title="Pantau Piutang Anggota"
+      >
         <div className="flex items-start justify-between mb-3">
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Piutang Anggota</p>
@@ -407,125 +412,6 @@ export function AdminDashboard() {
           </div>
         </div>
       </div>
-
-      {/* ── Detail Matrix Bottom Sheets ── */}
-      
-      {/* Pendapatan Sheet */}
-      <IosBottomSheet isOpen={activeSheet === 'pendapatan'} onClose={() => setActiveSheet(null)} title="Matriks Pendapatan">
-        <div className="p-4 space-y-4">
-          <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-slate-500">Pendapatan Kotor</span>
-              <span className="font-bold">{formatRupiah(data.total_pendapatan_hari_ini)}</span>
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-slate-500">Margin Keuntungan Netto</span>
-              <span className="font-bold text-emerald-600">{formatRupiah(data.total_keuntungan_hari_ini)}</span>
-            </div>
-            <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-zinc-600">
-              <span className="text-sm text-slate-500">Total Transaksi Selesai</span>
-              <span className="font-bold">{data.total_transaksi_hari_ini} Struk</span>
-            </div>
-          </div>
-          <button onClick={() => { setActiveSheet(null); navigate('/admin/laporan') }} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
-            Buka Laporan Transaksi Lengkap
-          </button>
-        </div>
-      </IosBottomSheet>
-
-      {/* Anggota Sheet */}
-      <IosBottomSheet isOpen={activeSheet === 'anggota'} onClose={() => setActiveSheet(null)} title="Matriks Keanggotaan">
-        <div className="p-4 space-y-4">
-          <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700">
-             <div className="flex justify-between items-center text-lg">
-              <span className="text-slate-500">Total Anggota Terdaftar</span>
-              <span className="font-black text-blue-600">{data.total_anggota} Orang</span>
-            </div>
-          </div>
-          <button onClick={() => { setActiveSheet(null); navigate('/admin/anggota') }} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
-            Kelola Master Data Anggota
-          </button>
-        </div>
-      </IosBottomSheet>
-
-      {/* Aset Barang Sheet */}
-      <IosBottomSheet isOpen={activeSheet === 'aset'} onClose={() => setActiveSheet(null)} title="Matriks Aset Barang">
-        <div className="p-4 space-y-4">
-          <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700">
-             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-slate-500">Total Nilai Inventori</span>
-              <span className="font-bold text-amber-600">{formatRupiah(data.total_aset_barang)}</span>
-            </div>
-             <p className="text-[10px] text-slate-400 mt-2">Dihitung dari: &Sigma; (Stok Fisik &times; Harga Modal Dasar)</p>
-          </div>
-          <button onClick={() => { setActiveSheet(null); navigate('/admin/barang') }} className="w-full py-3 bg-amber-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
-            Lihat Katalog Inventori
-          </button>
-        </div>
-      </IosBottomSheet>
-
-      {/* Simpanan Sheet */}
-      <IosBottomSheet isOpen={activeSheet === 'simpanan'} onClose={() => setActiveSheet(null)} title="Matriks Simpanan E-Wallet">
-        <div className="p-4 space-y-4">
-          <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700">
-             <div className="flex justify-between items-center">
-              <span className="text-sm text-slate-500">Total Saldo E-Wallet</span>
-              <span className="font-bold text-indigo-600">{formatRupiah(data.total_saldo_anggota)}</span>
-            </div>
-          </div>
-          <button onClick={() => { setActiveSheet(null); navigate('/admin/anggota') }} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
-            Cek Saldo Anggota
-          </button>
-        </div>
-      </IosBottomSheet>
-
-      {/* SHU Sheet */}
-      <IosBottomSheet isOpen={activeSheet === 'shu'} onClose={() => setActiveSheet(null)} title="Matriks Distribusi SHU">
-        <div className="p-4 space-y-4">
-          <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 space-y-3">
-             <div className="flex justify-between items-center">
-              <div>
-                <span className="text-sm text-slate-500 block">SHU Anggota (60%)</span>
-                <span className="text-[10px] text-slate-400">Hak bagi hasil anggota</span>
-              </div>
-              <span className="font-bold text-pink-600">{formatRupiah(data.total_shu_tersedia)}</span>
-            </div>
-            
-            <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-zinc-700">
-              <span className="text-sm text-slate-500">Cadangan Koperasi (30%)</span>
-              <span className="font-bold text-amber-600">{formatRupiah(data.total_shu_koperasi)}</span>
-            </div>
-
-            <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-zinc-700">
-              <span className="text-sm text-slate-500">Jasa Pengurus (10%)</span>
-              <span className="font-bold text-blue-600">{formatRupiah(data.total_shu_pengurus)}</span>
-            </div>
-          </div>
-          <button onClick={() => { setActiveSheet(null); navigate('/admin/shu') }} className="w-full py-3 bg-pink-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
-            Buka Manajemen SHU
-          </button>
-        </div>
-      </IosBottomSheet>
-
-      {/* Piutang Sheet */}
-      <IosBottomSheet isOpen={activeSheet === 'piutang'} onClose={() => setActiveSheet(null)} title="Matriks Piutang & Plafon Kredit">
-        <div className="p-4 space-y-4">
-          <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700">
-             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-slate-500">Total Piutang Berjalan</span>
-              <span className="font-bold text-rose-600">{formatRupiah(data.total_hutang_beredar)}</span>
-            </div>
-            <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-zinc-600">
-              <span className="text-sm text-slate-500">Rasio Risiko Piutang</span>
-              <span className={`font-bold ${realHutangRatio > 80 ? 'text-rose-600' : realHutangRatio > 50 ? 'text-amber-600' : 'text-emerald-600'}`}>{realHutangRatio}%</span>
-            </div>
-          </div>
-          <p className="text-xs text-slate-500 text-center">Setiap anggota dibatasi plafon maksimal Rp 400.000 dengan agunan simpanan pokok Rp 300.000.</p>
-          <button onClick={() => { setActiveSheet(null); navigate('/admin/anggota') }} className="w-full py-3 bg-rose-600 text-white rounded-xl font-bold active:scale-95 transition-transform">
-            Pantau Piutang Anggota
-          </button>
-        </div>
-      </IosBottomSheet>
 
     </div>
   )
