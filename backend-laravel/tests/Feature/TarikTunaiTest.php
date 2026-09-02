@@ -438,13 +438,18 @@ class TarikTunaiTest extends TestCase
             'persetujuan_shu_master_at' => now(),
         ]);
 
-        $b1 = Barang::create([
-            'nama_barang' => 'Barang Tarik 1',
-            'stok' => 50,
-            'harga_modal' => 35000,
-            'harga_jual' => 50000,
-            'kategori' => 'makanan',
-        ]);
+        $b1 = Barang::first();
+        if (!$b1) {
+            $b1 = Barang::create([
+                'nama_barang' => 'Bearbrand',
+                'stok' => 50,
+                'harga_modal' => 35000,
+                'harga_jual' => 50000,
+                'kategori' => 'minuman',
+            ]);
+        } else {
+            $b1->update(['stok' => 50, 'harga_modal' => 35000, 'harga_jual' => 50000]);
+        }
 
         // Member buys 1 item (Rp 50.000) and withdraws Rp 100.000 from SHU (2x Belanja = 100k)
         $res = $this->withHeader('Authorization', "Bearer $token")
@@ -482,13 +487,8 @@ class TarikTunaiTest extends TestCase
             'persetujuan_shu_master_at' => now(),
         ]);
 
-        $b1 = Barang::create([
-            'nama_barang' => 'Barang Toko App',
-            'stok' => 20,
-            'harga_modal' => 20000,
-            'harga_jual' => 30000,
-            'kategori' => 'makanan',
-        ]);
+        $b1 = Barang::first();
+        $b1->update(['stok' => 20, 'harga_modal' => 20000, 'harga_jual' => 30000]);
 
         // Anggota buys 1 item (Rp 30.000) and requests Rp 60.000 cash out from SHU (<= 2x 30k)
         $res = $this->withHeader('Authorization', "Bearer $token")
@@ -525,13 +525,8 @@ class TarikTunaiTest extends TestCase
             'persetujuan_shu_master_at' => now(),
         ]);
 
-        $b1 = Barang::create([
-            'nama_barang' => 'Barang Reject Toko',
-            'stok' => 20,
-            'harga_modal' => 20000,
-            'harga_jual' => 30000,
-            'kategori' => 'makanan',
-        ]);
+        $b1 = Barang::first();
+        $b1->update(['stok' => 20, 'harga_modal' => 20000, 'harga_jual' => 30000]);
 
         // Anggota creates order with Tarik Tunai
         $res = $this->withHeader('Authorization', "Bearer $token")
