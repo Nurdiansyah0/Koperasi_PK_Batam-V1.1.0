@@ -275,21 +275,79 @@ export interface DashboardAdmin {
 }
 
 // ─── Laporan Transaksi ───────────────────────────────────────
+export interface ItemLaporanTransaksi {
+  detail_id: number
+  barang_id: number
+  nama_barang: string
+  satuan: string
+  jumlah: number
+  harga_satuan: number
+  subtotal: number
+  keuntungan: number
+}
+
+export interface TransaksiLaporanItem {
+  transaksi_id: number
+  created_at: string
+  anggota_id?: number | null
+  nama_anggota: string
+  nomor_anggota?: string | null
+  metode_pembayaran: string
+  total_harga: number
+  total_keuntungan: number
+  kasir_id?: number | null
+  kasir_username?: string
+  status: string
+  items?: ItemLaporanTransaksi[]
+}
+
 export interface LaporanTransaksi {
+  success?: boolean
   summary?: {
     total_transaksi: number
     total_pendapatan: number
+    total_keuntungan: number
+    total_hpp: number
     total_hutang: number
+    total_cash: number
+    total_ewallet: number
+    total_qr: number
+    total_transfer: number
+    omset_anggota: number
+    omset_umum: number
+    avg_transaksi: number
   }
   total_transaksi?: number
   total_pendapatan?: number
   breakdown_pembayaran?: Record<string, number>
+  breakdown_kasir?: {
+    kasir_id: number | null
+    kasir_username: string
+    total_transaksi: number
+    total_omset: number
+    total_laba: number
+  }[]
   transaksi_harian?: {
     tanggal: string
     jumlah_transaksi: number
     total_pendapatan: number
+    total_keuntungan: number
   }[]
-  data?: Transaksi[]
+  daftar_kasir?: {
+    user_id: number
+    username: string
+  }[]
+  data?: TransaksiLaporanItem[]
+  pagination?: {
+    current_page: number
+    last_page: number
+    total: number
+    per_page: number
+  }
+  periode?: {
+    tanggal_awal: string
+    tanggal_akhir: string
+  }
 }
 
 export interface ProfilAnggota {

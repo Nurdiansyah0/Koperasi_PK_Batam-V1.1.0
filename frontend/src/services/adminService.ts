@@ -83,8 +83,23 @@ export const adminService = {
     return data
   },
 
-  getLaporanTransaksi: async (tanggal_awal: string, tanggal_akhir: string): Promise<LaporanTransaksi> => {
-    const { data } = await api.post('/laravel/api/admin/laporan-transaksi', { tanggal_awal, tanggal_akhir })
+  getLaporanTransaksi: async (params?: {
+    tanggal_awal?: string
+    tanggal_akhir?: string
+    metode_pembayaran?: string
+    kasir_id?: string | number
+    pembeli_type?: string
+    search?: string
+    page?: number
+    per_page?: number | string
+  } | string, tanggal_akhir?: string): Promise<LaporanTransaksi> => {
+    let payload: any = {}
+    if (typeof params === 'object') {
+      payload = params
+    } else {
+      payload = { tanggal_awal: params, tanggal_akhir }
+    }
+    const { data } = await api.post('/laravel/api/admin/laporan-transaksi', payload)
     return data
   },
 

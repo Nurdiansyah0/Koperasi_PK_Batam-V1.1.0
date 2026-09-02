@@ -786,46 +786,185 @@ class AdminController extends Controller
     public function getLaporanTransaksi(Request $request)
     {
         $this->checkAdmin($request);
-        $q = Transaksi::with(['kasir', 'anggota']);
-        if ($request->tanggal_awal) $q->whereDate('created_at', '>=', $request->tanggal_awal);
-        if ($request->tanggal_akhir) $q->whereDate('created_at', '<=', $request->tanggal_akhir);
 
-        $transaksi = $q->get();
+        $tglAwal = $request->input('tanggal_awal');
+        $tglAkhir = $request->input('tanggal_akhir');
+        $metode = $request->input('metode_pembayaran');
+        $kasirId = $request->input('kasir_id');
+        $pembeliType = $request->input('pembeli_type');
+        $search = $request->input('search');
+        $perPage = $request->input('per_page', 25);
 
-        $total_transaksi = $transaksi->count();
-        $total_pendapatan = $transaksi->sum('total_harga');
+        $q = Transaksi::query()->where('status', '!=', 'batal')->where('status', '!=', 'ditolak');
 
-        $breakdown_pembayaran = [
-            'cash' => (float) $transaksi->where('metode_pembayaran', 'cash')->sum('total_harga'),
-            'qr' => (float) $transaksi->where('metode_pembayaran', 'qr')->sum('total_harga'),
-            'ewallet' => (float) $transaksi->where('metode_pembayaran', 'ewallet')->sum('total_harga'),
-            'transfer' => (float) $transaksi->where('metode_pembayaran', 'transfer')->sum('total_harga'),
-            'hutang' => (float) $transaksi->where('metode_pembayaran', 'hutang')->sum('total_harga'),
+        if ($tglAwal) {
+            $q->whereDate('created_at', '>=', $tglAwal);
+        }
+        if ($tglAkhir) {
+            $q->whereDate('created_at', '<=', $tglAkhir);
+        }
+        if ($metode && $metode !== 'all') {
+            $q->where('metode_pembayaran', $metode);
+        }
+        if ($kasirId && $kasirId !== 'all') {
+            $q->where('kasir_id', $kasirId);
+        }
+        if ($pembeliType === 'anggota') {
+            $q->whereNotNull('anggota_id');
+        } elseif ($pembeliType === 'umum') {
+            $q->whereNull('anggota_id');
+        }
+        if ($search) {
+            $q->where(function($sub) use ($search) {
+                $sub->where('transaksi_id', 'like', "%{$search}%")
+                    ->orWhereHas('anggota', fn($a) => $a->where('nama_lengkap', 'like', "%{$search}%"))
+                    ->orWhereHas('kasir', fn($k) => $k->where('username', 'like', "%{$search}%"));
+            });
+        }
+
+        // Summary Aggregations calculated directly on database
+        $summaryAgg = (clone $q)->selectRaw('
+            COUNT(*) as total_transaksi,
+            COALESCE(SUM(total_harga), 0) as total_pendapatan,
+            COALESCE(SUM(total_keuntungan), 0) as total_keuntungan,
+            COALESCE(SUM(CASE WHEN metode_pembayaran = "cash" THEN total_harga ELSE 0 END), 0) as total_cash,
+            COALESCE(SUM(CASE WHEN metode_pembayaran = "ewallet" THEN total_harga ELSE 0 END), 0) as total_ewallet,
+            COALESCE(SUM(CASE WHEN metode_pembayaran = "hutang" THEN total_harga ELSE 0 END), 0) as total_hutang,
+            COALESCE(SUM(CASE WHEN metode_pembayaran = "qr" THEN total_harga ELSE 0 END), 0) as total_qr,
+            COALESCE(SUM(CASE WHEN metode_pembayaran = "transfer" THEN total_harga ELSE 0 END), 0) as total_transfer,
+            COALESCE(SUM(CASE WHEN anggota_id IS NOT NULL THEN total_harga ELSE 0 END), 0) as omset_anggota,
+            COALESCE(SUM(CASE WHEN anggota_id IS NULL THEN total_harga ELSE 0 END), 0) as omset_umum
+        ')->first();
+
+        $totalTransaksi = (int) ($summaryAgg->total_transaksi ?? 0);
+        $totalPendapatan = (float) ($summaryAgg->total_pendapatan ?? 0);
+        $totalKeuntungan = (float) ($summaryAgg->total_keuntungan ?? 0);
+        $totalHpp = max(0, $totalPendapatan - $totalKeuntungan);
+        $avgTransaksi = $totalTransaksi > 0 ? round($totalPendapatan / $totalTransaksi, 2) : 0;
+
+        $breakdownPembayaran = [
+            'cash' => (float) ($summaryAgg->total_cash ?? 0),
+            'ewallet' => (float) ($summaryAgg->total_ewallet ?? 0),
+            'hutang' => (float) ($summaryAgg->total_hutang ?? 0),
+            'qr' => (float) ($summaryAgg->total_qr ?? 0),
+            'transfer' => (float) ($summaryAgg->total_transfer ?? 0),
         ];
 
-        $data = $transaksi->map(function($t) {
+        // Breakdown Kasir
+        $breakdownKasir = (clone $q)
+            ->selectRaw('kasir_id, COUNT(*) as total_transaksi, COALESCE(SUM(total_harga), 0) as total_omset, COALESCE(SUM(total_keuntungan), 0) as total_laba')
+            ->groupBy('kasir_id')
+            ->with('kasir:user_id,username')
+            ->get()
+            ->map(function($item) {
+                return [
+                    'kasir_id' => $item->kasir_id,
+                    'kasir_username' => $item->kasir ? $item->kasir->username : 'System',
+                    'total_transaksi' => (int) $item->total_transaksi,
+                    'total_omset' => (float) $item->total_omset,
+                    'total_laba' => (float) $item->total_laba,
+                ];
+            });
+
+        // Transaksi Harian (Grouping by Date)
+        $transaksiHarian = (clone $q)
+            ->selectRaw('DATE(created_at) as tanggal, COUNT(*) as jumlah_transaksi, COALESCE(SUM(total_harga), 0) as total_pendapatan, COALESCE(SUM(total_keuntungan), 0) as total_keuntungan')
+            ->groupBy(DB::raw('DATE(created_at)'))
+            ->orderBy('tanggal', 'asc')
+            ->get()
+            ->map(function($item) {
+                return [
+                    'tanggal' => $item->tanggal,
+                    'jumlah_transaksi' => (int) $item->jumlah_transaksi,
+                    'total_pendapatan' => (float) $item->total_pendapatan,
+                    'total_keuntungan' => (float) $item->total_keuntungan,
+                ];
+            });
+
+        // Pagination or All records
+        if ($perPage === 'all' || $perPage == -1) {
+            $transaksiList = $q->with([
+                'kasir:user_id,username',
+                'anggota:anggota_id,nama_lengkap,nomor_anggota',
+                'details.barang:barang_id,nama_barang,satuan,harga_beli,harga_jual,barcode'
+            ])->orderBy('created_at', 'desc')->get();
+
+            $paginated = [
+                'current_page' => 1,
+                'last_page' => 1,
+                'total' => $transaksiList->count(),
+                'per_page' => $transaksiList->count(),
+            ];
+            $items = $transaksiList;
+        } else {
+            $paginator = $q->with([
+                'kasir:user_id,username',
+                'anggota:anggota_id,nama_lengkap,nomor_anggota',
+                'details.barang:barang_id,nama_barang,satuan,harga_beli,harga_jual,barcode'
+            ])->orderBy('created_at', 'desc')->paginate((int) $perPage);
+
+            $paginated = [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'total' => $paginator->total(),
+                'per_page' => $paginator->perPage(),
+            ];
+            $items = $paginator->items();
+        }
+
+        $data = collect($items)->map(function($t) {
             return [
                 'transaksi_id' => $t->transaksi_id,
                 'created_at' => $t->created_at ? $t->created_at->toIso8601String() : null,
-                'nama_anggota' => $t->anggota ? $t->anggota->nama_lengkap : 'Umum',
+                'anggota_id' => $t->anggota_id,
+                'nama_anggota' => $t->anggota ? $t->anggota->nama_lengkap : 'Pelanggan Umum',
+                'nomor_anggota' => $t->anggota ? $t->anggota->nomor_anggota : null,
                 'metode_pembayaran' => $t->metode_pembayaran,
                 'total_harga' => (float) $t->total_harga,
-                'kasir_username' => $t->kasir ? $t->kasir->username : null,
+                'total_keuntungan' => (float) ($t->total_keuntungan ?? 0),
+                'kasir_id' => $t->kasir_id,
+                'kasir_username' => $t->kasir ? $t->kasir->username : 'Kasir',
+                'status' => $t->status ?? 'selesai',
+                'items' => $t->details ? $t->details->map(function($d) {
+                    return [
+                        'detail_id' => $d->detail_id,
+                        'barang_id' => $d->barang_id,
+                        'nama_barang' => $d->barang ? $d->barang->nama_barang : 'Barang #' . $d->barang_id,
+                        'satuan' => $d->barang ? $d->barang->satuan : 'pcs',
+                        'jumlah' => (int) $d->jumlah,
+                        'harga_satuan' => (float) $d->harga_satuan,
+                        'subtotal' => (float) $d->subtotal,
+                        'keuntungan' => (float) ($d->keuntungan ?? 0),
+                    ];
+                }) : []
             ];
         });
+
+        $daftarKasir = User::where('role', 'kasir')->select('user_id', 'username')->get();
 
         return response()->json([
             'success' => true,
             'summary' => [
-                'total_transaksi' => $total_transaksi,
-                'total_pendapatan' => (float) $total_pendapatan,
-                'total_hutang' => $breakdown_pembayaran['hutang'],
+                'total_transaksi' => $totalTransaksi,
+                'total_pendapatan' => $totalPendapatan,
+                'total_keuntungan' => $totalKeuntungan,
+                'total_hpp' => $totalHpp,
+                'total_hutang' => (float) ($summaryAgg->total_hutang ?? 0),
+                'total_cash' => (float) ($summaryAgg->total_cash ?? 0),
+                'total_ewallet' => (float) ($summaryAgg->total_ewallet ?? 0),
+                'total_qr' => (float) ($summaryAgg->total_qr ?? 0),
+                'total_transfer' => (float) ($summaryAgg->total_transfer ?? 0),
+                'omset_anggota' => (float) ($summaryAgg->omset_anggota ?? 0),
+                'omset_umum' => (float) ($summaryAgg->omset_umum ?? 0),
+                'avg_transaksi' => $avgTransaksi,
             ],
             'data' => $data,
-            'breakdown_pembayaran' => $breakdown_pembayaran,
-            'breakdown_kasir' => [], // Needs grouping logic if required in UI
-            'transaksi_harian' => [],
-            'periode' => ['tanggal_awal' => $request->tanggal_awal, 'tanggal_akhir' => $request->tanggal_akhir]
+            'pagination' => $paginated,
+            'breakdown_pembayaran' => $breakdownPembayaran,
+            'breakdown_kasir' => $breakdownKasir,
+            'transaksi_harian' => $transaksiHarian,
+            'daftar_kasir' => $daftarKasir,
+            'periode' => ['tanggal_awal' => $tglAwal, 'tanggal_akhir' => $tglAkhir]
         ]);
     }
 
