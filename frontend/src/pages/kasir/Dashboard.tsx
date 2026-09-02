@@ -153,31 +153,7 @@ export function KasirDashboard() {
         </div>
       </div>
 
-      {/* ─── CARD 2: PRIMARY POS LAUNCHER (FULL-WIDTH THUMB ACTION) ─── */}
-      <button
-        onClick={() => navigate('/kasir/transaksi')}
-        className="w-full p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-xl shadow-blue-600/25 flex items-center justify-between group active:scale-[0.98] transition-all border border-blue-400/30 text-left"
-      >
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-white text-blue-600 flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
-            <ShoppingCart className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base sm:text-lg font-black tracking-tight">Buka Kasir POS Sekarang</h3>
-              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-white/20 text-white">
-                Siap Transaksi
-              </span>
-            </div>
-            <p className="text-xs text-blue-100 mt-0.5">
-              Input belanja anggota, scan barcode, bayar tunai/saldo/hutang
-            </p>
-          </div>
-        </div>
-        <div className="w-9 h-9 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-transform">
-          <ArrowRight className="w-5 h-5" />
-        </div>
-      </button>
+
 
       {/* ─── URGENT NOTIFICATION BANNER (SERAH TERIMA) ─── */}
       {(data?.pending_serah_terima || 0) > 0 && (
