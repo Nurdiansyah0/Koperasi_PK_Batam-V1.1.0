@@ -29,22 +29,29 @@ export function KasirDashboard() {
   const { data: dashboardPayload, isLoading: loading } = useQuery({
     queryKey: ['kasir', 'dashboard-combined'],
     queryFn: async () => {
-      const [dashboard, transaksi, shiftInfo] = await Promise.all([
-        kasirService.getDashboard(),
-        kasirService.getTransaksiTerbaru(),
-        kasirService.getActiveShiftInfo()
-      ])
+      const dashboard = await kasirService.getDashboard()
+      // Use consolidated payload if available, else fallback gracefully
+      const raw = dashboard as any
+      let transaksi = raw?.transaksi_terbaru
+      let activeShift = raw?.active_shift
+      if (!transaksi) {
+        transaksi = await kasirService.getTransaksiTerbaru()
+      }
+      if (activeShift === undefined) {
+        const shiftInfo = await kasirService.getActiveShiftInfo()
+        activeShift = shiftInfo.data?.latest_incoming || null
+      }
       return {
         data: dashboard,
-        transaksiTerbaru: transaksi,
-        activeShift: shiftInfo.data?.latest_incoming || null
+        transaksiTerbaru: transaksi || [],
+        activeShift: activeShift || null
       }
     },
     staleTime: 1000 * 30,
   })
 
   const data = dashboardPayload?.data || null
-  const transaksiTerbaru = dashboardPayload?.transaksiTerbaru || []
+  const transaksiTerbaru: Transaksi[] = dashboardPayload?.transaksiTerbaru || []
   const activeShift = dashboardPayload?.activeShift || null
 
   if (loading) {
