@@ -97,9 +97,20 @@ export function TransaksiKasir() {
         kasirService.getAllAnggota(),
         kasirService.getPaketBelanja()
       ])
-      setBarangList(brg)
-      setAnggotaList(ang)
-      setPaketList(bundles.data || [])
+
+      // Normalize: MySQL decimal dikirim sebagai string ("4000.00") → number
+      // Juga pastikan nama_barang selalu string (bukan undefined/null)
+      const normalizedBrg = (brg || []).map((b: any) => ({
+        ...b,
+        nama_barang: b.nama_barang ?? '',
+        stok: Number(b.stok ?? 0),
+        harga_jual: Number(b.harga_jual ?? 0),
+        harga: Number(b.harga ?? b.harga_jual ?? 0),
+      }))
+
+      setBarangList(normalizedBrg)
+      setAnggotaList(ang || [])
+      setPaketList(bundles?.data || [])
     } catch (e) {
       toast.error('Gagal memuat data katalog POS')
     }
@@ -184,9 +195,13 @@ export function TransaksiKasir() {
 
   // Derived state: Filtered, Sorted, and Paginated Barang
   const filteredBarang = useMemo(() => {
-    const result = barangList.filter(b => b.nama_barang.toLowerCase().includes(search.toLowerCase()))
+    const q = search.toLowerCase()
+    const result = barangList.filter(b =>
+      b.stok > 0 &&                                        // guard stale cache
+      (b.nama_barang ?? '').toLowerCase().includes(q)     // guard null nama
+    )
     
-    // Sort logic: items with stok <= 2 bubble up to the top
+    // Sort: stok <= 2 naik ke atas (warning stok menipis)
     result.sort((a, b) => {
       if (a.stok <= 2 && b.stok > 2) return -1
       if (b.stok <= 2 && a.stok > 2) return 1
