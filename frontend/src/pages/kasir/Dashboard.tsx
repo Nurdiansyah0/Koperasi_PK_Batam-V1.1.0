@@ -210,20 +210,12 @@ export function KasirDashboard() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 self-end sm:self-center">
-            <button
-              onClick={() => navigate('/kasir/serah-terima/buat')}
-              className="text-xs font-bold text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-            >
-              Ganti Shift
-            </button>
-            <button
-              onClick={() => navigate('/kasir/serah-terima')}
-              className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900"
-            >
-              Detail &rarr;
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('/kasir/serah-terima')}
+            className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900 self-end sm:self-center active:scale-95"
+          >
+            Kelola Shift &rarr;
+          </button>
         </div>
       ) : (
         <div className="p-4 rounded-3xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
@@ -341,7 +333,7 @@ export function KasirDashboard() {
 
         {transaksiTerbaru.length === 0 ? (
           <div className="text-center py-8 text-slate-400 text-xs">
-            Belum ada transaksi pada shift ini. Klik <b>"Buka Kasir POS"</b> untuk melayani pembeli.
+            Belum ada transaksi pada shift ini. Ketuk tombol <b>"POS"</b> di bilah bawah untuk mulai melayani pembeli.
           </div>
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
