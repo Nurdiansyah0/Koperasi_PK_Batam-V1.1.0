@@ -17,12 +17,18 @@ import {
   Warehouse,
   ArrowRight,
   TrendingUp,
-  Download
+  Download,
+  PlusCircle,
+  FileCheck2,
+  Trash2,
+  Building2
 } from 'lucide-react'
 import { adminService } from '@/services/adminService'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
+import { InputRupiah } from '@/components/ui/InputRupiah'
 import { formatRupiah } from '@/lib/utils'
 import type { PkmItem } from '@/types'
 
@@ -40,6 +46,15 @@ interface ShoppingCartItem {
   is_selected: boolean
 }
 
+interface InboundItem {
+  barang_id: number
+  nama_barang: string
+  jumlah_tambah: number
+  harga_beli_satuan: number
+  alokasi: 'gudang' | 'toko' | 'auto'
+  tanggal_kadaluarsa: string
+}
+
 export function ManajemenPkmPage() {
   const [items, setItems] = useState<PkmItem[]>([])
   const [summary, setSummary] = useState<any>(null)
@@ -51,6 +66,17 @@ export function ManajemenPkmPage() {
   const [copiedSlip, setCopiedSlip] = useState(false)
   const [shoppingItems, setShoppingItems] = useState<ShoppingCartItem[]>([])
   const [autoCalculating, setAutoCalculating] = useState(false)
+
+  // Inbound Receiving Modal State (Catat Faktur Kulakan Masuk)
+  const [isInboundModalOpen, setIsInboundModalOpen] = useState(false)
+  const [inboundItems, setInboundItems] = useState<InboundItem[]>([])
+  const [inboundForm, setInboundForm] = useState({
+    nomor_faktur: '',
+    nama_supplier: '',
+    sumber_dana: 'kas_koperasi',
+    catatan: ''
+  })
+  const [savingInbound, setSavingInbound] = useState(false)
 
   const receiptRef = useRef<HTMLDivElement>(null)
 
@@ -161,6 +187,92 @@ export function ManajemenPkmPage() {
     window.print()
   }
 
+  // Open Inbound Receiving Modal (Pre-filled from Shopping Slip)
+  const handleOpenInboundModal = () => {
+    if (activeSelectedItems.length === 0) {
+      toast.error('Pilih minimal 1 barang yang dibeli untuk dicatat faktur masuknya')
+      return
+    }
+
+    const initialInbound: InboundItem[] = activeSelectedItems.map(item => ({
+      barang_id: item.barang_id,
+      nama_barang: item.nama_barang,
+      jumlah_tambah: item.jumlah_beli,
+      harga_beli_satuan: item.harga_modal,
+      alokasi: 'gudang',
+      tanggal_kadaluarsa: ''
+    }))
+
+    setInboundItems(initialInbound)
+    setInboundForm({
+      nomor_faktur: `FAK-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}`,
+      nama_supplier: '',
+      sumber_dana: 'kas_koperasi',
+      catatan: `Kulakan ${initialInbound.length} SKU per ${new Date().toLocaleDateString('id-ID')}`
+    })
+    setIsInboundModalOpen(true)
+  }
+
+  // Update Inbound Item Row
+  const updateInboundRow = (barangId: number, field: keyof InboundItem, val: any) => {
+    setInboundItems(prev => prev.map(item => 
+      item.barang_id === barangId ? { ...item, [field]: val } : item
+    ))
+  }
+
+  // Remove row from inbound
+  const removeInboundRow = (barangId: number) => {
+    setInboundItems(prev => prev.filter(item => item.barang_id !== barangId))
+  }
+
+  // Total Real Cost in Inbound Modal
+  const totalInboundCost = useMemo(() => {
+    return inboundItems.reduce((acc, curr) => acc + (curr.jumlah_tambah * curr.harga_beli_satuan), 0)
+  }, [inboundItems])
+
+  const totalInboundPieces = useMemo(() => {
+    return inboundItems.reduce((acc, curr) => acc + curr.jumlah_tambah, 0)
+  }, [inboundItems])
+
+  // Submit Inbound Faktur (Bulk Restock)
+  const handleSubmitInbound = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (inboundItems.length === 0) {
+      toast.error('Daftar barang masuk tidak boleh kosong')
+      return
+    }
+
+    setSavingInbound(true)
+    try {
+      const payload = {
+        nomor_faktur: inboundForm.nomor_faktur,
+        nama_supplier: inboundForm.nama_supplier,
+        sumber_dana: inboundForm.sumber_dana,
+        catatan: inboundForm.catatan,
+        items: inboundItems.map(item => ({
+          barang_id: item.barang_id,
+          jumlah_tambah: Number(item.jumlah_tambah),
+          harga_beli_satuan: Number(item.harga_beli_satuan),
+          alokasi: item.alokasi,
+          tanggal_kadaluarsa: item.tanggal_kadaluarsa || undefined
+        }))
+      }
+
+      const res = await adminService.bulkRestock(payload)
+      if (res.success) {
+        toast.success(res.message || 'Faktur kulakan berhasil dicatat dan stok bertambah!')
+        setIsInboundModalOpen(false)
+        loadData()
+      } else {
+        toast.error(res.message || 'Gagal mencatat faktur kulakan')
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Terjadi kesalahan sistem saat mencatat faktur')
+    } finally {
+      setSavingInbound(false)
+    }
+  }
+
   // Auto calculate PKM backend sync
   const handleAutoCalculateAll = async () => {
     if (!window.confirm(`Kalkulasi otomatis batas PKM toko untuk seluruh produk berdasarkan penjualan ${days} hari terakhir (${leadTime} hari stok)?`)) {
@@ -197,8 +309,16 @@ export function ManajemenPkmPage() {
           </p>
         </div>
 
-        {/* View Mode Switcher */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        {/* View Mode Switcher & Inbound Trigger */}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <Button
+            onClick={handleOpenInboundModal}
+            className="h-9 px-3.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-1.5 shadow-xs"
+          >
+            <FileCheck2 className="w-4 h-4" />
+            Catat Faktur Masuk ({activeSelectedItems.length})
+          </Button>
+
           <div className="flex rounded-2xl bg-slate-100 dark:bg-zinc-800 p-1 text-xs w-full sm:w-auto shadow-2xs">
             <button
               onClick={() => setViewMode('checklist')}
@@ -209,7 +329,7 @@ export function ManajemenPkmPage() {
               }`}
             >
               <CheckSquare className="w-3.5 h-3.5" />
-              Lembar Kerja ({activeSelectedItems.length})
+              Lembar Kerja
             </button>
             <button
               onClick={() => setViewMode('receipt')}
@@ -220,7 +340,7 @@ export function ManajemenPkmPage() {
               }`}
             >
               <Receipt className="w-3.5 h-3.5" />
-              Struk Belanja (Struk Kasir)
+              Struk Kasir
             </button>
           </div>
         </div>
@@ -509,6 +629,169 @@ export function ManajemenPkmPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL INBOUND: CATAT PENERIMAAN BARANG MASUK (FAKTUR KULAKAN) */}
+      <Modal
+        isOpen={isInboundModalOpen}
+        onClose={() => setIsInboundModalOpen(false)}
+        title="📥 Catat Penerimaan Barang Masuk (Faktur Kulakan)"
+      >
+        <form onSubmit={handleSubmitInbound} className="space-y-4">
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-900/60 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
+            <div className="font-bold flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300">
+              <FileCheck2 className="w-4 h-4 text-emerald-600" /> Verifikasi Faktur Grosir & Stok Masuk:
+            </div>
+            <p className="text-[11px] leading-relaxed">
+              Sesuaikan kuantitas riil yang dibeli, harga modal baru dari faktur, dan tanggal kadaluarsa batch. Sistem akan otomatis menambah stok dan mencatat buku pengeluaran kas.
+            </p>
+          </div>
+
+          {/* Global Invoice Details */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-zinc-800/80 rounded-2xl border border-slate-200 dark:border-zinc-700 text-xs">
+            <Input
+              label="Nomor Faktur / Nota Pembelian"
+              value={inboundForm.nomor_faktur}
+              onChange={e => setInboundForm({ ...inboundForm, nomor_faktur: e.target.value })}
+              placeholder="Contoh: FAK-20260902-01"
+              required
+            />
+
+            <Input
+              label="Nama Toko Grosir / Supplier"
+              value={inboundForm.nama_supplier}
+              onChange={e => setInboundForm({ ...inboundForm, nama_supplier: e.target.value })}
+              placeholder="Contoh: Indomarco / PT Surya Makmur Batam"
+            />
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Sumber Dana Pengeluaran
+              </label>
+              <select
+                className="w-full px-3 py-2 border rounded-xl text-xs bg-white dark:bg-zinc-900 font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                value={inboundForm.sumber_dana}
+                onChange={e => setInboundForm({ ...inboundForm, sumber_dana: e.target.value })}
+              >
+                <option value="kas_koperasi">Kas Tunai Koperasi</option>
+                <option value="rekening_bank">Rekening Bank Koperasi</option>
+                <option value="dana_talangan">Dana Talangan Pengurus</option>
+              </select>
+            </div>
+
+            <Input
+              label="Catatan Tambahan (Opsional)"
+              value={inboundForm.catatan}
+              onChange={e => setInboundForm({ ...inboundForm, catatan: e.target.value })}
+              placeholder="Contoh: Pembelian sembako promo distributor"
+            />
+          </div>
+
+          {/* Items Inbound Table */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center text-xs font-bold text-slate-600 dark:text-slate-300 px-1">
+              <span>Rincian Barang Diterima ({inboundItems.length} SKU)</span>
+              <span>Total Fisik: {totalInboundPieces} pcs</span>
+            </div>
+
+            <div className="max-h-[35vh] overflow-y-auto space-y-2.5 pr-1">
+              {inboundItems.map((item, idx) => {
+                const subtotal = item.jumlah_tambah * item.harga_beli_satuan
+
+                return (
+                  <div
+                    key={item.barang_id}
+                    className="p-3 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xs space-y-2 text-xs"
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="font-extrabold text-slate-900 dark:text-white">
+                        {idx + 1}. {item.nama_barang}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeInboundRow(item.barang_id)}
+                        className="text-slate-400 hover:text-rose-600 p-1"
+                        title="Hapus item dari faktur"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div>
+                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Jumlah (Pcs)</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.jumlah_tambah}
+                          onChange={e => updateInboundRow(item.barang_id, 'jumlah_tambah', Math.max(1, Number(e.target.value)))}
+                          className="w-full px-2 py-1 border rounded-xl text-xs font-black bg-slate-50 dark:bg-zinc-800 border-slate-300 dark:border-zinc-700 outline-none"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Harga Beli Satuan</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.harga_beli_satuan}
+                          onChange={e => updateInboundRow(item.barang_id, 'harga_beli_satuan', Math.max(0, Number(e.target.value)))}
+                          className="w-full px-2 py-1 border rounded-xl text-xs font-semibold bg-slate-50 dark:bg-zinc-800 border-slate-300 dark:border-zinc-700 outline-none"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Alokasi Stok</label>
+                        <select
+                          value={item.alokasi}
+                          onChange={e => updateInboundRow(item.barang_id, 'alokasi', e.target.value)}
+                          className="w-full px-2 py-1 border rounded-xl text-[11px] font-semibold bg-slate-50 dark:bg-zinc-800 border-slate-300 dark:border-zinc-700 outline-none"
+                        >
+                          <option value="gudang">📦 Gudang</option>
+                          <option value="toko">🏪 Toko</option>
+                          <option value="auto">⚡ Auto PKM</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Expired Batch</label>
+                        <input
+                          type="date"
+                          value={item.tanggal_kadaluarsa}
+                          onChange={e => updateInboundRow(item.barang_id, 'tanggal_kadaluarsa', e.target.value)}
+                          className="w-full px-2 py-1 border rounded-xl text-[11px] bg-slate-50 dark:bg-zinc-800 border-slate-300 dark:border-zinc-700 outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-1 border-t border-slate-100 dark:border-zinc-800 text-[11px]">
+                      <span className="text-slate-400">Subtotal:</span>
+                      <span className="font-extrabold text-slate-900 dark:text-white">{formatRupiah(subtotal)}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Inbound Summary & Actions */}
+          <div className="p-3 bg-slate-100 dark:bg-zinc-800 rounded-2xl flex justify-between items-center text-xs">
+            <div>
+              <span className="text-slate-500 block">Total Pengeluaran Faktur:</span>
+              <span className="text-base font-black text-rose-600 dark:text-rose-400">{formatRupiah(totalInboundCost)}</span>
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => setIsInboundModalOpen(false)}>
+                Batal
+              </Button>
+              <Button type="submit" loading={savingInbound} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4">
+                <Check className="w-4 h-4 mr-1.5" /> Simpan Faktur Masuk
+              </Button>
+            </div>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

@@ -518,4 +518,83 @@ class AdminSopAuditTest extends TestCase
         $this->assertEquals(6, $barang->stok_gudang);
         $this->assertEquals(6, $barang->stok);
     }
+
+    /** @test */
+    public function audit_14_bulk_restock_inbound_faktur()
+    {
+        $b1 = Barang::create([
+            'nama_barang' => 'Indomie Goreng Spesial PO',
+            'stok' => 5,
+            'stok_toko' => 2,
+            'stok_gudang' => 3,
+            'pkm' => 4,
+            'harga_modal' => 2800,
+            'harga_jual' => 3500
+        ]);
+
+        $b2 = Barang::create([
+            'nama_barang' => 'Teh Kotak Sosro PO',
+            'stok' => 10,
+            'stok_toko' => 4,
+            'stok_gudang' => 6,
+            'pkm' => 6,
+            'harga_modal' => 4000,
+            'harga_jual' => 5000
+        ]);
+
+        $in6Months = \Carbon\Carbon::today()->addMonths(6)->toDateString();
+
+        $payload = [
+            'nomor_faktur' => 'FAK-TEST-9988',
+            'nama_supplier' => 'PT Indomarco Batam',
+            'sumber_dana' => 'kas_koperasi',
+            'catatan' => 'Kulakan restock bulk faktur',
+            'items' => [
+                [
+                    'barang_id' => $b1->barang_id,
+                    'jumlah_tambah' => 40,
+                    'harga_beli_satuan' => 2900,
+                    'alokasi' => 'gudang',
+                    'tanggal_kadaluarsa' => $in6Months
+                ],
+                [
+                    'barang_id' => $b2->barang_id,
+                    'jumlah_tambah' => 24,
+                    'harga_beli_satuan' => 4100,
+                    'alokasi' => 'auto',
+                    'tanggal_kadaluarsa' => $in6Months
+                ]
+            ]
+        ];
+
+        $res = $this->authPost('/laravel/api/admin/bulk-restock', $payload);
+        $res->assertStatus(200)
+            ->assertJson(['success' => true]);
+
+        $b1->refresh();
+        $this->assertEquals(2, $b1->stok_toko);
+        $this->assertEquals(43, $b1->stok_gudang); // 3 + 40
+        $this->assertEquals(45, $b1->stok);
+        $this->assertEquals(2900, $b1->harga_modal);
+        $this->assertEquals($in6Months, $b1->tgl_kadaluarsa_gudang->toDateString());
+
+        $b2->refresh();
+        // PKM = 6, stok_toko was 4 -> needed 2 -> auto fills 2 to toko, 22 to gudang
+        $this->assertEquals(6, $b2->stok_toko); // 4 + 2
+        $this->assertEquals(28, $b2->stok_gudang); // 6 + 22
+        $this->assertEquals(34, $b2->stok);
+        $this->assertEquals(4100, $b2->harga_modal);
+
+        // Verify RiwayatRestock created
+        $this->assertDatabaseHas('riwayat_restock', [
+            'barang_id' => $b1->barang_id,
+            'jumlah_tambah' => 40,
+            'harga_beli_satuan' => 2900
+        ]);
+        $this->assertDatabaseHas('riwayat_restock', [
+            'barang_id' => $b2->barang_id,
+            'jumlah_tambah' => 24,
+            'harga_beli_satuan' => 4100
+        ]);
+    }
 }

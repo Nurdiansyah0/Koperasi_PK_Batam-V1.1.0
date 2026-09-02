@@ -270,6 +270,100 @@ class AdminController extends Controller
         }
     }
 
+    public function bulkRestock(Request $request)
+    {
+        $adminId = $this->checkAdmin($request);
+        $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.barang_id' => 'required|integer|exists:barang,barang_id',
+            'items.*.jumlah_tambah' => 'required|integer|min:1',
+            'items.*.harga_beli_satuan' => 'required|numeric|min:0',
+            'items.*.alokasi' => 'nullable|string|in:gudang,toko,auto',
+            'items.*.tanggal_kadaluarsa' => 'nullable|date',
+            'sumber_dana' => 'required|string',
+            'nomor_faktur' => 'nullable|string',
+            'nama_supplier' => 'nullable|string',
+            'catatan' => 'nullable|string'
+        ]);
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $totalExpenditure = 0;
+            $totalItemsCount = 0;
+            $sumberDana = $request->sumber_dana;
+            $faktur = $request->nomor_faktur ?: '-';
+            $supplier = $request->nama_supplier ?: '-';
+            $globalNote = $request->catatan ?: '';
+
+            foreach ($request->input('items') as $itemData) {
+                $barang = Barang::where('barang_id', $itemData['barang_id'])->lockForUpdate()->first();
+                if (!$barang) continue;
+
+                $jumlahTambah = (int) $itemData['jumlah_tambah'];
+                $hargaBeliSatuan = (float) $itemData['harga_beli_satuan'];
+                $totalBiaya = $jumlahTambah * $hargaBeliSatuan;
+                $alokasi = $itemData['alokasi'] ?? 'gudang';
+                $tglExpired = !empty($itemData['tanggal_kadaluarsa']) ? $itemData['tanggal_kadaluarsa'] : null;
+
+                $itemNote = "Faktur: {$faktur} | Supplier: {$supplier} [Alokasi: {$alokasi}]";
+                if ($globalNote) $itemNote .= " - " . $globalNote;
+
+                RiwayatRestock::create([
+                    'barang_id' => $barang->barang_id,
+                    'admin_id' => $adminId,
+                    'jumlah_tambah' => $jumlahTambah,
+                    'harga_beli_satuan' => $hargaBeliSatuan,
+                    'total_biaya' => $totalBiaya,
+                    'sumber_dana' => $sumberDana,
+                    'tanggal_kadaluarsa' => $tglExpired,
+                    'catatan' => $itemNote
+                ]);
+
+                // 2-Tier allocation & Expiry Sync
+                if ($alokasi === 'toko') {
+                    $barang->stok_toko += $jumlahTambah;
+                    if ($tglExpired) $barang->tgl_kadaluarsa_toko = $tglExpired;
+                } elseif ($alokasi === 'auto') {
+                    $pkm = (int) ($barang->pkm ?: 1);
+                    $neededForDisplay = max(0, $pkm - ((int) $barang->stok_toko));
+                    $fillToko = min($jumlahTambah, $neededForDisplay);
+                    $barang->stok_toko += $fillToko;
+                    $barang->stok_gudang += ($jumlahTambah - $fillToko);
+                    if ($tglExpired) {
+                        if ($fillToko > 0 && !$barang->tgl_kadaluarsa_toko) $barang->tgl_kadaluarsa_toko = $tglExpired;
+                        $barang->tgl_kadaluarsa_gudang = $tglExpired;
+                    }
+                } else {
+                    // Default to warehouse stock
+                    $barang->stok_gudang += $jumlahTambah;
+                    if ($tglExpired) $barang->tgl_kadaluarsa_gudang = $tglExpired;
+                }
+
+                $barang->stok = $barang->stok_toko + $barang->stok_gudang;
+                $barang->harga_modal = $hargaBeliSatuan;
+                $barang->save();
+
+                $totalExpenditure += $totalBiaya;
+                $totalItemsCount += $jumlahTambah;
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => "Faktur kulakan berhasil dicatat: {$totalItemsCount} pcs barang masuk (Total Rp " . number_format($totalExpenditure, 0, ',', '.') . ")",
+                'data' => [
+                    'total_biaya' => $totalExpenditure,
+                    'total_items' => $totalItemsCount,
+                    'nomor_faktur' => $faktur,
+                    'nama_supplier' => $supplier
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
     public function writeOffExpired(Request $request)
     {
         $adminId = $this->checkAdmin($request);

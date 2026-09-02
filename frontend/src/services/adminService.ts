@@ -132,6 +132,23 @@ export const adminService = {
     return data
   },
 
+  bulkRestock: async (payload: {
+    items: Array<{
+      barang_id: number
+      jumlah_tambah: number
+      harga_beli_satuan: number
+      alokasi?: 'gudang' | 'toko' | 'auto'
+      tanggal_kadaluarsa?: string
+    }>
+    sumber_dana: string
+    nomor_faktur?: string
+    nama_supplier?: string
+    catatan?: string
+  }): Promise<any> => {
+    const { data } = await api.post('/laravel/api/admin/bulk-restock', payload)
+    return data
+  },
+
   getRiwayatRestock: async (): Promise<any> => {
     const { data } = await api.get('/laravel/api/admin/riwayat-restock')
     return data

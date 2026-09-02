@@ -85,6 +85,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/shu-distribusi', [AdminController::class, 'getShuDistribusi']);
         Route::get('/data-kasir', [AdminController::class, 'getDataKasir']);
         Route::post('/restock-barang', [AdminController::class, 'restockBarang']);
+        Route::post('/bulk-restock', [AdminController::class, 'bulkRestock']);
         Route::get('/riwayat-restock', [AdminController::class, 'getRiwayatRestock']);
         Route::post('/barang/restock', [AdminController::class, 'restockBarang']);
         Route::get('/barang/restock', [AdminController::class, 'getRiwayatRestock']);
