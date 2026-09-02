@@ -143,12 +143,13 @@ export function AdminDashboard() {
             onClick={handleAutoPkm}
             disabled={isApplyingPkm}
             className="p-3 rounded-2xl bg-slate-50 dark:bg-zinc-800/80 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-slate-100 dark:border-zinc-700/60 flex flex-col items-center text-center gap-1.5 active:scale-95 transition-all text-slate-700 dark:text-slate-200"
+            title="Hitung otomatis kapasitas batas pajang rak toko sesuai penjualan 4 hari"
           >
             <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
               <Zap className={`w-4 h-4 ${isApplyingPkm ? 'animate-spin' : ''}`} />
             </div>
-            <span className="text-xs font-bold leading-tight">Auto-PKM 4H</span>
-            <span className="text-[10px] text-slate-400">Tuning display</span>
+            <span className="text-xs font-bold leading-tight">Atur Stok Rak</span>
+            <span className="text-[10px] text-slate-400">Otomatis 4 hari laku</span>
           </button>
 
           <button

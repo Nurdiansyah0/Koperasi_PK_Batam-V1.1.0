@@ -1121,7 +1121,7 @@ export function DataBarang() {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Batas PKM (4H)</label>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Batas Pajang Rak (4H)</label>
               <input
                 type="number" min="1"
                 className="w-full px-2.5 py-1.5 border rounded-xl text-xs bg-white dark:bg-zinc-900 font-bold"
@@ -1192,7 +1192,7 @@ export function DataBarang() {
               >
                 <option value="gudang">📦 Masuk ke Gudang</option>
                 <option value="toko">🏪 Langsung ke Display Toko</option>
-                <option value="auto">⚡ Auto-Refill PKM</option>
+                <option value="auto">⚡ Isi Rak Dulu (Sisa Gudang)</option>
               </select>
             </div>
 

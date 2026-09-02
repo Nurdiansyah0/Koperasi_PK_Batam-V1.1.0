@@ -595,10 +595,10 @@ export function ManajemenPkmPage() {
               onClick={handleAutoCalculateAll}
               disabled={autoCalculating}
               className="text-xs rounded-2xl bg-slate-800 dark:bg-zinc-700 text-white gap-1 shrink-0"
-              title="Sinkronkan batas PKM display toko"
+              title="Kalkulasi otomatis batas maksimal pajang di rak toko sesuai riwayat penjualan 4 hari"
             >
               <Zap className={`w-3.5 h-3.5 ${autoCalculating ? 'animate-spin' : ''}`} />
-              Sync PKM 4H
+              Hitung Batas Rak Toko
             </Button>
           </form>
         </div>
@@ -881,7 +881,7 @@ export function ManajemenPkmPage() {
                         >
                           <option value="gudang">📦 Gudang</option>
                           <option value="toko">🏪 Toko</option>
-                          <option value="auto">⚡ Auto PKM</option>
+                          <option value="auto">⚡ Isi Rak Dulu (Sisa Gudang)</option>
                         </select>
                       </div>
 
