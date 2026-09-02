@@ -78,22 +78,41 @@ deploy_frontend() {
 # ── Laravel Backend Deploy ─────────────────────────────
 deploy_backend() {
     echo ""
-    echo "[BACKEND] Checking server .env..."
-
+    echo "[BACKEND] Verifying server .env..."
+    $SSH "$REMOTE_USER@$REMOTE_HOST" "mkdir -p $REMOTE_PATH/laravel"
     if ! $SSH "$REMOTE_USER@$REMOTE_HOST" "test -f $REMOTE_PATH/laravel/.env"; then
-        echo ""
-        echo "⚠️  No .env on server at $REMOTE_PATH/laravel/.env"
-        echo "   Run these steps first:"
-        echo ""
-        echo "   1) Upload the template:"
-        echo "      $SCP $SCRIPT_DIR/backend-laravel/.env.production.example $REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH/laravel/.env"
-        echo ""
-        echo "   2) Edit DB credentials on server:"
-        echo "      $SSH $REMOTE_USER@$REMOTE_HOST 'nano $REMOTE_PATH/laravel/.env'"
-        echo ""
-        echo "   3) Then re-run:  ./deploy.sh backend"
-        echo ""
-        exit 1
+        echo "  → Auto-provisioning production .env with verified MySQL credentials..."
+        $SSH "$REMOTE_USER@$REMOTE_HOST" "cat << 'EOF' > $REMOTE_PATH/laravel/.env
+APP_NAME=\"Koperasi PK Batam\"
+APP_ENV=production
+APP_KEY=
+APP_DEBUG=false
+APP_URL=https://koperasipkbatam.my.id/laravel
+
+LOG_CHANNEL=single
+LOG_LEVEL=error
+
+DB_CONNECTION=mysql
+DB_HOST=localhost
+DB_PORT=3306
+DB_DATABASE=dqfqxjrd_koperasi_db
+DB_USERNAME=dqfqxjrd_admin
+DB_PASSWORD=Ma2syndicate
+
+BROADCAST_DRIVER=log
+CACHE_DRIVER=file
+FILESYSTEM_DISK=local
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=file
+SESSION_LIFETIME=480
+
+SANCTUM_STATEFUL_DOMAINS=koperasipkbatam.my.id
+
+MAIL_MAILER=smtp
+MAIL_FROM_ADDRESS=\"noreply@koperasipkbatam.my.id\"
+MAIL_FROM_NAME=\"Koperasi PK Batam\"
+EOF"
+        echo "  ✓ Production .env auto-provisioned successfully."
     fi
 
     echo "[BACKEND] Packing Laravel (excluding vendor, .env, logs)..."
