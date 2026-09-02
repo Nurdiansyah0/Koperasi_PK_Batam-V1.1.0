@@ -16,6 +16,7 @@ use App\Models\SerahTerimaKasir;
 use App\Models\TarikTunai;
 use App\Models\KonversiShu;
 use App\Models\JabatanAnggota;
+use App\Models\PengeluaranOperasional;
 use Carbon\Carbon;
 
 class AdminController extends Controller
@@ -942,13 +943,34 @@ class AdminController extends Controller
 
         $daftarKasir = User::where('role', 'kasir')->select('user_id', 'username')->get();
 
+        // Total Beban Operasional Kas (OPEX)
+        $qPengeluaran = PengeluaranOperasional::query();
+        if ($tglAwal) $qPengeluaran->whereDate('tanggal', '>=', $tglAwal);
+        if ($tglAkhir) $qPengeluaran->whereDate('tanggal', '<=', $tglAkhir);
+
+        $totalBebanOperasional = (float) $qPengeluaran->sum('nominal');
+        $daftarPengeluaran = (clone $qPengeluaran)->orderBy('tanggal', 'desc')->get();
+
+        $totalLabaKotor = $totalKeuntungan;
+        $totalLabaBersih = max(0, $totalLabaKotor - $totalBebanOperasional);
+
+        $shuAnggota60 = round(0.60 * $totalLabaBersih, 2);
+        $shuCadangan30 = round(0.30 * $totalLabaBersih, 2);
+        $shuPengurus10 = round(0.10 * $totalLabaBersih, 2);
+
         return response()->json([
             'success' => true,
             'summary' => [
                 'total_transaksi' => $totalTransaksi,
                 'total_pendapatan' => $totalPendapatan,
                 'total_keuntungan' => $totalKeuntungan,
+                'total_laba_kotor' => $totalLabaKotor,
                 'total_hpp' => $totalHpp,
+                'total_beban_operasional' => $totalBebanOperasional,
+                'total_laba_bersih' => $totalLabaBersih,
+                'shu_anggota_60' => $shuAnggota60,
+                'shu_cadangan_30' => $shuCadangan30,
+                'shu_pengurus_10' => $shuPengurus10,
                 'total_hutang' => (float) ($summaryAgg->total_hutang ?? 0),
                 'total_cash' => (float) ($summaryAgg->total_cash ?? 0),
                 'total_ewallet' => (float) ($summaryAgg->total_ewallet ?? 0),
@@ -959,6 +981,7 @@ class AdminController extends Controller
                 'avg_transaksi' => $avgTransaksi,
             ],
             'data' => $data,
+            'pengeluaran_operasional' => $daftarPengeluaran,
             'pagination' => $paginated,
             'breakdown_pembayaran' => $breakdownPembayaran,
             'breakdown_kasir' => $breakdownKasir,
@@ -966,6 +989,73 @@ class AdminController extends Controller
             'daftar_kasir' => $daftarKasir,
             'periode' => ['tanggal_awal' => $tglAwal, 'tanggal_akhir' => $tglAkhir]
         ]);
+    }
+
+    public function getPengeluaran(Request $request)
+    {
+        $this->checkAdmin($request);
+        $tglAwal = $request->input('tanggal_awal');
+        $tglAkhir = $request->input('tanggal_akhir');
+        $search = $request->input('search');
+
+        $query = PengeluaranOperasional::with('user:user_id,username')->orderBy('tanggal', 'desc')->orderBy('created_at', 'desc');
+
+        if ($tglAwal) $query->whereDate('tanggal', '>=', $tglAwal);
+        if ($tglAkhir) $query->whereDate('tanggal', '<=', $tglAkhir);
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('nama_pengeluaran', 'like', "%{$search}%")
+                  ->orWhere('kategori', 'like', "%{$search}%")
+                  ->orWhere('keterangan', 'like', "%{$search}%");
+            });
+        }
+
+        $totalNominal = (clone $query)->sum('nominal');
+        $data = $query->get();
+
+        return response()->json([
+            'success' => true,
+            'total_pengeluaran' => (float) $totalNominal,
+            'data' => $data
+        ]);
+    }
+
+    public function tambahPengeluaran(Request $request)
+    {
+        $adminId = $this->checkAdmin($request);
+        $request->validate([
+            'nama_pengeluaran' => 'required|string|max:255',
+            'nominal' => 'required|numeric|min:1',
+            'tanggal' => 'nullable|date',
+            'kategori' => 'nullable|string|max:100',
+            'keterangan' => 'nullable|string|max:1000',
+        ]);
+
+        $item = PengeluaranOperasional::create([
+            'nama_pengeluaran' => $request->nama_pengeluaran,
+            'nominal' => (float) $request->nominal,
+            'kategori' => $request->kategori ?: 'Operasional',
+            'tanggal' => $request->tanggal ?: now()->toDateString(),
+            'keterangan' => $request->keterangan,
+            'created_by' => $adminId,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pengeluaran kas berhasil dicatat',
+            'data' => $item
+        ]);
+    }
+
+    public function hapusPengeluaran(Request $request, $id)
+    {
+        $this->checkAdmin($request);
+        $item = PengeluaranOperasional::find($id);
+        if ($item) {
+            $item->delete();
+            return response()->json(['success' => true, 'message' => 'Catatan pengeluaran berhasil dihapus']);
+        }
+        return response()->json(['success' => false, 'error' => 'Data pengeluaran tidak ditemukan'], 404);
     }
 
     public function getMonitorBarang(Request $request)

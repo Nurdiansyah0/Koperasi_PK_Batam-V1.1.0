@@ -81,6 +81,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/approve-setoran-kasir', [AdminController::class, 'approveSetoranKasir']);
         Route::post('/topup-shu', [AdminController::class, 'topupSHU']);
         Route::post('/laporan-transaksi', [AdminController::class, 'getLaporanTransaksi']);
+        Route::get('/pengeluaran', [AdminController::class, 'getPengeluaran']);
+        Route::post('/pengeluaran', [AdminController::class, 'tambahPengeluaran']);
+        Route::delete('/pengeluaran/{id}', [AdminController::class, 'hapusPengeluaran']);
         Route::get('/monitor-barang', [AdminController::class, 'getMonitorBarang']);
         Route::get('/shu-distribusi', [AdminController::class, 'getShuDistribusi']);
         Route::get('/data-kasir', [AdminController::class, 'getDataKasir']);

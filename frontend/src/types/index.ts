@@ -301,13 +301,35 @@ export interface TransaksiLaporanItem {
   items?: ItemLaporanTransaksi[]
 }
 
+export interface PengeluaranOperasional {
+  pengeluaran_id: number
+  nama_pengeluaran: string
+  nominal: number
+  kategori?: string | null
+  tanggal: string
+  keterangan?: string | null
+  created_by?: number | null
+  user?: {
+    user_id: number
+    username: string
+  }
+  created_at?: string
+  updated_at?: string
+}
+
 export interface LaporanTransaksi {
   success?: boolean
   summary?: {
     total_transaksi: number
     total_pendapatan: number
     total_keuntungan: number
+    total_laba_kotor: number
     total_hpp: number
+    total_beban_operasional: number
+    total_laba_bersih: number
+    shu_anggota_60: number
+    shu_cadangan_30: number
+    shu_pengurus_10: number
     total_hutang: number
     total_cash: number
     total_ewallet: number
@@ -338,6 +360,7 @@ export interface LaporanTransaksi {
     username: string
   }[]
   data?: TransaksiLaporanItem[]
+  pengeluaran_operasional?: PengeluaranOperasional[]
   pagination?: {
     current_page: number
     last_page: number

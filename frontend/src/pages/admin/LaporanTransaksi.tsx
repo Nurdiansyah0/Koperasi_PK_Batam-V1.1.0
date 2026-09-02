@@ -1,24 +1,26 @@
 import { useEffect, useState } from 'react'
 import { adminService } from '@/services/adminService'
 import { formatRupiah, formatDate } from '@/lib/utils'
-import type { LaporanTransaksi as LaporanTransaksiType, TransaksiLaporanItem } from '@/types'
+import type { LaporanTransaksi as LaporanTransaksiType, TransaksiLaporanItem, PengeluaranOperasional } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
+import { InputRupiah } from '@/components/ui/InputRupiah'
 import { IosBottomSheet } from '@/components/ios/IosBottomSheet'
 import {
   Search, Calendar, Download, Printer, RotateCcw,
   TrendingUp, ShoppingBag, CreditCard, Wallet, Users,
   ArrowUpRight, Store, Eye, CheckCircle2, SlidersHorizontal,
-  ChevronLeft, ChevronRight, FileText, BarChart3, X, Check
+  ChevronLeft, ChevronRight, FileText, BarChart3, X, Check,
+  Plus, Receipt, Trash2, PieChart, ShieldCheck, Building2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export function LaporanTransaksi() {
   const [data, setData] = useState<LaporanTransaksiType | null>(null)
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'transaksi' | 'kasir' | 'harian'>('transaksi')
+  const [activeTab, setActiveTab] = useState<'transaksi' | 'pengeluaran' | 'kasir' | 'harian'>('transaksi')
   
   // Filter States
   const [tglMulai, setTglMulai] = useState('')
@@ -44,9 +46,23 @@ export function LaporanTransaksi() {
     activePreset: 'this_month'
   })
 
-  // Detail Modal State
+  // Detail Struk Modal State
   const [selectedTrx, setSelectedTrx] = useState<TransaksiLaporanItem | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+
+  // Expense Modal State
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false)
+  const [expenseForm, setExpenseForm] = useState({
+    nama_pengeluaran: '',
+    nominal: 0,
+    kategori: 'Operasional',
+    tanggal: new Date().toISOString().split('T')[0],
+    keterangan: ''
+  })
+  const [savingExpense, setSavingExpense] = useState(false)
+
+  // Corporate Statement Print Modal State
+  const [isCorporateModalOpen, setIsCorporateModalOpen] = useState(false)
 
   // Helper date formatting YYYY-MM-DD
   const formatYmd = (d: Date) => {
@@ -161,6 +177,58 @@ export function LaporanTransaksi() {
     setIsFilterSheetOpen(false)
   }
 
+  // Handle Create Expense
+  const handleCreateExpense = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!expenseForm.nama_pengeluaran.trim()) {
+      toast.error('Nama pengeluaran wajib diisi')
+      return
+    }
+    if (expenseForm.nominal <= 0) {
+      toast.error('Jumlah pengeluaran harus lebih dari 0')
+      return
+    }
+
+    setSavingExpense(true)
+    try {
+      const res = await adminService.tambahPengeluaran(expenseForm)
+      if (res.success) {
+        toast.success('Pengeluaran operasional berhasil dicatat!')
+        setIsExpenseModalOpen(false)
+        setExpenseForm({
+          nama_pengeluaran: '',
+          nominal: 0,
+          kategori: 'Operasional',
+          tanggal: new Date().toISOString().split('T')[0],
+          keterangan: ''
+        })
+        loadData(page)
+      } else {
+        toast.error(res.error || 'Gagal mencatat pengeluaran')
+      }
+    } catch {
+      toast.error('Terjadi kesalahan saat menyimpan data')
+    } finally {
+      setSavingExpense(false)
+    }
+  }
+
+  // Handle Delete Expense
+  const handleDeleteExpense = async (id: number) => {
+    if (!window.confirm('Yakin ingin menghapus catatan pengeluaran ini?')) return
+    try {
+      const res = await adminService.hapusPengeluaran(id)
+      if (res.success) {
+        toast.success('Catatan pengeluaran dihapus')
+        loadData(page)
+      } else {
+        toast.error(res.error || 'Gagal menghapus data')
+      }
+    } catch {
+      toast.error('Gagal menghapus data')
+    }
+  }
+
   // Count active non-default filters
   let activeFilterCount = 0
   if (metode !== 'all') activeFilterCount++
@@ -259,7 +327,13 @@ export function LaporanTransaksi() {
     total_transaksi: 0,
     total_pendapatan: 0,
     total_keuntungan: 0,
+    total_laba_kotor: 0,
     total_hpp: 0,
+    total_beban_operasional: 0,
+    total_laba_bersih: 0,
+    shu_anggota_60: 0,
+    shu_cadangan_30: 0,
+    shu_pengurus_10: 0,
     total_hutang: 0,
     total_cash: 0,
     total_ewallet: 0,
@@ -271,11 +345,15 @@ export function LaporanTransaksi() {
   }
 
   const kasLikuid = (summary.total_cash || 0) + (summary.total_ewallet || 0) + (summary.total_qr || 0) + (summary.total_transfer || 0)
-  const marginPercent = summary.total_pendapatan > 0 
+  const marginGrossPercent = summary.total_pendapatan > 0 
     ? ((summary.total_keuntungan / summary.total_pendapatan) * 100).toFixed(1) 
+    : '0.0'
+  const marginNetPercent = summary.total_pendapatan > 0 
+    ? ((summary.total_laba_bersih / summary.total_pendapatan) * 100).toFixed(1) 
     : '0.0'
 
   const pagination = data?.pagination || { current_page: 1, last_page: 1, total: 0, per_page: 20 }
+  const pengeluaranList = data?.pengeluaran_operasional || []
 
   return (
     <div className="space-y-4 sm:space-y-6 pb-24 max-w-7xl mx-auto">
@@ -285,14 +363,34 @@ export function LaporanTransaksi() {
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             <BarChart3 className="w-6 h-6 text-blue-600 dark:text-blue-400 shrink-0" />
-            Laporan Transaksi & Omset
+            Laporan Keuangan & Penjualan
           </h1>
           <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-            Audit omset POS, HPP, margin laba kotor, dan arsip struk penjualan.
+            Audit omset POS, beban pokok (HPP), pengeluaran kas operasional, dan SHU bersih.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Button 
+            variant="primary"
+            size="sm"
+            onClick={() => setIsExpenseModalOpen(true)}
+            className="text-xs font-bold gap-1.5 h-9 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Catat Pengeluaran Kas</span>
+          </Button>
+
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setIsCorporateModalOpen(true)} 
+            className="text-xs font-bold gap-1.5 h-9 rounded-xl border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            <span>Laporan Korporat</span>
+          </Button>
+
           <Button 
             variant="outline" 
             size="sm"
@@ -300,17 +398,7 @@ export function LaporanTransaksi() {
             className="text-xs font-bold gap-1.5 h-9 rounded-xl border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800"
           >
             <Download className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="hidden xs:inline">Export</span> CSV
-          </Button>
-
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => window.print()} 
-            className="text-xs font-bold gap-1.5 h-9 rounded-xl border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800"
-          >
-            <Printer className="w-3.5 h-3.5 text-blue-600" />
-            Cetak
+            CSV
           </Button>
         </div>
       </div>
@@ -448,7 +536,7 @@ export function LaporanTransaksi() {
         )}
       </div>
 
-      {/* ── 6-Card Executive Financial Metrics ── */}
+      {/* ── 6-Card Executive Financial Metrics (Incorporating OPEX) ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
         {/* Omset */}
         <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
@@ -469,7 +557,7 @@ export function LaporanTransaksi() {
         {/* HPP */}
         <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">HPP / Modal</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">HPP Modal</span>
             <div className="p-1 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-600">
               <Store className="w-3.5 h-3.5" />
             </div>
@@ -494,14 +582,49 @@ export function LaporanTransaksi() {
             {formatRupiah(summary.total_keuntungan)}
           </h3>
           <p className="text-[10px] text-emerald-600 font-bold mt-1">
-            Margin: {marginPercent}%
+            Gross: {marginGrossPercent}%
+          </p>
+        </div>
+
+        {/* Beban Pengeluaran Kas (OPEX) */}
+        <div 
+          onClick={() => setActiveTab('pengeluaran')}
+          className="p-3 sm:p-4 rounded-3xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 shadow-xs cursor-pointer hover:border-amber-400 transition-colors"
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Pengeluaran Kas</span>
+            <div className="p-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700">
+              <Receipt className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <h3 className="text-sm sm:text-base font-black text-amber-700 dark:text-amber-300 leading-tight">
+            {formatRupiah(summary.total_beban_operasional)}
+          </h3>
+          <p className="text-[10px] text-amber-600 font-bold mt-1">
+            {pengeluaranList.length} transaksi kas
+          </p>
+        </div>
+
+        {/* Net SHU Bersih */}
+        <div className="p-3 sm:p-4 rounded-3xl bg-emerald-500/10 border border-emerald-500/30 shadow-xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">SHU Bersih Riil</span>
+            <div className="p-1 rounded-lg bg-emerald-500/20 text-emerald-700">
+              <PieChart className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <h3 className="text-sm sm:text-base font-black text-emerald-700 dark:text-emerald-300 leading-tight">
+            {formatRupiah(summary.total_laba_bersih)}
+          </h3>
+          <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold mt-1">
+            Net: {marginNetPercent}%
           </p>
         </div>
 
         {/* Kas Likuid */}
         <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kas Likuid</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kas Masuk Likuid</span>
             <div className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600">
               <Wallet className="w-3.5 h-3.5" />
             </div>
@@ -511,38 +634,6 @@ export function LaporanTransaksi() {
           </h3>
           <p className="text-[10px] text-slate-400 mt-1">
             Tunai, E-Wallet, QRIS
-          </p>
-        </div>
-
-        {/* Piutang Baru */}
-        <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Piutang Baru</span>
-            <div className="p-1 rounded-lg bg-rose-50 dark:bg-rose-900/30 text-rose-600">
-              <CreditCard className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <h3 className="text-sm sm:text-base font-black text-rose-600 dark:text-rose-400 leading-tight">
-            {formatRupiah(summary.total_hutang)}
-          </h3>
-          <p className="text-[10px] text-rose-500 font-bold mt-1">
-            Belanja tempo anggota
-          </p>
-        </div>
-
-        {/* Avg Basket */}
-        <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Rata-Rata Struk</span>
-            <div className="p-1 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600">
-              <ShoppingBag className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <h3 className="text-sm sm:text-base font-black text-amber-600 dark:text-amber-400 leading-tight">
-            {formatRupiah(summary.avg_transaksi)}
-          </h3>
-          <p className="text-[10px] text-slate-400 mt-1">
-            Basket size per struk
           </p>
         </div>
       </div>
@@ -559,6 +650,18 @@ export function LaporanTransaksi() {
         >
           <FileText className="w-3.5 h-3.5" />
           Struk Penjualan ({pagination.total})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('pengeluaran')}
+          className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 active:scale-95 ${
+            activeTab === 'pengeluaran'
+              ? 'bg-amber-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
+          }`}
+        >
+          <Receipt className="w-3.5 h-3.5" />
+          Pengeluaran Kas ({pengeluaranList.length})
         </button>
 
         <button
@@ -724,7 +827,96 @@ export function LaporanTransaksi() {
         </Card>
       )}
 
-      {/* ── TAB 2: KINERJA KASIR & METODE BAYAR ── */}
+      {/* ── TAB 2: PENGELUARAN KAS OPERASIONAL (OPEX) ── */}
+      {activeTab === 'pengeluaran' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-amber-600" />
+                Buku Kas Pengeluaran Operasional Koperasi
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Pencatatan beban rutin kas: Gas, Listrik, Air, Kertas Struk, ATK, Pemeliharaan, dan Keperluan Toko.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setIsExpenseModalOpen(true)}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Catat Pengeluaran
+            </Button>
+          </div>
+
+          <Card className="rounded-3xl overflow-hidden border border-slate-200/80 dark:border-zinc-800 shadow-xs bg-white dark:bg-zinc-900">
+            <CardContent className="p-0">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-zinc-800/60 border-b border-slate-100 dark:border-zinc-800 text-slate-500 font-bold text-[11px] uppercase tracking-wider">
+                    <th className="py-3 px-4">Tanggal</th>
+                    <th className="py-3 px-4">Nama Pengeluaran</th>
+                    <th className="py-3 px-4">Kategori</th>
+                    <th className="py-3 px-4">Keterangan / Catatan</th>
+                    <th className="py-3 px-4 text-right">Jumlah (Rp)</th>
+                    <th className="py-3 px-4 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                  {!pengeluaranList.length ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-16 text-slate-400 font-semibold">
+                        Belum ada catatan pengeluaran kas pada periode ini.
+                      </td>
+                    </tr>
+                  ) : (
+                    pengeluaranList.map(item => (
+                      <tr key={item.pengeluaran_id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50">
+                        <td className="py-3 px-4 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                          {formatDate(item.tanggal)}
+                        </td>
+                        <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
+                          {item.nama_pengeluaran}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold">
+                            {item.kategori || 'Operasional'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-500 text-[11px]">
+                          {item.keterangan || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-right font-black text-rose-600 dark:text-rose-400 text-sm whitespace-nowrap">
+                          -{formatRupiah(item.nominal)}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            onClick={() => handleDeleteExpense(item.pengeluaran_id)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                            title="Hapus Pengeluaran"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+
+              {pengeluaranList.length > 0 && (
+                <div className="p-4 bg-amber-50/40 dark:bg-amber-950/20 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center text-xs">
+                  <span className="font-bold text-amber-800 dark:text-amber-300">Total Beban Operasional Kas:</span>
+                  <span className="font-black text-rose-600 text-base">-{formatRupiah(summary.total_beban_operasional)}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ── TAB 3: KINERJA KASIR & METODE BAYAR ── */}
       {activeTab === 'kasir' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Kasir Breakdown */}
@@ -801,7 +993,7 @@ export function LaporanTransaksi() {
         </div>
       )}
 
-      {/* ── TAB 3: REKAPITULASI HARIAN ── */}
+      {/* ── TAB 4: REKAPITULASI HARIAN ── */}
       {activeTab === 'harian' && (
         <Card className="rounded-3xl overflow-hidden border border-slate-200/80 dark:border-zinc-800 shadow-xs bg-white dark:bg-zinc-900">
           <CardContent className="p-0">
@@ -843,6 +1035,231 @@ export function LaporanTransaksi() {
           </CardContent>
         </Card>
       )}
+
+      {/* ── MODAL CATAT PENGELUARAN KAS (BEBAS / FLEKSIBEL) ── */}
+      <Modal
+        isOpen={isExpenseModalOpen}
+        onClose={() => setIsExpenseModalOpen(false)}
+        title="🧾 Catat Pengeluaran Kas Koperasi"
+      >
+        <form onSubmit={handleCreateExpense} className="space-y-3.5 text-xs">
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-2xl border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300 text-[11px]">
+            Catat pengeluaran kas operasional secara bebas (seperti beli gas, listrik, air, perlengkapan kasir, konsumsi, dll). Nominal akan langsung memotong laba kotor untuk menghasilkan <b>Net SHU Bersih</b>.
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Nama Pengeluaran <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Contoh: Beli Gas LPG 12kg Toko, Token Listrik, Plastik Kresek..."
+              value={expenseForm.nama_pengeluaran}
+              onChange={e => setExpenseForm({ ...expenseForm, nama_pengeluaran: e.target.value })}
+              className="w-full px-3 py-2 border rounded-xl bg-white dark:bg-zinc-800 font-semibold text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <InputRupiah
+                label="Jumlah Pengeluaran (Rp)"
+                value={expenseForm.nominal}
+                onChange={val => setExpenseForm({ ...expenseForm, nominal: Number(val) })}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                Tanggal Pengeluaran
+              </label>
+              <input
+                type="date"
+                required
+                value={expenseForm.tanggal}
+                onChange={e => setExpenseForm({ ...expenseForm, tanggal: e.target.value })}
+                className="w-full px-3 py-2 border rounded-xl bg-white dark:bg-zinc-800 font-semibold text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Kategori Pengeluaran
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: Utilitas / Perlengkapan / Perbaikan..."
+                value={expenseForm.kategori}
+                onChange={e => setExpenseForm({ ...expenseForm, kategori: e.target.value })}
+                className="w-full px-3 py-2 border rounded-xl bg-white dark:bg-zinc-800 font-semibold text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Catatan / Keterangan
+              </label>
+              <input
+                type="text"
+                placeholder="Keterangan tambahan / No. Bukti..."
+                value={expenseForm.keterangan}
+                onChange={e => setExpenseForm({ ...expenseForm, keterangan: e.target.value })}
+                className="w-full px-3 py-2 border rounded-xl bg-white dark:bg-zinc-800 font-semibold text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={() => setIsExpenseModalOpen(false)}>
+              Batal
+            </Button>
+            <Button type="submit" loading={savingExpense} className="bg-amber-600 hover:bg-amber-700 text-white font-bold">
+              Simpan Pengeluaran
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── MODAL LAPORAN KEUANGAN KORPORAT (CORPORATE STATEMENT A4) ── */}
+      <Modal
+        isOpen={isCorporateModalOpen}
+        onClose={() => setIsCorporateModalOpen(false)}
+        title="📑 Laporan Keuangan Eksekutif Koperasi (Corporate SAK Standard)"
+      >
+        <div className="space-y-6 text-xs max-h-[80vh] overflow-y-auto p-1">
+          
+          {/* Header Kop Surat Koperasi */}
+          <div className="text-center pb-4 border-b-2 border-slate-800 dark:border-zinc-400 space-y-1">
+            <h2 className="text-lg font-black uppercase tracking-wider text-slate-900 dark:text-white">
+              KOPERASI PEGAWAI KARYAWAN (PK) BATAM
+            </h2>
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
+              Badan Hukum No: 518/BH/DISKOP-BTM/2020 | Alamat: Kompleks Kawasan Industri Batam
+            </p>
+            <h3 className="text-sm font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest pt-1">
+              LAPORAN PERHITUNGAN HASIL USAHA (PHU) & LABA RUGI KOMPREHENSIF
+            </h3>
+            <p className="text-[10px] text-slate-500">
+              Periode: {tglMulai ? formatDate(tglMulai) : 'Awal Pembukuan'} s/d {tglSelesai ? formatDate(tglSelesai) : 'Hari Ini'}
+            </p>
+          </div>
+
+          {/* Bagian 1: Laba Rugi Komprehensif */}
+          <div className="space-y-2">
+            <h4 className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-zinc-800 p-2 rounded-lg">
+              I. PENDAPATAN & BEBAN POKOK USAHA
+            </h4>
+            <div className="space-y-1.5 px-2">
+              <div className="flex justify-between">
+                <span>Omset Penjualan Anggota Koperasi (Partisipasi Belanja)</span>
+                <span className="font-bold">{formatRupiah(summary.omset_anggota)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Omset Penjualan Pelanggan Umum (Non-Anggota)</span>
+                <span className="font-bold">{formatRupiah(summary.omset_umum)}</span>
+              </div>
+              <div className="flex justify-between pt-1.5 border-t font-black text-slate-900 dark:text-white">
+                <span>TOTAL PENDAPATAN OPERASIONAL USAHA (OMSET BRUTO)</span>
+                <span>{formatRupiah(summary.total_pendapatan)}</span>
+              </div>
+              <div className="flex justify-between text-rose-600 font-semibold pt-1">
+                <span>Beban Pokok Penjualan (HPP / Modal Barang Terjual)</span>
+                <span>({formatRupiah(summary.total_hpp)})</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t-2 border-slate-300 dark:border-zinc-700 font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                <span>LABA KOTOR USAHA (GROSS PROFIT MARGIN: {marginGrossPercent}%)</span>
+                <span>{formatRupiah(summary.total_keuntungan)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bagian 2: Beban Operasional Kas (OPEX) */}
+          <div className="space-y-2">
+            <h4 className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-zinc-800 p-2 rounded-lg flex justify-between items-center">
+              <span>II. BEBAN OPERASIONAL KAS KOPERASI (OPEX)</span>
+              <span className="text-rose-600">Total: -{formatRupiah(summary.total_beban_operasional)}</span>
+            </h4>
+            <div className="space-y-1 px-2 divide-y divide-slate-100 dark:divide-zinc-800">
+              {!pengeluaranList.length ? (
+                <p className="text-slate-400 italic py-1">Tidak ada beban operasional kas yang tercatat.</p>
+              ) : (
+                pengeluaranList.map(p => (
+                  <div key={p.pengeluaran_id} className="flex justify-between py-1 text-[11px]">
+                    <div>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{p.nama_pengeluaran}</span>
+                      <span className="text-[10px] text-slate-400 ml-1.5">({p.kategori || 'Operasional'} - {formatDate(p.tanggal)})</span>
+                    </div>
+                    <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                      -{formatRupiah(p.nominal)}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Bagian 3: SHU Bersih & Alokasi Tripartite Koperasi */}
+          <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 space-y-3">
+            <div className="flex justify-between items-center text-sm font-black text-emerald-800 dark:text-emerald-300 pb-2 border-b border-emerald-200 dark:border-emerald-800">
+              <span>SISA HASIL USAHA BERSIH (NET SHU TAHUN BERJALAN)</span>
+              <span className="text-base">{formatRupiah(summary.total_laba_bersih)}</span>
+            </div>
+
+            <div className="space-y-1.5 text-xs text-emerald-900 dark:text-emerald-200">
+              <span className="font-bold uppercase tracking-wider text-[10px] text-emerald-700 block">
+                Alokasi Distribusi Sesuai Anggaran Dasar Koperasi (AD/ART):
+              </span>
+              <div className="flex justify-between items-center">
+                <span>👥 <b>60% Hak SHU Anggota</b> (Jasa Modal & Belanja Partisipasi)</span>
+                <span className="font-black font-mono">{formatRupiah(summary.shu_anggota_60)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>🏢 <b>30% Cadangan Modal Koperasi</b> (Retained Reserve Capital)</span>
+                <span className="font-black font-mono">{formatRupiah(summary.shu_cadangan_30)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>🎖️ <b>10% Jasa Pengurus, Pengawas & Karyawan</b></span>
+                <span className="font-black font-mono">{formatRupiah(summary.shu_pengurus_10)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bagian 4: Lembar Tanda Tangan Audit */}
+          <div className="pt-6 border-t border-slate-200 dark:border-zinc-700 grid grid-cols-3 gap-4 text-center text-[10px]">
+            <div className="space-y-12">
+              <p className="font-semibold text-slate-500">Disusun Oleh,<br/><b>Bendahara Keuangan</b></p>
+              <p className="font-bold underline text-slate-800 dark:text-slate-200">( Bendahara Koperasi PK )</p>
+            </div>
+            <div className="space-y-12">
+              <p className="font-semibold text-slate-500">Diperiksa Oleh,<br/><b>Ketua Pengawas</b></p>
+              <p className="font-bold underline text-slate-800 dark:text-slate-200">( Pengawas Koperasi PK )</p>
+            </div>
+            <div className="space-y-12">
+              <p className="font-semibold text-slate-500">Disetujui Oleh,<br/><b>Ketua Koperasi</b></p>
+              <p className="font-bold underline text-slate-800 dark:text-slate-200">( Ketua Koperasi PK )</p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-zinc-800">
+            <Button type="button" variant="ghost" onClick={() => setIsCorporateModalOpen(false)}>
+              Tutup
+            </Button>
+            <Button 
+              type="button" 
+              variant="primary" 
+              onClick={() => window.print()}
+              className="font-bold gap-1.5 bg-blue-600 text-white"
+            >
+              <Printer className="w-4 h-4" />
+              Cetak Dokumen Resmi (A4)
+            </Button>
+          </div>
+
+        </div>
+      </Modal>
 
       {/* ── MOBILE FILTER BOTTOM SHEET DRAWER (iOS / Material Design) ── */}
       <IosBottomSheet

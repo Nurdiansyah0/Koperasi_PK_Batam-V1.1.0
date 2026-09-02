@@ -103,6 +103,21 @@ export const adminService = {
     return data
   },
 
+  getPengeluaran: async (params?: { tanggal_awal?: string; tanggal_akhir?: string; search?: string }): Promise<{ success: boolean; total_pengeluaran: number; data: any[] }> => {
+    const { data } = await api.get('/laravel/api/admin/pengeluaran', { params })
+    return data
+  },
+
+  tambahPengeluaran: async (payload: { nama_pengeluaran: string; nominal: number; tanggal?: string; kategori?: string; keterangan?: string }): Promise<ApiResponse> => {
+    const { data } = await api.post<ApiResponse>('/laravel/api/admin/pengeluaran', payload)
+    return data
+  },
+
+  hapusPengeluaran: async (id: number): Promise<ApiResponse> => {
+    const { data } = await api.delete<ApiResponse>(`/laravel/api/admin/pengeluaran/${id}`)
+    return data
+  },
+
   getMonitorBarang: async (params?: {
     tanggal_awal?: string
     tanggal_akhir?: string
