@@ -125,6 +125,9 @@ chmod 755 public
 echo "  → Installing Composer dependencies..."
 /opt/cpanel/ea-php82/root/usr/bin/php /usr/local/bin/composer install --no-dev --optimize-autoloader --quiet
 
+echo "  → Running database migrations..."
+/opt/cpanel/ea-php82/root/usr/bin/php artisan migrate --force
+
 echo "  → Generating app key (if not set)..."
 grep -q "^APP_KEY=.\+" .env || /opt/cpanel/ea-php82/root/usr/bin/php artisan key:generate --no-interaction --force
 

@@ -12,6 +12,10 @@ AddHandler application/x-httpd-ea-php82 .php
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+    # Handle X-API-KEY Header for External API Gateway
+    RewriteCond %{HTTP:X-API-KEY} .
+    RewriteRule .* - [E=HTTP_X_API_KEY:%{HTTP:X-API-KEY}]
+
     # Handle X-XSRF-Token Header
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
