@@ -287,7 +287,7 @@ export function LaporanTransaksi() {
           `"${t.created_at ? formatDate(t.created_at) : '-'}"`,
           t.anggota_id ? 'Anggota' : 'Umum',
           `"${(t.nama_anggota || 'Pelanggan Umum').replace(/"/g, '""')}"`,
-          t.nomor_anggota ? `"${t.nomor_anggota}"` : '-',
+          t.anggota_id ? `"${t.anggota_id}"` : '-',
           `"${t.kasir_username || 'Kasir'}"`,
           t.metode_pembayaran.toUpperCase(),
           t.status || 'selesai',
@@ -1392,13 +1392,13 @@ export function LaporanTransaksi() {
                           <div className="font-bold text-slate-900 dark:text-white">
                             {item.nama_anggota}
                           </div>
-                          {item.nomor_anggota ? (
+                          {item.anggota_id ? (
                             <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
-                              NIA: {item.nomor_anggota}
+                              ID Anggota: {item.anggota_id}
                             </span>
                           ) : (
                             <span className="text-[10px] text-slate-400">
-                              Non-Anggota
+                              Pelanggan Umum
                             </span>
                           )}
                         </td>
@@ -2426,7 +2426,7 @@ export function LaporanTransaksi() {
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 font-semibold">Pelanggan:</span>
                 <span className="font-bold text-slate-800 dark:text-slate-200">
-                  {selectedTrx.nama_anggota} {selectedTrx.nomor_anggota ? `(NIA: ${selectedTrx.nomor_anggota})` : ''}
+                  {selectedTrx.nama_anggota} {selectedTrx.anggota_id ? `(ID: ${selectedTrx.anggota_id})` : ''}
                 </span>
               </div>
               <div className="flex justify-between items-center">
