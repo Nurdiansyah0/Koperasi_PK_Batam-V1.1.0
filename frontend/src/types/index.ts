@@ -58,6 +58,8 @@ export interface PkmItem {
   barang_id: number
   nama_barang: string
   stok: number
+  stok_toko?: number
+  stok_gudang?: number
   harga_modal: number
   harga_jual: number
   sales_period_days: number
@@ -65,6 +67,8 @@ export interface PkmItem {
   ads: number
   lead_time_days: number
   recommended_pkm: number
+  recommended_buy?: number
+  estimasi_biaya_kulakan?: number
   pkm: number
   status_pkm: string
 }

@@ -829,22 +829,42 @@ class AdminController extends Controller
             $ads = round($sold / max(1, $days), 2);
             $recommendedPkm = max(1, (int) ceil($ads * $leadTimeDays));
             $currentPkm = (int) ($b->pkm ?: 1);
+            $stokToko = (int) ($b->stok_toko ?? min($b->stok, $currentPkm));
+            $stokGudang = (int) ($b->stok_gudang ?? max(0, $b->stok - $stokToko));
+            $totalStok = (int) $b->stok;
+
+            // Recommended buy: target 2x PKM (display + safe warehouse buffer) minus current total stock
+            $targetBuffer = $recommendedPkm * 2;
+            $recommendedBuy = max(0, $targetBuffer - $totalStok);
+            if ($recommendedBuy === 0 && $stokToko < $recommendedPkm && $stokGudang === 0) {
+                $recommendedBuy = max(1, $recommendedPkm - $stokToko);
+            }
+
+            $hargaModal = (float) $b->harga_modal;
+            $estimasiBiaya = $recommendedBuy * $hargaModal;
 
             return [
                 'barang_id' => $b->barang_id,
                 'nama_barang' => $b->nama_barang,
-                'stok' => (int) $b->stok,
-                'harga_modal' => (float) $b->harga_modal,
+                'stok' => $totalStok,
+                'stok_toko' => $stokToko,
+                'stok_gudang' => $stokGudang,
+                'harga_modal' => $hargaModal,
                 'harga_jual' => (float) $b->harga_jual,
                 'sales_period_days' => $days,
                 'total_sold' => $sold,
                 'ads' => $ads,
                 'lead_time_days' => $leadTimeDays,
                 'recommended_pkm' => $recommendedPkm,
+                'recommended_buy' => $recommendedBuy,
+                'estimasi_biaya_kulakan' => $estimasiBiaya,
                 'pkm' => $currentPkm,
-                'status_pkm' => $b->stok > $currentPkm ? 'Etalase Cukup (Ada Stok Cadangan)' : ($b->stok < $currentPkm ? 'Perlu Restock Toko' : 'Optimal'),
+                'status_pkm' => $totalStok > $currentPkm ? 'Stok Aman' : ($totalStok < $currentPkm ? 'Kritis / Butuh Kulakan' : 'Optimal'),
             ];
         });
+
+        $totalEstimatedBudget = $data->sum('estimasi_biaya_kulakan');
+        $totalItemsToBuy = $data->sum('recommended_buy');
 
         return response()->json([
             'success' => true,
@@ -855,6 +875,8 @@ class AdminController extends Controller
                 'lead_time_days' => $leadTimeDays,
                 'total_pkm_units' => $data->sum('pkm'),
                 'avg_pkm' => round($data->avg('pkm'), 1),
+                'total_estimated_budget' => $totalEstimatedBudget,
+                'total_items_to_buy' => $totalItemsToBuy,
             ]
         ]);
     }
