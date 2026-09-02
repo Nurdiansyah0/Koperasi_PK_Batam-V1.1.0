@@ -1,28 +1,87 @@
 /**
- * Zero-Asset Web Audio API Synthesizer
- * Generates an ultra-crisp POS Cashier Double Chime Alert (D5 -> A5)
- * Guaranteed 100% reliable without external audio file network dependencies.
+ * Universal Zero-Asset Web Audio API Synthesizer
+ * Fully compatible with Chrome, Safari (iOS & macOS), Firefox, Edge, Android PWA.
+ * Includes automatic user gesture audio unlocker for mobile Safari & Blink autoplay policy.
  */
-let audioCtx: AudioContext | null = null
 
-function getAudioContext(): AudioContext | null {
+let audioCtx: AudioContext | null = null
+let isUnlocked = false
+
+export function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null
+
   if (!audioCtx) {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
     if (AudioContextClass) {
       audioCtx = new AudioContextClass()
     }
   }
+
   if (audioCtx && audioCtx.state === 'suspended') {
     audioCtx.resume().catch(() => {})
   }
+
   return audioCtx
 }
 
+/**
+ * Automatically unlocks Web Audio on first user interaction
+ * Essential for Mobile Safari (iOS) and Chrome Autoplay policies.
+ */
+export function initAudioUnlocker() {
+  if (typeof window === 'undefined' || isUnlocked) return
+
+  const unlock = () => {
+    try {
+      const ctx = getAudioContext()
+      if (ctx) {
+        if (ctx.state === 'suspended') {
+          ctx.resume().then(() => {
+            isUnlocked = true
+          }).catch(() => {})
+        } else {
+          isUnlocked = true
+        }
+
+        // Play an inaudible buffer to unlock hardware audio routing
+        const buffer = ctx.createBuffer(1, 1, 22050)
+        const source = ctx.createBufferSource()
+        source.buffer = buffer
+        source.connect(ctx.destination)
+        source.start(0)
+      }
+    } catch {
+      // ignore
+    } finally {
+      // Remove listeners once unlocked
+      ['touchstart', 'touchend', 'click', 'keydown'].forEach(evt => {
+        window.removeEventListener(evt, unlock)
+      })
+    }
+  }
+
+  const options = { once: true, passive: true, capture: true }
+  ;['touchstart', 'touchend', 'click', 'keydown'].forEach(evt => {
+    window.addEventListener(evt, unlock, options)
+  })
+}
+
+// Auto-initialize unlocker on script load
+if (typeof window !== 'undefined') {
+  initAudioUnlocker()
+}
+
+/**
+ * Plays ultra-crisp POS double-chime alert (D5 -> A5)
+ */
 export function playOrderAlertSound() {
   try {
     const ctx = getAudioContext()
     if (!ctx) return
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {})
+    }
 
     const now = ctx.currentTime
 
@@ -62,11 +121,11 @@ export function playOrderAlertSound() {
     osc3.start(now + 0.14)
     osc3.stop(now + 0.7)
 
-    // Vibrate device if supported on mobile
+    // Haptic feedback (Vibrate on Android/Supported mobile devices)
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       navigator.vibrate([150, 80, 200])
     }
   } catch (err) {
-    console.warn('Audio chime playback prevented:', err)
+    console.warn('Audio chime playback error:', err)
   }
 }

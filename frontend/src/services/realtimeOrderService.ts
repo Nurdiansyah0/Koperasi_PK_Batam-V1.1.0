@@ -32,6 +32,7 @@ class RealtimeOrderManager {
   private pollTimer: any = null
   private lastProcessedId: number = 0
   private isShiftActive = false
+  private visibilityHandler: (() => void) | null = null
 
   public setShiftActive(status: boolean) {
     this.isShiftActive = status
@@ -48,7 +49,12 @@ class RealtimeOrderManager {
     }
   }
 
-  public async requestNotificationPermission() {
+  /**
+   * Cross-browser permission requester supporting:
+   * - Chrome, Edge, Firefox (Promise-based)
+   * - Safari macOS & iOS WebKit (Callback & Promise fallback)
+   */
+  public async requestNotificationPermission(): Promise<boolean> {
     if (typeof window === 'undefined' || !('Notification' in window)) {
       return false
     }
@@ -57,12 +63,25 @@ class RealtimeOrderManager {
       return true
     }
 
-    if (Notification.permission !== 'denied') {
-      const permission = await Notification.requestPermission()
-      return permission === 'granted'
+    if (Notification.permission === 'denied') {
+      return false
     }
 
-    return false
+    try {
+      // Modern Promise syntax
+      const permission = await Notification.requestPermission()
+      return permission === 'granted'
+    } catch {
+      // Legacy callback syntax for older Safari WebKit
+      try {
+        const permission = await new Promise<NotificationPermission>((resolve) => {
+          Notification.requestPermission(resolve)
+        })
+        return permission === 'granted'
+      } catch {
+        return false
+      }
+    }
   }
 
   public emitOrder(order: RealtimeOrderEvent) {
@@ -71,7 +90,7 @@ class RealtimeOrderManager {
     }
     this.lastProcessedId = order.transaksi_id
 
-    // 1. Play POS Sound Chime
+    // 1. Play POS Sound Chime (Auto-unlocked for Safari & Chrome)
     playOrderAlertSound()
 
     // 2. Trigger Native OS / PWA Push Notification
@@ -95,35 +114,46 @@ class RealtimeOrderManager {
       const title = `🛒 Pesanan Baru: ${order.nama_anggota}`
       const body = `${order.items_summary || `${order.items_count} Barang Belanja`}\n${order.metode_pembayaran.toUpperCase()} • ${formatRupiah(order.total_harga)}`
 
-      // If Service Worker is available (PWA mode), use showNotification
+      // 1. Service Worker Notification (Best for Android Chrome & PWA Standalone)
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        const reg = await navigator.serviceWorker.ready
-        reg.showNotification(title, {
-          body,
-          icon: '/Logo.svg',
-          badge: '/icon-192x192.png',
-          tag: `order-${order.transaksi_id}`,
-          requireInteraction: true,
-          vibrate: [200, 100, 200, 100, 200],
-          data: { url: '/kasir/pesanan' }
-        } as any)
-      } else {
-        // Standard Web Notification
-        const notification = new Notification(title, {
-          body,
-          icon: '/Logo.svg',
-          tag: `order-${order.transaksi_id}`,
-          requireInteraction: true
-        })
-
-        notification.onclick = () => {
-          window.focus()
-          window.location.href = '/kasir/pesanan'
-          notification.close()
+        try {
+          const reg = await navigator.serviceWorker.ready
+          if (reg && 'showNotification' in reg) {
+            await reg.showNotification(title, {
+              body,
+              icon: '/Logo.svg',
+              badge: '/icon-192x192.png',
+              tag: `order-${order.transaksi_id}`,
+              requireInteraction: true,
+              vibrate: [200, 100, 200, 100, 200],
+              data: { url: '/kasir/pesanan' }
+            } as any)
+            return
+          }
+        } catch {
+          // fallback to standard Notification below
         }
       }
+
+      // 2. Standard Web Notification (Chrome, Safari, Firefox desktop & mobile)
+      const notification = new Notification(title, {
+        body,
+        icon: '/Logo.svg',
+        tag: `order-${order.transaksi_id}`,
+        requireInteraction: true
+      })
+
+      notification.onclick = () => {
+        try {
+          window.focus()
+          if (window.location.pathname !== '/kasir/pesanan') {
+            window.location.href = '/kasir/pesanan'
+          }
+        } catch {}
+        notification.close()
+      }
     } catch (err) {
-      console.warn('Native notification failed:', err)
+      console.warn('Native notification trigger handled:', err)
     }
   }
 
@@ -134,6 +164,7 @@ class RealtimeOrderManager {
     if (this.isConnected) return
     this.isConnected = true
 
+    // Request notification permission if not yet decided
     this.requestNotificationPermission().catch(() => {})
 
     // Start streaming loop
@@ -143,6 +174,16 @@ class RealtimeOrderManager {
     this.pollTimer = setInterval(() => {
       this.checkLatestOrders()
     }, 3000)
+
+    // Setup tab visibility listener (Catch-up sync on phone wake)
+    if (typeof document !== 'undefined') {
+      this.visibilityHandler = () => {
+        if (document.visibilityState === 'visible') {
+          this.checkLatestOrders()
+        }
+      }
+      document.addEventListener('visibilitychange', this.visibilityHandler)
+    }
   }
 
   public stop() {
@@ -154,6 +195,10 @@ class RealtimeOrderManager {
     if (this.pollTimer) {
       clearInterval(this.pollTimer)
       this.pollTimer = null
+    }
+    if (this.visibilityHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityHandler)
+      this.visibilityHandler = null
     }
   }
 
