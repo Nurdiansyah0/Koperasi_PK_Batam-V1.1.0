@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { adminService } from '@/services/adminService'
-import { formatRupiah, formatDate } from '@/lib/utils'
+import { formatRupiah, formatDate, formatDateOnly } from '@/lib/utils'
 import type { LaporanTransaksi as LaporanTransaksiType, TransaksiLaporanItem, PengeluaranOperasional } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -874,7 +874,7 @@ export function LaporanTransaksi() {
                     pengeluaranList.map(item => (
                       <tr key={item.pengeluaran_id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50">
                         <td className="py-3 px-4 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                          {formatDate(item.tanggal)}
+                          {formatDateOnly(item.tanggal)}
                         </td>
                         <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
                           {item.nama_pengeluaran}
@@ -1013,7 +1013,7 @@ export function LaporanTransaksi() {
                   return (
                     <tr key={h.tanggal} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50">
                       <td className="py-3 px-4 font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                        {formatDate(h.tanggal)}
+                        {formatDateOnly(h.tanggal)}
                       </td>
                       <td className="py-3 px-4 text-center font-semibold text-slate-600 dark:text-slate-300">
                         {h.jumlah_transaksi} Struk
@@ -1130,20 +1130,29 @@ export function LaporanTransaksi() {
       >
         <div className="space-y-6 text-xs max-h-[80vh] overflow-y-auto p-1">
           
-          {/* Header Kop Surat Koperasi */}
-          <div className="text-center pb-4 border-b-2 border-slate-800 dark:border-zinc-400 space-y-1">
-            <h2 className="text-lg font-black uppercase tracking-wider text-slate-900 dark:text-white">
-              KOPERASI PEGAWAI KARYAWAN (PK) BATAM
+          {/* Header Kop Surat Resmi Koperasi (Corporate Standard) */}
+          <div className="text-center pb-5 border-b-4 border-double border-slate-900 dark:border-white space-y-1.5 pt-2">
+            <h2 className="text-base sm:text-lg font-black uppercase tracking-widest text-slate-900 dark:text-white">
+              KOPERASI PEGAWAI DAN KARYAWAN (PK) BATAM
             </h2>
-            <p className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
-              Badan Hukum No: 518/BH/DISKOP-BTM/2020 | Alamat: Kompleks Kawasan Industri Batam
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
+              Badan Hukum No: <b>518/BH/DISKOP-BTM/2020</b> | NPWP: <b>02.456.789.1-215.000</b>
             </p>
-            <h3 className="text-sm font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest pt-1">
-              LAPORAN PERHITUNGAN HASIL USAHA (PHU) & LABA RUGI KOMPREHENSIF
-            </h3>
             <p className="text-[10px] text-slate-500">
-              Periode: {tglMulai ? formatDate(tglMulai) : 'Awal Pembukuan'} s/d {tglSelesai ? formatDate(tglSelesai) : 'Hari Ini'}
+              Alamat: Kompleks Kawasan Industri Batam, Jl. Koperasi No. 01, Batam Centre, Kepulauan Riau
             </p>
+            
+            <div className="pt-3 pb-1 border-t border-slate-200 dark:border-zinc-700 mt-2">
+              <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                LAPORAN PERHITUNGAN HASIL USAHA (PHU) & LABA RUGI KOMPREHENSIF
+              </h3>
+              <p className="text-[11px] font-bold text-blue-700 dark:text-blue-400 mt-0.5">
+                Periode Pembukuan: {tglMulai ? formatDateOnly(tglMulai) : 'Awal Pembukuan'} s/d {tglSelesai ? formatDateOnly(tglSelesai) : 'Hari Ini'}
+              </p>
+              <p className="text-[9px] text-slate-400 italic mt-0.5">
+                (Dinyatakan dalam Rupiah [IDR] - Standar SAK Entitas Privat / Koperasi Indonesia)
+              </p>
+            </div>
           </div>
 
           {/* Bagian 1: Laba Rugi Komprehensif */}
@@ -1179,17 +1188,17 @@ export function LaporanTransaksi() {
           <div className="space-y-2">
             <h4 className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-zinc-800 p-2 rounded-lg flex justify-between items-center">
               <span>II. BEBAN OPERASIONAL KAS KOPERASI (OPEX)</span>
-              <span className="text-rose-600">Total: -{formatRupiah(summary.total_beban_operasional)}</span>
+              <span className="text-rose-600 font-bold">Total: -{formatRupiah(summary.total_beban_operasional)}</span>
             </h4>
             <div className="space-y-1 px-2 divide-y divide-slate-100 dark:divide-zinc-800">
               {!pengeluaranList.length ? (
-                <p className="text-slate-400 italic py-1">Tidak ada beban operasional kas yang tercatat.</p>
+                <p className="text-slate-400 italic py-1">Tidak ada beban operasional kas yang tercatat pada periode ini.</p>
               ) : (
                 pengeluaranList.map(p => (
                   <div key={p.pengeluaran_id} className="flex justify-between py-1 text-[11px]">
                     <div>
                       <span className="font-semibold text-slate-800 dark:text-slate-200">{p.nama_pengeluaran}</span>
-                      <span className="text-[10px] text-slate-400 ml-1.5">({p.kategori || 'Operasional'} - {formatDate(p.tanggal)})</span>
+                      <span className="text-[10px] text-slate-400 ml-1.5">({p.kategori || 'Operasional'} - {formatDateOnly(p.tanggal)})</span>
                     </div>
                     <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
                       -{formatRupiah(p.nominal)}

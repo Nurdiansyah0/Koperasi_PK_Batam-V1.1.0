@@ -27,6 +27,30 @@ export function formatDate(dateStr: string | number | Date | null | undefined): 
   }
 }
 
+export function formatDateOnly(dateStr: string | number | Date | null | undefined): string {
+  if (!dateStr) return '-'
+  try {
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+      const parts = dateStr.substring(0, 10).split('-').map(Number)
+      const d = new Date(parts[0], parts[1] - 1, parts[2])
+      return new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }).format(d)
+    }
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return String(dateStr)
+    return new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(d)
+  } catch {
+    return String(dateStr)
+  }
+}
+
 /**
  * Formats a number or numeric string with thousand separator dots (e.g. 50000 -> "50.000")
  */
