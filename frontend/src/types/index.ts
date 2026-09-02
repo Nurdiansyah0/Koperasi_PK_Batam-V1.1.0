@@ -361,6 +361,24 @@ export interface LaporanTransaksi {
   }[]
   data?: TransaksiLaporanItem[]
   pengeluaran_operasional?: PengeluaranOperasional[]
+  rekap_anggota?: {
+    anggota_id: number
+    nama_lengkap: string
+    frekuensi_belanja: number
+    total_belanja: number
+    total_lunas: number
+    total_hutang: number
+    saldo_hutang_koperasi: number
+    porsi_persen: number
+    hak_shu: number
+  }[]
+  rekap_bulanan?: {
+    periode_bulan: string
+    total_transaksi: number
+    omset_bulan: number
+    margin_bulan: number
+    piutang_bulan: number
+  }[]
   pagination?: {
     current_page: number
     last_page: number
