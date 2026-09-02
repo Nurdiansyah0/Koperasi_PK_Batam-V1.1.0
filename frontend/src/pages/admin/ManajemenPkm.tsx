@@ -306,33 +306,36 @@ export function ManajemenPkmPage() {
           }
           *, *::before, *::after {
             box-sizing: border-box !important;
-          }
-          html, body, #root, #root > div, main, .max-w-5xl {
-            width: 100% !important;
-            max-width: 100% !important;
-            min-width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: #ffffff !important;
-            color: #000000 !important;
-            height: auto !important;
-            overflow: visible !important;
-            font-size: 10pt !important;
-            line-height: 1.3 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          #screen-content, nav, aside, header, footer, .sidebar, .navbar, .no-print {
+          html, body {
+            height: auto !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          body * {
+            visibility: hidden !important;
+          }
+          #screen-content {
             display: none !important;
+          }
+          #printable-shopping-sheet, #printable-shopping-sheet * {
+            visibility: visible !important;
           }
           #printable-shopping-sheet {
             display: block !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 100% !important;
-            max-width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
             color: #000000 !important;
+            z-index: 999999 !important;
             font-family: Arial, Helvetica, sans-serif !important;
           }
           table.print-table {
