@@ -1130,18 +1130,59 @@ export function LaporanTransaksi() {
       >
         <div className="space-y-5 text-xs max-h-[80vh] overflow-y-auto p-1">
           
-          {/* Header Internal Koperasi PK */}
-          <div className="text-center pb-4 border-b border-slate-200 dark:border-zinc-700 space-y-1">
-            <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-black text-xs">
-              <Store className="w-3.5 h-3.5" />
-              <span>KOPERASI KARYAWAN (PK)</span>
+          {/* Header Kop Surat Koperasi PKPPK BTH (Matching PKM Cetak Style) */}
+          <div className="border-b-2 border-slate-900 dark:border-zinc-400 pb-3 mb-4">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-3 text-center sm:text-left">
+              
+              {/* Logo Kiri */}
+              <div className="w-12 h-12 shrink-0 hidden sm:block">
+                <svg viewBox="0 0 512 512" className="w-full h-full drop-shadow-sm">
+                  <defs>
+                    <linearGradient id="kopBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#047857" />
+                      <stop offset="100%" stopColor="#065f46" />
+                    </linearGradient>
+                    <linearGradient id="kopGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#F59E0B" />
+                      <stop offset="100%" stopColor="#D97706" />
+                    </linearGradient>
+                  </defs>
+                  <rect width="512" height="512" rx="128" fill="url(#kopBgGrad)" />
+                  <circle cx="256" cy="256" r="200" fill="none" stroke="rgba(255, 255, 255, 0.25)" strokeWidth="6" strokeDasharray="12 8" />
+                  <path d="M128 352 C128 220 220 128 352 128 C365 128 375 138 375 151 C375 164 365 174 352 174 C245 174 174 245 174 352 C174 365 164 375 151 375 C138 375 128 365 128 352 Z" fill="#059669" opacity="0.9" />
+                  <path d="M170 170 C170 156 181 145 195 145 L255 145 C295 145 325 172 325 210 C325 248 295 275 255 275 L215 275 L215 350 C215 364 204 375 190 375 C176 375 170 364 170 350 Z M215 190 L215 230 L252 230 C270 230 282 221 282 210 C282 199 270 190 252 190 Z" fill="#FFFFFF" />
+                  <path d="M285 240 L350 160 C358 150 372 148 382 156 C392 164 394 178 386 188 L330 256 L392 334 C400 344 398 359 388 367 C378 375 363 373 355 363 L305 300 L285 322 L285 275 Z" fill="url(#kopGoldGrad)" />
+                </svg>
+              </div>
+
+              {/* Teks Kop Tengah */}
+              <div className="text-center flex-1">
+                <h1 className="text-sm sm:text-base font-black tracking-wider uppercase m-0 p-0 text-slate-900 dark:text-white leading-tight">
+                  KOPERASI KARYAWAN PKPPK BTH
+                </h1>
+                <p className="text-xs font-black text-blue-700 dark:text-blue-400 m-0 mt-0.5 tracking-wide uppercase">
+                  LAPORAN PERHITUNGAN HASIL USAHA (PHU) & KAS TOKO
+                </p>
+                <p className="text-[10px] text-slate-500 m-0">
+                  Unit Usaha Pertokoan & Retail — Kota Batam, Kepulauan Riau
+                </p>
+              </div>
+
+              {/* Dokumen Meta Box Kanan */}
+              <div className="border border-slate-300 dark:border-zinc-700 p-2 rounded-xl text-[10px] text-left shrink-0 min-w-[170px] space-y-0.5 bg-slate-50 dark:bg-zinc-800/60 font-medium">
+                <div><strong>No. Surat:</strong> <span className="font-mono font-bold text-blue-700 dark:text-blue-400">{(() => {
+                  const d = tglSelesai ? new Date(tglSelesai) : new Date()
+                  const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
+                  const monthRoman = romanMonths[d.getMonth()] || 'IX'
+                  const year = d.getFullYear() || 2026
+                  const seq = String(summary.total_transaksi > 0 ? (summary.total_transaksi % 999) + 1 : 1).padStart(3, '0')
+                  return `${seq}/KOPKAR-PK/PHU/${monthRoman}/${year}`
+                })()}</span></div>
+                <div><strong>Periode:</strong> {tglMulai ? formatDateOnly(tglMulai) : 'Awal'} s/d {tglSelesai ? formatDateOnly(tglSelesai) : 'Kini'}</div>
+                <div><strong>Tanggal Cetak:</strong> {formatDateOnly(new Date())}</div>
+              </div>
+
             </div>
-            <h2 className="text-sm sm:text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">
-              REKAPITULASI PENDAPATAN, PENGELUARAN & SISA HASIL USAHA (SHU)
-            </h2>
-            <p className="text-[11px] font-semibold text-slate-500">
-              Periode: <b className="text-slate-700 dark:text-slate-300">{tglMulai ? formatDateOnly(tglMulai) : 'Awal Pembukuan'}</b> s/d <b className="text-slate-700 dark:text-slate-300">{tglSelesai ? formatDateOnly(tglSelesai) : 'Hari Ini'}</b>
-            </p>
           </div>
 
           {/* Bagian 1: Laba Rugi Komprehensif */}
