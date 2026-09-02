@@ -979,15 +979,17 @@ class AdminController extends Controller
                 ->get()
                 ->keyBy('anggota_id');
 
-            $rekapAnggota = $allAnggota->map(function($a) use ($txAggPerAnggota, $totalOmsetAnggota, $shuAnggota60) {
+            $rekapAnggota = $allAnggota->map(function($a) use ($txAggPerAnggota, $totalOmsetAnggota, $totalLabaKotor, $shuAnggota60) {
                 $tx = $txAggPerAnggota->get($a->anggota_id);
                 $belanja = $tx ? (float) $tx->total_belanja : 0.0;
                 $lunas = $tx ? (float) $tx->total_lunas : 0.0;
                 $hutang = $tx ? (float) $tx->total_hutang : 0.0;
+                $margin = $tx ? (float) $tx->total_margin : 0.0;
                 $frek = $tx ? (int) $tx->frekuensi_belanja : 0;
 
-                $rasio = ($totalOmsetAnggota > 0 && $belanja > 0) ? ($belanja / $totalOmsetAnggota) : 0;
-                $hakShu = round($rasio * $shuAnggota60, 2);
+                $rasioBelanja = ($totalOmsetAnggota > 0 && $belanja > 0) ? ($belanja / $totalOmsetAnggota) : 0;
+                $rasioMargin = ($totalLabaKotor > 0 && $margin > 0) ? ($margin / $totalLabaKotor) : 0;
+                $hakShu = round($rasioMargin * $shuAnggota60, 2);
 
                 return [
                     'anggota_id' => $a->anggota_id,
@@ -998,7 +1000,7 @@ class AdminController extends Controller
                     'total_lunas' => $lunas,
                     'total_hutang' => $hutang,
                     'saldo_hutang_koperasi' => (float) ($a->hutang ?? 0),
-                    'porsi_persen' => round($rasio * 100, 2),
+                    'porsi_persen' => round($rasioBelanja * 100, 2),
                     'hak_shu' => $hakShu,
                 ];
             });
