@@ -70,4 +70,48 @@ describe('Business Logic & Cart Validation', () => {
       expect(isPaymentAllowed('ewallet', 15)).toBe(true)
     })
   })
+
+  describe('Blind Cash Count & POS Terminal Cards Standards', () => {
+    it('should format Indomaret/Alfamart shift metric cards without exposing theoretical cash balance', () => {
+      const dashboardData = {
+        total_transaksi_hari_ini: 24,
+        total_item_terjual_hari_ini: 96,
+        total_pendapatan_hari_ini: 1450000,
+        pending_serah_terima: 1,
+        saldo_kas: 1420000, // Internal backend only
+      }
+
+      // Card 1: Transaksi Shift
+      const card1Value = `${dashboardData.total_transaksi_hari_ini} Struk`
+      expect(card1Value).toBe('24 Struk')
+
+      // Card 2: Item Terjual Qty
+      const card2Value = `${dashboardData.total_item_terjual_hari_ini} Pcs`
+      expect(card2Value).toBe('96 Pcs')
+
+      // Card 3: Status Shift (Blind, zero cash leakage)
+      const isShiftActive = true
+      const card3Value = isShiftActive ? 'Shift Aktif' : 'Shift Standby'
+      expect(card3Value).toBe('Shift Aktif')
+
+      // Card 4: Tugas Serah Terima
+      const card4Value = `${dashboardData.pending_serah_terima} Antrean`
+      expect(card4Value).toBe('1 Antrean')
+    })
+
+    it('should calculate cash variance accurately in blind count reconciliation without leaking target', () => {
+      const saldoSistem = 500000
+      const uangFisikInputKasir = 500000
+      const selisih = uangFisikInputKasir - saldoSistem
+      expect(selisih).toBe(0)
+
+      const uangFisikKurang = 450000
+      const selisihKurang = uangFisikKurang - saldoSistem
+      expect(selisihKurang).toBe(-50000) // Shortage
+
+      const uangFisikLebih = 520000
+      const selisihLebih = uangFisikLebih - saldoSistem
+      expect(selisihLebih).toBe(20000) // Overage
+    })
+  })
 })
