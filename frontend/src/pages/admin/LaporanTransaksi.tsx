@@ -40,13 +40,25 @@ const getPresetDates = (preset: string) => {
     const past = new Date(now)
     past.setDate(past.getDate() - 6)
     return { start: formatYmd(past), end: formatYmd(now) }
-  } else if (preset === 'this_month') {
+  } else if (preset === 'this_month' || preset === '1_month') {
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
     return { start: formatYmd(firstDay), end: formatYmd(now) }
   } else if (preset === 'last_month') {
     const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
     return { start: formatYmd(firstDayLastMonth), end: formatYmd(lastDayLastMonth) }
+  } else if (preset === '3_months') {
+    const firstDay3Months = new Date(now.getFullYear(), now.getMonth() - 2, 1)
+    return { start: formatYmd(firstDay3Months), end: formatYmd(now) }
+  } else if (preset === '6_months') {
+    const firstDay6Months = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+    return { start: formatYmd(firstDay6Months), end: formatYmd(now) }
+  } else if (preset === '9_months') {
+    const firstDay9Months = new Date(now.getFullYear(), now.getMonth() - 8, 1)
+    return { start: formatYmd(firstDay9Months), end: formatYmd(now) }
+  } else if (preset === '12_months') {
+    const firstDay12Months = new Date(now.getFullYear(), now.getMonth() - 11, 1)
+    return { start: formatYmd(firstDay12Months), end: formatYmd(now) }
   }
   return { start: '', end: '' }
 }
@@ -1040,8 +1052,12 @@ export function LaporanTransaksi() {
             { id: 'today', label: 'Hari Ini' },
             { id: 'yesterday', label: 'Kemarin' },
             { id: '7days', label: '7 Hari' },
-            { id: 'this_month', label: 'Bulan Ini' },
+            { id: 'this_month', label: '1 Bulan' },
             { id: 'last_month', label: 'Bulan Lalu' },
+            { id: '3_months', label: '3 Bulan (Kuartal)' },
+            { id: '6_months', label: '6 Bulan' },
+            { id: '9_months', label: '9 Bulan' },
+            { id: '12_months', label: '12 Bulan' },
             { id: 'all', label: 'Semua Waktu' },
           ].map(p => (
             <button
@@ -2210,14 +2226,18 @@ export function LaporanTransaksi() {
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
               Periode Waktu Cepat
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {[
                 { id: 'today', label: 'Hari Ini' },
                 { id: 'yesterday', label: 'Kemarin' },
                 { id: '7days', label: '7 Hari' },
-                { id: 'this_month', label: 'Bulan Ini' },
+                { id: 'this_month', label: '1 Bulan' },
                 { id: 'last_month', label: 'Bulan Lalu' },
-                { id: 'all', label: 'Semua Data' },
+                { id: '3_months', label: '3 Bulan (Kuartal)' },
+                { id: '6_months', label: '6 Bulan' },
+                { id: '9_months', label: '9 Bulan' },
+                { id: '12_months', label: '12 Bulan' },
+                { id: 'all', label: 'Semua Waktu' },
               ].map(p => {
                 const isSelected = draftFilters.activePreset === p.id
                 return (
