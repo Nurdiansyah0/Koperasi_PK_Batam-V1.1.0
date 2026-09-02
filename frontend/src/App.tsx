@@ -14,6 +14,7 @@ import { AdminDashboard } from './pages/admin/Dashboard'
 import { DataBarang } from './pages/admin/DataBarang'
 import { DataAnggota } from './pages/admin/DataAnggota'
 import { LaporanTransaksi } from './pages/admin/LaporanTransaksi'
+import { LaporanSelisihKasir } from './pages/admin/LaporanSelisihKasir'
 import OpnamePage from './pages/admin/Opname'
 import ManajemenPkmPage from './pages/admin/ManajemenPkm'
 import LaporanTarikTunaiPage from './pages/admin/LaporanTarikTunai'
@@ -39,13 +40,20 @@ import ProfilPage from './pages/anggota/Profil'
 import TarikTunaiAnggotaPage from './pages/anggota/TarikTunai'
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
-  const { isAuthenticated, user } = useAuthStore()
-  if (!isAuthenticated || !user) return <Navigate to="/login" replace />
-  if (!allowedRoles.includes(user.role)) return <Navigate to={`/${user.role}`} replace />
+  const { user, token } = useAuthStore()
+
+  if (!token || !user) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (!allowedRoles.includes(user.role)) {
+    return <Navigate to={`/${user.role}`} replace />
+  }
+
   return <>{children}</>
 }
 
-export default function App() {
+export function App() {
   return (
     <>
       <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
@@ -60,12 +68,14 @@ export default function App() {
           <Route index element={<AdminDashboard />} />
           <Route path="barang" element={<DataBarang />} />
           <Route path="pkm" element={<ManajemenPkmPage />} />
+          <Route path="opname" element={<OpnamePage />} />
           <Route path="anggota" element={<DataAnggota />} />
           <Route path="jabatan" element={<ManajemenJabatan />} />
-          <Route path="laporan" element={<LaporanTransaksi />} />
-          <Route path="tarik-tunai" element={<LaporanTarikTunaiPage />} />
           <Route path="shu" element={<ManajemenShuPage />} />
-          <Route path="opname" element={<OpnamePage />} />
+          <Route path="laporan" element={<LaporanTransaksi />} />
+          <Route path="laporan-selisih" element={<LaporanSelisihKasir />} />
+          <Route path="tarik-tunai" element={<LaporanTarikTunaiPage />} />
+          <Route path="setoran-kasir" element={<PersetujuanSetoranPage />} />
         </Route>
 
         {/* Kasir Routes */}
@@ -96,3 +106,5 @@ export default function App() {
     </>
   )
 }
+
+export default App

@@ -16,7 +16,9 @@ import {
   ShoppingBag,
   Banknote,
   Coins,
-  ShieldCheck
+  ShieldCheck,
+  Scale,
+  ClipboardCheck
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -40,6 +42,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       items: [
         { to: '/admin/barang', icon: Package, label: 'Data Barang' },
         { to: '/admin/pkm', icon: Layers, label: 'Manajemen PKM' },
+        { to: '/admin/opname', icon: ClipboardCheck, label: 'Stok Opname' },
       ]
     },
     {
@@ -54,6 +57,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       title: 'Laporan & Finansial',
       items: [
         { to: '/admin/laporan', icon: FileText, label: 'Laporan Transaksi' },
+        { to: '/admin/laporan-selisih', icon: Scale, label: 'Laporan Selisih Kasir' },
         { to: '/admin/tarik-tunai', icon: Banknote, label: 'Laporan Tarik Tunai' },
         { to: '/admin/setoran-kasir', icon: Wallet, label: 'Persetujuan Setoran' },
       ]

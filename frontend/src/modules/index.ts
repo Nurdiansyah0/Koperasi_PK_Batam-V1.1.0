@@ -38,6 +38,7 @@ export { anggotaService } from '@/services/anggotaService'
 // 6. Finance & Administration Module
 export { AdminDashboard } from '@/pages/admin/Dashboard'
 export { LaporanTransaksi } from '@/pages/admin/LaporanTransaksi'
+export { LaporanSelisihKasir } from '@/pages/admin/LaporanSelisihKasir'
 export { default as PersetujuanSetoranPage } from '@/pages/admin/PersetujuanSetoran'
 export { default as SetoranKasirPage } from '@/pages/kasir/SetoranKasir'
 export { SerahTerimaPage } from '@/pages/kasir/SerahTerima'
