@@ -371,7 +371,25 @@ export function TransaksiKasir() {
         </div>
 
         {/* Horizontal Auto-Advancing Smart Carousel: Paket Belanja Genap */}
-        {paketList.length > 0 && !search && (
+        {isInitialLoad && !search ? (
+          <div className="relative group/carousel -mx-1 px-1 mb-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-zinc-200">
+                <div className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse" />
+                <div className="h-4 w-48 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse" />
+                <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse" />
+              </div>
+            </div>
+            <div className="flex gap-3 overflow-hidden pb-1.5">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="shrink-0 w-[275px] sm:w-[300px] h-[190px] rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 animate-pulse p-3" />
+              ))}
+            </div>
+          </div>
+        ) : paketList.length > 0 && !search && (
           <div 
             className="relative group/carousel -mx-1 px-1 mb-3"
             onMouseEnter={() => setIsPaused(true)}
@@ -486,7 +504,7 @@ export function TransaksiKasir() {
         )}
 
         {/* Product Catalog Grid */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 pr-1 pb-4">
+        <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 pr-1 pb-4 content-start">
           {isInitialLoad ? (
             Array.from({ length: 12 }).map((_, i) => (
               <div key={i} className="h-[196px] rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse border border-slate-200 dark:border-slate-700 flex flex-col justify-between p-3.5">
