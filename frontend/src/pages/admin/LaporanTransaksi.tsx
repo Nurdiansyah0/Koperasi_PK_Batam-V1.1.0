@@ -848,24 +848,6 @@ export function LaporanTransaksi() {
               </tbody>
             </table>
 
-            {/* Matriks Tindakan Manajemen Berdasarkan Kondisi Angka Riil */}
-            <div className="border border-black p-1.5 rounded bg-gray-50/70 text-[8.5px] space-y-0.5 mb-2">
-              <div className="font-bold text-black border-b border-gray-300 pb-0.5 uppercase flex justify-between">
-                <span>📋 Kesimpulan Audit Manajemen Finansial:</span>
-                <span className="font-mono text-[8px] text-gray-700">Status: {ksh.status_kesehatan}</span>
-              </div>
-              <p className="m-0 text-gray-800 leading-tight">
-                <strong>Diagnosa Sistem:</strong> {ksh.kesimpulan_evaluasi}
-              </p>
-              <div className="pt-0.5 text-[8px]">
-                <strong>• Aksi Bagi Anggota Unit PKP-PK:</strong>
-                <p className="m-0 text-gray-700">
-                  {ksh.total_piutang_berjalan > 0 
-                    ? `Selesaikan total piutang bon berjalan sebesar ${formatRupiah(ksh.total_piutang_berjalan)} saat payroll agar kas kulakan tetap lancar.`
-                    : `Disiplin pembayaran lunas terjaga 100%. Pertahankan keaktifan belanja kebutuhan dinas di koperasi.`}
-                </p>
-              </div>
-            </div>
           </div>
 
           {/* ── BAGIAN V: LEMBAR TRANSPARANSI & INTEGRITAS SISTEM (AUDIT TRAIL & VERIFIKASI AKUNTANSI) ── */}
@@ -2009,24 +1991,6 @@ export function LaporanTransaksi() {
               </tbody>
             </table>
 
-            {/* Matriks Tindakan Manajemen Berdasarkan Kondisi Angka Riil */}
-            <div className="border border-black p-2 rounded bg-gray-50/70 text-[9.5px] space-y-1 mb-2">
-              <div className="font-bold text-black border-b border-gray-300 pb-0.5 uppercase flex justify-between">
-                <span>📋 Kesimpulan Audit Manajemen Finansial:</span>
-                <span className="font-mono text-[9px] text-gray-700">Status: {ksh.status_kesehatan}</span>
-              </div>
-              <p className="m-0 text-gray-800 leading-tight">
-                <strong>Diagnosa Sistem:</strong> {ksh.kesimpulan_evaluasi}
-              </p>
-              <div className="pt-1 text-[9px]">
-                <strong>• Aksi Bagi Anggota Unit PKP-PK:</strong>
-                <p className="m-0 text-gray-700">
-                  {ksh.total_piutang_berjalan > 0 
-                    ? `Segera selesaikan total piutang bon berjalan sebesar ${formatRupiah(ksh.total_piutang_berjalan)} saat payroll agar perputaran kas kulakan barang toko tetap lancar.`
-                    : `Disiplin pembayaran lunas terjaga 100%. Pertahankan keaktifan belanja kebutuhan dinas 24 Jam di koperasi.`}
-                </p>
-              </div>
-            </div>
           </div>
 
           {/* ── KOTAK DISCLAIMER & INTEGRITAS SISTEM (AUDIT TRAIL & VERIFIKASI AKUNTANSI) ── */}
