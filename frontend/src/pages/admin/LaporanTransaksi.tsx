@@ -387,8 +387,8 @@ export function LaporanTransaksi() {
             onClick={() => setIsCorporateModalOpen(true)} 
             className="text-xs font-bold gap-1.5 h-9 rounded-xl border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
           >
-            <Building2 className="w-3.5 h-3.5" />
-            <span>Laporan Korporat</span>
+            <FileText className="w-3.5 h-3.5" />
+            <span>Rekap Hasil Usaha (SHU)</span>
           </Button>
 
           <Button 
@@ -1122,37 +1122,26 @@ export function LaporanTransaksi() {
         </form>
       </Modal>
 
-      {/* ── MODAL LAPORAN KEUANGAN KORPORAT (CORPORATE STATEMENT A4) ── */}
+      {/* ── MODAL LAPORAN HASIL USAHA (SHU) KOPERASI INTERNAL ── */}
       <Modal
         isOpen={isCorporateModalOpen}
         onClose={() => setIsCorporateModalOpen(false)}
-        title="📑 Laporan Keuangan Eksekutif Koperasi (Corporate SAK Standard)"
+        title="📑 Rekapitulasi Hasil Usaha & Kas Koperasi"
       >
-        <div className="space-y-6 text-xs max-h-[80vh] overflow-y-auto p-1">
+        <div className="space-y-5 text-xs max-h-[80vh] overflow-y-auto p-1">
           
-          {/* Header Kop Surat Resmi Koperasi (Corporate Standard) */}
-          <div className="text-center pb-5 border-b-4 border-double border-slate-900 dark:border-white space-y-1.5 pt-2">
-            <h2 className="text-base sm:text-lg font-black uppercase tracking-widest text-slate-900 dark:text-white">
-              KOPERASI PEGAWAI DAN KARYAWAN (PK) BATAM
-            </h2>
-            <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
-              Badan Hukum No: <b>518/BH/DISKOP-BTM/2020</b> | NPWP: <b>02.456.789.1-215.000</b>
-            </p>
-            <p className="text-[10px] text-slate-500">
-              Alamat: Kompleks Kawasan Industri Batam, Jl. Koperasi No. 01, Batam Centre, Kepulauan Riau
-            </p>
-            
-            <div className="pt-3 pb-1 border-t border-slate-200 dark:border-zinc-700 mt-2">
-              <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                LAPORAN PERHITUNGAN HASIL USAHA (PHU) & LABA RUGI KOMPREHENSIF
-              </h3>
-              <p className="text-[11px] font-bold text-blue-700 dark:text-blue-400 mt-0.5">
-                Periode Pembukuan: {tglMulai ? formatDateOnly(tglMulai) : 'Awal Pembukuan'} s/d {tglSelesai ? formatDateOnly(tglSelesai) : 'Hari Ini'}
-              </p>
-              <p className="text-[9px] text-slate-400 italic mt-0.5">
-                (Dinyatakan dalam Rupiah [IDR] - Standar SAK Entitas Privat / Koperasi Indonesia)
-              </p>
+          {/* Header Internal Koperasi PK */}
+          <div className="text-center pb-4 border-b border-slate-200 dark:border-zinc-700 space-y-1">
+            <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-black text-xs">
+              <Store className="w-3.5 h-3.5" />
+              <span>KOPERASI KARYAWAN (PK)</span>
             </div>
+            <h2 className="text-sm sm:text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">
+              REKAPITULASI PENDAPATAN, PENGELUARAN & SISA HASIL USAHA (SHU)
+            </h2>
+            <p className="text-[11px] font-semibold text-slate-500">
+              Periode: <b className="text-slate-700 dark:text-slate-300">{tglMulai ? formatDateOnly(tglMulai) : 'Awal Pembukuan'}</b> s/d <b className="text-slate-700 dark:text-slate-300">{tglSelesai ? formatDateOnly(tglSelesai) : 'Hari Ini'}</b>
+            </p>
           </div>
 
           {/* Bagian 1: Laba Rugi Komprehensif */}
