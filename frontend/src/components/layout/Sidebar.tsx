@@ -92,15 +92,22 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* User Card */}
-        <div className="p-4 mx-3 my-3 rounded-xl bg-slate-800/80 border border-slate-700/50 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-blue-600/30 text-blue-400 flex items-center justify-center font-bold text-sm">
-            {user?.username?.charAt(0).toUpperCase() || 'U'}
+        <div className="p-3.5 mx-3 my-3 rounded-2xl bg-slate-800/90 border border-slate-700/60 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-blue-600/30 text-blue-400 flex items-center justify-center font-bold text-sm shrink-0">
+            {user?.nama_lengkap ? user.nama_lengkap.charAt(0).toUpperCase() : user?.username?.charAt(0).toUpperCase() || 'U'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-white truncate">{user?.username}</p>
-            <span className="inline-block text-[10px] font-bold px-2 py-0.2 rounded-full bg-blue-500/20 text-blue-300 capitalize mt-0.5">
-              {user?.role}
-            </span>
+            <p className="text-xs font-bold text-white truncate leading-tight">
+              {user?.nama_lengkap || user?.username}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[10px] text-slate-400 truncate">
+                @{user?.username}
+              </span>
+              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-md bg-blue-500/20 text-blue-300 uppercase tracking-wider shrink-0">
+                {user?.role}
+              </span>
+            </div>
           </div>
         </div>
 

@@ -1,16 +1,33 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { Outlet, Navigate, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
 import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt'
 import { useAuthStore } from '@/store/authStore'
+import api from '@/lib/api'
 import { LogOut, Menu } from 'lucide-react'
 
 export function AppLayout() {
-  const { user, isAuthenticated, logout } = useAuthStore()
+  const { user, token, isAuthenticated, setUser, logout } = useAuthStore()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (token) {
+      api.get('/laravel/api/me')
+        .then(res => {
+          if (res.data?.user) {
+            setUser(res.data.user)
+          }
+        })
+        .catch(err => {
+          if (err.response?.status === 401) {
+            logout()
+          }
+        })
+    }
+  }, [token])
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />

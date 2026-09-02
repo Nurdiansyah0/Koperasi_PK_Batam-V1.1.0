@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { kasirService } from '@/services/kasirService'
+import { useAuthStore } from '@/store/authStore'
 import { DashboardKasir, Transaksi } from '@/types'
 import { formatRupiah, formatDate } from '@/lib/utils'
 import { IosListSection, IosListItem } from '@/components/ios/IosList'
@@ -16,11 +17,14 @@ import {
   ShieldCheck,
   ShieldAlert,
   UserCheck,
-  ScanLine
+  ScanLine,
+  Coins,
+  BadgeCheck
 } from 'lucide-react'
 
 export function KasirDashboard() {
   const navigate = useNavigate()
+  const { user } = useAuthStore()
   const [data, setData] = useState<DashboardKasir | null>(null)
   const [transaksiTerbaru, setTransaksiTerbaru] = useState<Transaksi[]>([])
   const [activeShift, setActiveShift] = useState<any>(null)
@@ -61,10 +65,40 @@ export function KasirDashboard() {
 
   return (
     <div className="space-y-6 pb-20 max-w-lg md:max-w-4xl mx-auto">
-      {/* 1. Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Kasir POS</h1>
-        <p className="text-xs text-slate-500 mt-0.5">Ringkasan transaksi dan status operasional kasir hari ini</p>
+      {/* 1. Header with Petugas & Member Identity */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">Kasir POS</h1>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 uppercase tracking-wider">
+              Mandat Kasir Aktif
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-0.5">Ringkasan transaksi dan status operasional kasir hari ini</p>
+        </div>
+
+        {/* Member Profile & SHU Widget */}
+        <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/80 p-2.5 px-3.5 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 self-start sm:self-auto">
+          <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+            {user?.nama_lengkap ? user.nama_lengkap.charAt(0).toUpperCase() : user?.username?.charAt(0).toUpperCase() || 'K'}
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+              {user?.nama_lengkap || user?.username}
+              {user?.nama_lengkap && user?.username && (
+                <span className="text-[11px] font-normal text-slate-400 ml-1">(@{user.username})</span>
+              )}
+            </p>
+            <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
+              <span>Anggota #{user?.anggota_id}</span>
+              <span>&bull;</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                <Coins className="w-3 h-3" />
+                SHU: {formatRupiah(user?.shu || 0)}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Urgent Pending Handover Banner */}
