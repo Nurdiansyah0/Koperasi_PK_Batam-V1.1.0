@@ -16,11 +16,9 @@ import {
   ShieldCheck,
   ShieldAlert,
   ScanLine,
-  Coins,
   BadgeCheck,
   ReceiptText,
   Landmark,
-  History,
   ChevronRight
 } from 'lucide-react'
 
@@ -75,7 +73,7 @@ export function KasirDashboard() {
     { 
       label: 'Saldo Kas Laci', 
       value: formatRupiah(data?.saldo_kas || 0), 
-      desc: 'Uang fisik tunai kasir',
+      desc: 'Uang fisik tunai di laci',
       icon: Banknote, 
       color: 'text-indigo-600 dark:text-indigo-400', 
       bg: 'from-indigo-500/10 to-purple-500/10 border-indigo-500/20' 
@@ -99,7 +97,7 @@ export function KasirDashboard() {
   return (
     <div className="space-y-4 sm:space-y-6 pb-24 max-w-lg md:max-w-4xl mx-auto px-1 sm:px-0">
       
-      {/* ─── WIDGET 1: PETUGAS KASIR & MEMBER FINANCIAL HERO CARD ─── */}
+      {/* ─── CARD 1: IDENTITY & ANGGOTA STATUS HERO (GLASSMORPHISM) ─── */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-5 sm:p-6 shadow-xl border border-slate-800">
         <div className="absolute -right-12 -top-12 w-48 h-48 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
@@ -155,7 +153,7 @@ export function KasirDashboard() {
         </div>
       </div>
 
-      {/* ─── WIDGET 2: PRIMARY POS LAUNCHER (FULL-WIDTH TOUCH ACTION) ─── */}
+      {/* ─── CARD 2: PRIMARY POS LAUNCHER (FULL-WIDTH THUMB ACTION) ─── */}
       <button
         onClick={() => navigate('/kasir/transaksi')}
         className="w-full p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-xl shadow-blue-600/25 flex items-center justify-between group active:scale-[0.98] transition-all border border-blue-400/30 text-left"
@@ -204,7 +202,7 @@ export function KasirDashboard() {
         </div>
       )}
 
-      {/* ─── WIDGET 3: LIVE ACTIVE SHIFT STATUS ─── */}
+      {/* ─── CARD 3: LIVE ACTIVE SHIFT TELEMETRY ─── */}
       {activeShift ? (
         <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-blue-200/80 dark:border-blue-900/60 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
@@ -269,7 +267,7 @@ export function KasirDashboard() {
         </div>
       )}
 
-      {/* ─── WIDGET 4: FINANCIAL & DRAWER METRICS (4 COMPACT SMART CARDS) ─── */}
+      {/* ─── CARD 4: FINANCIAL & DRAWER METRICS (4 COMPACT SMART CARDS) ─── */}
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
         {statCards.map((st) => {
           const Icon = st.icon
@@ -295,133 +293,62 @@ export function KasirDashboard() {
         })}
       </div>
 
-      {/* ─── WIDGET 5: BENTO GRID OF 6 QUICK OPERATIONS FOR SMARTPHONE ─── */}
-      <div>
-        <div className="flex items-center justify-between mb-2.5 px-1">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Aksi Cepat Operasional
-          </h3>
-          <span className="text-[11px] text-slate-400">6 Menu Kasir</span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
-          {/* Action 1: Tarik Tunai */}
-          <button
-            onClick={() => navigate('/kasir/tarik-tunai')}
-            className="p-3.5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between text-left hover:border-emerald-500/50 hover:shadow-md transition-all active:scale-[0.97]"
-          >
-            <div className="flex items-center justify-between">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-                <Banknote className="w-5 h-5" />
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-300" />
+      {/* ─── CARD 5: DUA AKSI SPESIFIK KASIR (NON-REDUNDANT DENGAN BOTTOMNAV) ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Layanan Tarik Tunai SHU */}
+        <button
+          onClick={() => navigate('/kasir/tarik-tunai')}
+          className="p-4 rounded-3xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-600/20 flex items-center justify-between text-left active:scale-[0.98] transition-transform"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+              <Banknote className="w-6 h-6 text-white" />
             </div>
-            <div className="mt-3">
-              <p className="text-xs font-black text-slate-900 dark:text-white">Tarik Tunai SHU</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Verifikasi 4-Tahap</p>
-            </div>
-          </button>
-
-          {/* Action 2: Pesanan Anggota */}
-          <button
-            onClick={() => navigate('/kasir/pesanan')}
-            className="p-3.5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between text-left hover:border-blue-500/50 hover:shadow-md transition-all active:scale-[0.97]"
-          >
-            <div className="flex items-center justify-between">
-              <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-                <ShoppingBag className="w-5 h-5" />
-              </div>
-              {pendingPesanan > 0 ? (
-                <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black animate-pulse">
-                  {pendingPesanan}
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h4 className="font-extrabold text-sm text-white">Layanan Tarik Tunai</h4>
+                <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-md bg-white/20 text-white">
+                  SHU
                 </span>
-              ) : (
-                <ChevronRight className="w-4 h-4 text-slate-300" />
-              )}
-            </div>
-            <div className="mt-3">
-              <p className="text-xs font-black text-slate-900 dark:text-white">Pesanan Anggota</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">{pendingPesanan > 0 ? `${pendingPesanan} perlu approval` : 'Semua selesai'}</p>
-            </div>
-          </button>
-
-          {/* Action 3: Persetujuan Hutang */}
-          <button
-            onClick={() => navigate('/kasir/hutang')}
-            className="p-3.5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between text-left hover:border-amber-500/50 hover:shadow-md transition-all active:scale-[0.97]"
-          >
-            <div className="flex items-center justify-between">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
-                <CreditCard className="w-5 h-5" />
               </div>
-              {pendingHutang > 0 ? (
-                <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black">
-                  {pendingHutang}
+              <p className="text-[11px] text-emerald-100 mt-0.5">
+                Verifikasi 4-Tahap & Pencairan Kas
+              </p>
+            </div>
+          </div>
+          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+            <ChevronRight className="w-4 h-4 text-white" />
+          </div>
+        </button>
+
+        {/* Setoran Kas Toko ke Admin */}
+        <button
+          onClick={() => navigate('/kasir/setoran')}
+          className="p-4 rounded-3xl bg-slate-900 dark:bg-zinc-800 text-white border border-slate-800 shadow-md flex items-center justify-between text-left active:scale-[0.98] transition-transform"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-slate-800 dark:bg-zinc-700 flex items-center justify-center shrink-0">
+              <Landmark className="w-6 h-6 text-indigo-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h4 className="font-extrabold text-sm text-white">Setor Kas ke Admin</h4>
+                <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-md bg-indigo-500/20 text-indigo-300">
+                  Laci
                 </span>
-              ) : (
-                <ChevronRight className="w-4 h-4 text-slate-300" />
-              )}
-            </div>
-            <div className="mt-3">
-              <p className="text-xs font-black text-slate-900 dark:text-white">Persetujuan Hutang</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">{pendingHutang > 0 ? `${pendingHutang} cicilan disetor` : 'Kasbon & Cicilan'}</p>
-            </div>
-          </button>
-
-          {/* Action 4: Setoran Kas Admin */}
-          <button
-            onClick={() => navigate('/kasir/setoran')}
-            className="p-3.5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between text-left hover:border-indigo-500/50 hover:shadow-md transition-all active:scale-[0.97]"
-          >
-            <div className="flex items-center justify-between">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-                <Landmark className="w-5 h-5" />
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-300" />
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Penyetoran Kas Fisik Toko
+              </p>
             </div>
-            <div className="mt-3">
-              <p className="text-xs font-black text-slate-900 dark:text-white">Setor Kas Toko</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Setor ke Admin</p>
-            </div>
-          </button>
-
-          {/* Action 5: Operasional Shift */}
-          <button
-            onClick={() => navigate('/kasir/serah-terima')}
-            className="p-3.5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between text-left hover:border-purple-500/50 hover:shadow-md transition-all active:scale-[0.97]"
-          >
-            <div className="flex items-center justify-between">
-              <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
-                <ArrowRightLeft className="w-5 h-5" />
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-300" />
-            </div>
-            <div className="mt-3">
-              <p className="text-xs font-black text-slate-900 dark:text-white">Operasional Shift</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Handover & Berita Acara</p>
-            </div>
-          </button>
-
-          {/* Action 6: Riwayat Transaksi */}
-          <button
-            onClick={() => navigate('/kasir/riwayat')}
-            className="p-3.5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between text-left hover:border-slate-500/50 hover:shadow-md transition-all active:scale-[0.97]"
-          >
-            <div className="flex items-center justify-between">
-              <div className="w-10 h-10 rounded-2xl bg-slate-500/10 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold">
-                <History className="w-5 h-5" />
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-300" />
-            </div>
-            <div className="mt-3">
-              <p className="text-xs font-black text-slate-900 dark:text-white">Riwayat Transaksi</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Cari & Cetak Nota</p>
-            </div>
-          </button>
-        </div>
+          </div>
+          <div className="w-8 h-8 rounded-full bg-slate-800 dark:bg-zinc-700 flex items-center justify-center shrink-0">
+            <ChevronRight className="w-4 h-4 text-slate-400" />
+          </div>
+        </button>
       </div>
 
-      {/* ─── WIDGET 6: INSET GROUPED RECENT TRANSACTIONS FEED ─── */}
+      {/* ─── CARD 6: INSET GROUPED RECENT TRANSACTIONS FEED ─── */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-xs">
         <div className="flex items-center justify-between mb-3">
           <div>
