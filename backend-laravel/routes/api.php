@@ -97,12 +97,4 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/jabatan/assign', [AdminController::class, 'assignJabatan']);
         Route::post('/jabatan/revoke', [AdminController::class, 'revokeJabatan']);
     });
-
-    // AI & Gemini Integration Module
-    Route::prefix('ai')->group(function () {
-        Route::get('/status', [\App\Http\Controllers\AiController::class, 'status']);
-        Route::post('/chat', [\App\Http\Controllers\AiController::class, 'chat']);
-        Route::get('/insights', [\App\Http\Controllers\AiController::class, 'getInsights']);
-        Route::post('/scan-invoice', [\App\Http\Controllers\AiController::class, 'scanInvoice']);
-    });
 });

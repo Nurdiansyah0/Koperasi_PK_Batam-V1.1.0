@@ -4,7 +4,6 @@ import { adminService } from '@/services/adminService'
 import { DashboardAdmin } from '@/types'
 import { formatRupiah } from '@/lib/utils'
 import { IosBottomSheet } from '@/components/ios/IosBottomSheet'
-import { AiBusinessInsightsCard } from '@/components/ai/AiBusinessInsightsCard'
 import {
   TrendingUp, ArrowUpRight, ShoppingBag,
   CreditCard, Wallet, Package, Gift, Users,
@@ -218,9 +217,6 @@ export function AdminDashboard() {
           </div>
         </div>
       </div>
-
-      {/* ── Google AI Studio / Gemini Business Insights ── */}
-      <AiBusinessInsightsCard />
 
       {/* --- Detail Matrix Bottom Sheets --- */}
       

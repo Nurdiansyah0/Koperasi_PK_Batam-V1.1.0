@@ -43,6 +43,3 @@ export { default as PersetujuanSetoranPage } from '@/pages/admin/PersetujuanSeto
 export { default as SetoranKasirPage } from '@/pages/kasir/SetoranKasir'
 export { SerahTerimaPage } from '@/pages/kasir/SerahTerima'
 export { default as BuatSerahTerimaPage } from '@/pages/kasir/BuatSerahTerima'
-
-// 7. AI Module
-export { aiService } from '@/services/aiService'
