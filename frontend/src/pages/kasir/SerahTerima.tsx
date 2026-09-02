@@ -8,7 +8,6 @@ import {
   History,
   Clock,
   FileText,
-  AlertTriangle,
   ScanLine,
   Calculator,
   ChevronLeft,
@@ -18,12 +17,10 @@ import {
   UserCheck,
   UserPlus,
   Flame,
-  Zap,
-  Sparkles,
-  DollarSign,
   AlertCircle,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  ArrowUpRight
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { kasirService } from '@/services/kasirService'
@@ -146,206 +143,236 @@ export function SerahTerimaPage() {
   const renderList = activeTab === 'pending' ? pending : history
 
   return (
-    <div className="space-y-6 pb-20">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6 pb-24 max-w-lg md:max-w-4xl mx-auto px-1 sm:px-0">
+      
+      {/* ─── HEADER & PRIMARY ACTION BAR ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Operasional Shift Kasir</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Rekonsiliasi lempar shift (Serah Terima & Audit Fisik) dan setoran uang kas fisik ke Admin.
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+            Operasional Shift Kasir
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Rekonsiliasi serah terima shift, audit stok fisik, dan setoran kas toko.
           </p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button 
-            variant="outline" 
-            className="flex-1 sm:flex-none gap-2 shrink-0 font-bold border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-400 dark:hover:bg-blue-900/30"
+
+        <div className="flex items-center gap-2">
+          <button 
             onClick={() => navigate('/kasir/setoran')}
+            className="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs hover:bg-slate-50 active:scale-95 transition-all"
           >
-            <Wallet className="w-4 h-4 sm:w-5 sm:h-5" /> Setor Ke Admin
-          </Button>
-          <Button 
-            variant="primary" 
-            className="flex-1 sm:flex-none gap-2 shrink-0 font-bold shadow-md"
+            <Wallet className="w-4 h-4 text-indigo-500" />
+            <span>Setor Kas Admin</span>
+          </button>
+
+          <button 
             onClick={() => navigate('/kasir/serah-terima/buat')}
+            className="flex-1 sm:flex-initial px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-600/20 active:scale-95 transition-all"
           >
-            <Plus className="w-4 h-4 sm:w-5 sm:h-5" /> Serah Terima Shift
-          </Button>
+            <Plus className="w-4 h-4" />
+            <span>Buat Serah Terima</span>
+          </button>
         </div>
       </div>
 
-      {/* 2 Clean Tabs */}
-      <div className="flex bg-slate-100/50 dark:bg-slate-900/50 p-1 rounded-xl shadow-inner border border-slate-200/50 dark:border-slate-800/50 overflow-hidden w-full max-w-sm">
+      {/* ─── SEGMENTED PILL TAB SWITCHER (THUMB-FRIENDLY) ─── */}
+      <div className="flex p-1 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
         <button
           onClick={() => setActiveTab('pending')}
-          className={`flex-1 py-2.5 text-sm font-bold flex items-center justify-center gap-2 rounded-lg transition-all ${
-            activeTab === 'pending' 
-              ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm border border-slate-200/50 dark:border-slate-700' 
-              : 'text-slate-500 hover:text-slate-700'
+          className={`flex-1 py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all active:scale-95 ${
+            activeTab === 'pending'
+              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
-          <Clock className="w-4 h-4" />
+          <Clock className="w-3.5 h-3.5" />
           <span>Tugas Masuk</span>
           {pending.length > 0 && (
-            <span className="px-1.5 py-0.2 text-[10px] bg-rose-500 text-white rounded-full font-bold">
+            <span className="px-2 py-0.2 text-[10px] bg-rose-500 text-white rounded-full font-black animate-pulse">
               {pending.length}
             </span>
           )}
         </button>
+
         <button
           onClick={() => setActiveTab('history')}
-          className={`flex-1 py-2.5 text-sm font-bold flex items-center justify-center gap-2 rounded-lg transition-all ${
-            activeTab === 'history' 
-              ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm border border-slate-200/50 dark:border-slate-700' 
-              : 'text-slate-500 hover:text-slate-700'
+          className={`flex-1 py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all active:scale-95 ${
+            activeTab === 'history'
+              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
-          <History className="w-4 h-4" />
+          <History className="w-3.5 h-3.5" />
           <span>Riwayat Shift</span>
         </button>
       </div>
 
-      {/* Content List */}
-      <Card className="border-slate-200/80 shadow-sm bg-slate-50/50 dark:bg-slate-900">
-        <CardContent className="p-0 sm:p-4">
-          {loading ? (
-            <div className="text-center py-16 text-slate-400">Memuat data serah terima...</div>
-          ) : renderList.length === 0 ? (
-            <div className="text-center py-16 flex flex-col items-center">
-              <ArrowLeftRight className="w-12 h-12 text-slate-300 mb-3" />
-              <h3 className="text-slate-500 font-medium">
-                Tidak ada {activeTab === 'pending' ? 'tugas serah terima shift baru' : 'riwayat serah terima'}.
-              </h3>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {renderList.map(s => {
-                const opname = parseOpname(s.hasil_opname)
-                const isPending = s.status === 'pending'
-                const isApproved = s.status === 'approved'
-                const barangSelisih = opname?.summary?.barangSelisih || 0
-                const selisihKas = opname?.selisih_kas !== undefined ? opname.selisih_kas : null
-
-                return (
-                  <Card 
-                    key={s.serah_id || s.serah_terima_id}
-                    className={`cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md ${
-                      isPending 
-                        ? 'border-amber-300 dark:border-amber-700 hover:border-amber-500 bg-gradient-to-b from-white to-amber-50/20 dark:from-slate-900 dark:to-amber-950/10' 
-                        : isApproved 
-                        ? 'border-slate-200 dark:border-slate-700 hover:border-blue-400 bg-white dark:bg-slate-900' 
-                        : 'border-rose-200 dark:border-rose-900 hover:border-rose-400 bg-white dark:bg-slate-900'
-                    }`}
-                    onClick={() => setSelectedItem(s)}
-                  >
-                    <CardContent className="p-4 flex flex-col justify-between h-full">
-                      <div>
-                        <div className="flex justify-between items-start mb-2">
-                          <Badge variant={isPending ? 'warning' : isApproved ? 'success' : 'danger'} className="text-[10px] uppercase font-bold">
-                            {isPending ? 'Menunggu Validasi Anda' : isApproved ? 'Shift Diterima' : 'Shift Ditolak'}
-                          </Badge>
-                          <span className="text-xs text-slate-400">{formatDate(s.created_at)}</span>
-                        </div>
-                        
-                        {/* Clear Handover Route: Dari (Pengirim) ➔ Ke (Penerima) */}
-                        <div className="flex items-center justify-between gap-2 p-2 bg-slate-100/70 dark:bg-slate-800/70 rounded-xl mb-3 border border-slate-200/50 dark:border-slate-700/50">
-                          <div className="min-w-0 flex-1">
-                            <span className="text-[10px] text-slate-400 block font-medium">Pengirim:</span>
-                            <span className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate block">
-                              @{s.kasir_from_name || s.kasir_from_username || 'Kasir'}
-                            </span>
-                          </div>
-                          <ArrowRight className="w-4 h-4 text-blue-500 shrink-0" />
-                          <div className="min-w-0 flex-1 text-right">
-                            <span className="text-[10px] text-slate-400 block font-medium">Penerima:</span>
-                            <span className="font-bold text-xs text-blue-600 dark:text-blue-400 truncate block">
-                              @{s.kasir_to_name || s.kasir_to_username || 'Anda'}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {opname && (
-                          <div className="space-y-2 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
-                            <div className="flex justify-between items-center">
-                              <span className="text-slate-500 flex items-center gap-1.5">
-                                <Calculator className="w-3.5 h-3.5 text-blue-600"/> Uang Fisik Laci:
-                              </span>
-                              <span className="font-extrabold text-slate-800 dark:text-slate-200">
-                                {formatRupiah(opname.uang_fisik || 0)}
-                              </span>
-                            </div>
-
-                            {selisihKas !== null && (
-                              <div className="flex justify-between items-center pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
-                                <span className="text-slate-500">Status Kas Laci:</span>
-                                <span className={`font-bold text-[11px] ${selisihKas === 0 ? 'text-emerald-600' : selisihKas > 0 ? 'text-blue-600' : 'text-rose-600'}`}>
-                                  {selisihKas === 0 ? '✓ Pas' : selisihKas > 0 ? `+${formatRupiah(selisihKas)}` : formatRupiah(selisihKas)}
-                                </span>
-                              </div>
-                            )}
-
-                            <div className="flex justify-between items-center pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
-                              <span className="text-slate-500 flex items-center gap-1.5">
-                                <ScanLine className="w-3.5 h-3.5 text-amber-500"/> Audit Fisik Barang:
-                              </span>
-                              <span className={`font-bold px-2 py-0.5 rounded-md text-[10px] ${
-                                barangSelisih > 0 
-                                  ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' 
-                                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                              }`}>
-                                {barangSelisih > 0 ? `${barangSelisih} Item Selisih` : '100% Sesuai'}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-
-                        {s.alasan_penolakan && (
-                          <div className="mt-2 p-2 bg-rose-50 dark:bg-rose-950/40 rounded-lg border border-rose-200 dark:border-rose-900 text-[11px] text-rose-700 dark:text-rose-300">
-                            <span className="font-bold">Alasan Penolakan:</span> {s.alasan_penolakan}
-                          </div>
-                        )}
-                      </div>
-                      
-                      <Button variant="ghost" className="w-full mt-4 text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 h-9 font-semibold text-xs border border-blue-200 dark:border-slate-700">
-                        Lihat & Validasi Rincian &rarr;
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Pagination Footer */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-2">
-          <span className="text-sm text-slate-500 font-medium">Halaman {page} dari {totalPages}</span>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              className="w-10 h-10 p-0 rounded-full"
-              disabled={page === 1}
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-            >
-              <ChevronLeft className="w-5 h-5 text-slate-600" />
-            </Button>
-            <Button 
-              variant="outline" 
-              className="w-10 h-10 p-0 rounded-full"
-              disabled={page === totalPages}
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            >
-              <ChevronRight className="w-5 h-5 text-slate-600" />
-            </Button>
+      {/* ─── SHIFT HANDOVER CARDS LIST ─── */}
+      <div className="space-y-3">
+        {loading ? (
+          <div className="text-center py-16 flex flex-col items-center gap-3">
+            <div className="w-8 h-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
+            <p className="text-xs font-semibold text-slate-400">Memuat data serah terima shift...</p>
           </div>
+        ) : renderList.length === 0 ? (
+          <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-8 flex flex-col items-center">
+            <ArrowLeftRight className="w-12 h-12 text-slate-300 mb-2" />
+            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+              {activeTab === 'pending' ? 'Tidak Ada Tugas Masuk' : 'Belum Ada Riwayat Shift'}
+            </h4>
+            <p className="text-xs text-slate-400 mt-1 max-w-xs">
+              {activeTab === 'pending' 
+                ? 'Semua serah terima shift telah Anda validasi.' 
+                : 'Riwayat serah terima pergantian shift akan tersimpan di sini.'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {renderList.map(s => {
+              const opname = parseOpname(s.hasil_opname)
+              const isPending = s.status === 'pending'
+              const isApproved = s.status === 'approved'
+              const barangSelisih = opname?.summary?.barangSelisih || 0
+              const selisihKas = opname?.selisih_kas !== undefined ? opname.selisih_kas : null
+
+              return (
+                <div 
+                  key={s.serah_id || s.serah_terima_id}
+                  onClick={() => setSelectedItem(s)}
+                  className={`p-4 sm:p-5 rounded-3xl cursor-pointer border shadow-xs transition-all active:scale-[0.98] ${
+                    isPending 
+                      ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-300/80 dark:border-amber-700/60 hover:border-amber-500 ring-2 ring-amber-500/20' 
+                      : isApproved 
+                      ? 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-blue-400' 
+                      : 'bg-rose-50/30 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900 hover:border-rose-400'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                      isPending 
+                        ? 'bg-amber-500 text-white shadow-xs' 
+                        : isApproved 
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' 
+                        : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                    }`}>
+                      {isPending ? 'Menunggu Validasi Anda' : isApproved ? 'Shift Diterima' : 'Shift Ditolak'}
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      {formatDate(s.created_at)}
+                    </span>
+                  </div>
+
+                  {/* Handover Route: Pengirim -> Penerima */}
+                  <div className="p-3 bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-100 dark:border-slate-700/80 flex items-center justify-between gap-2 mb-3">
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Pengirim</span>
+                      <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate block mt-0.5">
+                        @{s.kasir_from_name || s.kasir_from_username || 'Kasir'}
+                      </span>
+                    </div>
+                    <div className="w-7 h-7 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center shrink-0">
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1 text-right">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Penerima</span>
+                      <span className="font-extrabold text-xs text-blue-600 dark:text-blue-400 truncate block mt-0.5">
+                        @{s.kasir_to_name || s.kasir_to_username || 'Anda'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Telemetry Stack: Uang Fisik, Selisih Kas, Cycle Count */}
+                  {opname && (
+                    <div className="space-y-2 bg-slate-50 dark:bg-slate-850 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 flex items-center gap-1.5 font-medium text-[11px]">
+                          <Calculator className="w-3.5 h-3.5 text-blue-600" /> Uang Fisik Laci:
+                        </span>
+                        <span className="font-black text-slate-900 dark:text-white">
+                          {formatRupiah(opname.uang_fisik || 0)}
+                        </span>
+                      </div>
+
+                      {selisihKas !== null && (
+                        <div className="flex justify-between items-center pt-1.5 border-t border-slate-200/50 dark:border-slate-700/50">
+                          <span className="text-slate-500 text-[11px]">Status Kas:</span>
+                          <span className={`font-bold text-[11px] ${
+                            selisihKas === 0 ? 'text-emerald-600' : selisihKas > 0 ? 'text-blue-600' : 'text-rose-600'
+                          }`}>
+                            {selisihKas === 0 ? '✓ Pas (Rp 0)' : selisihKas > 0 ? `+${formatRupiah(selisihKas)} (Lebih)` : `${formatRupiah(selisihKas)} (Kurang)`}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center pt-1.5 border-t border-slate-200/50 dark:border-slate-700/50">
+                        <span className="text-slate-500 flex items-center gap-1.5 text-[11px]">
+                          <ScanLine className="w-3.5 h-3.5 text-amber-500" /> Audit Fisik Barang:
+                        </span>
+                        <span className={`font-bold text-[10px] px-2 py-0.5 rounded-md ${
+                          barangSelisih > 0 
+                            ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' 
+                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                        }`}>
+                          {barangSelisih > 0 ? `${barangSelisih} Item Selisih` : '100% Sesuai'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {s.alasan_penolakan && (
+                    <div className="mt-2.5 p-2 bg-rose-50 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-900 text-[11px] text-rose-700 dark:text-rose-300">
+                      <span className="font-bold">Alasan Tolak:</span> {s.alasan_penolakan}
+                    </div>
+                  )}
+
+                  <div className="mt-3 text-right">
+                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center justify-end gap-1">
+                      {isPending ? 'Validasi Sekarang →' : 'Lihat Rincian →'}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ─── THUMB PAGINATION CONTROLS ─── */}
+      {totalPages > 1 && !loading && (
+        <div className="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
+          <button
+            onClick={() => {
+              setPage(p => Math.max(1, p - 1))
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+            disabled={page === 1}
+            className="px-4 py-2 rounded-xl text-xs font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-40 active:scale-95 transition-all"
+          >
+            &larr; Prev
+          </button>
+
+          <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+            Halaman {page} dari {totalPages}
+          </span>
+
+          <button
+            onClick={() => {
+              setPage(p => Math.min(totalPages, p + 1))
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+            disabled={page === totalPages}
+            className="px-4 py-2 rounded-xl text-xs font-extrabold bg-blue-600 text-white disabled:opacity-40 active:scale-95 transition-all"
+          >
+            Next &rarr;
+          </button>
         </div>
       )}
 
-      {/* Rincian Lengkap Serah Terima Shift Modal (Full Cycle Count Report & Impact) */}
+      {/* ─── FULL VERIFICATION SHEET MODAL (AUDIT & CYCLE COUNT) ─── */}
       <Modal 
         isOpen={selectedItem !== null && !showRejectModal} 
         onClose={() => setSelectedItem(null)} 
-        title="Rincian Lengkap Serah Terima Shift (Tugas Masuk)"
+        title="Rincian Validasi Serah Terima Shift"
         maxWidth="max-w-3xl"
       >
         {selectedItem && (() => {
@@ -361,66 +388,65 @@ export function SerahTerimaPage() {
             <div className="flex flex-col h-full max-h-[80vh]">
               <div className="overflow-y-auto pr-1 pb-4 space-y-4">
                 
-                {/* Meta Info Header — Comprehensive Shift Handover Route (Pengirim & Penerima) */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3.5 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700">
-                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold flex items-center gap-1 mb-1">
-                      <UserCheck className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Kasir Pengirim</span>
+                {/* Route Header */}
+                <div className="grid grid-cols-3 gap-2 p-3 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700">
+                  <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+                    <div className="text-[9px] text-slate-400 uppercase font-bold flex items-center gap-1 mb-0.5">
+                      <UserCheck className="w-3 h-3 text-slate-500" />
+                      <span>Pengirim</span>
                     </div>
-                    <div className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm truncate">
+                    <div className="font-black text-slate-900 dark:text-white text-xs truncate">
                       @{selectedItem.kasir_from_name || selectedItem.kasir_from_username || 'Kasir'}
                     </div>
-                    <div className="text-[10px] text-slate-400">Shift Sebelumnya</div>
                   </div>
 
-                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-blue-200/60 dark:border-blue-900/60">
-                    <div className="text-[10px] text-blue-600 dark:text-blue-400 uppercase font-semibold flex items-center gap-1 mb-1">
-                      <UserPlus className="w-3.5 h-3.5 text-blue-500" />
-                      <span>Kasir Penerima</span>
+                  <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-blue-200/60 dark:border-blue-900/60">
+                    <div className="text-[9px] text-blue-600 dark:text-blue-400 uppercase font-bold flex items-center gap-1 mb-0.5">
+                      <UserPlus className="w-3 h-3 text-blue-500" />
+                      <span>Penerima</span>
                     </div>
-                    <div className="font-bold text-blue-700 dark:text-blue-300 text-xs sm:text-sm truncate">
+                    <div className="font-black text-blue-700 dark:text-blue-300 text-xs truncate">
                       @{selectedItem.kasir_to_name || selectedItem.kasir_to_username || 'Anda'}
                     </div>
-                    <div className="text-[10px] text-slate-400">Shift Lanjutan</div>
                   </div>
 
-                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold flex items-center gap-1 mb-1">
-                      <Clock className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Waktu & Referensi</span>
+                  <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+                    <div className="text-[9px] text-slate-400 uppercase font-bold flex items-center gap-1 mb-0.5">
+                      <Clock className="w-3 h-3 text-slate-500" />
+                      <span>Waktu</span>
                     </div>
-                    <div className="font-bold text-slate-900 dark:text-white text-xs">
+                    <div className="font-black text-slate-900 dark:text-white text-[11px] truncate">
                       {formatDate(selectedItem.created_at)}
                     </div>
-                    <div className="text-[10px] text-slate-400 font-semibold">Ref: #ST-{id}</div>
                   </div>
                 </div>
 
-                {/* Rekonsiliasi Kas Laci 3-Column Grid */}
+                {/* Cash Drawer Reconciliation Stack */}
                 {opname && (
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-3 rounded-xl">
-                      <div className="text-[10px] text-emerald-700 dark:text-emerald-300 font-semibold uppercase">Uang Fisik Laci</div>
-                      <div className="font-extrabold text-base sm:text-lg text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-3 rounded-2xl">
+                      <div className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold uppercase">Uang Fisik Laci</div>
+                      <div className="font-black text-sm sm:text-base text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">
                         {formatRupiah(opname.uang_fisik || 0)}
                       </div>
                     </div>
-                    <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 p-3 rounded-xl">
-                      <div className="text-[10px] text-blue-700 dark:text-blue-300 font-semibold uppercase">Kas Sistem</div>
-                      <div className="font-extrabold text-base sm:text-lg text-blue-600 dark:text-blue-400 mt-0.5">
+
+                    <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 p-3 rounded-2xl">
+                      <div className="text-[10px] text-blue-700 dark:text-blue-300 font-bold uppercase">Kas Sistem</div>
+                      <div className="font-black text-sm sm:text-base text-blue-600 dark:text-blue-400 mt-0.5 truncate">
                         {formatRupiah(opname.saldo_kas_sistem || 0)}
                       </div>
                     </div>
-                    <div className={`p-3 rounded-xl border ${
+
+                    <div className={`p-3 rounded-2xl border ${
                       (opname.selisih_kas || 0) === 0
                         ? 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                         : (opname.selisih_kas || 0) > 0
                         ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-200'
                         : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200'
                     }`}>
-                      <div className="text-[10px] text-slate-500 font-semibold uppercase">Selisih Kas</div>
-                      <div className={`font-extrabold text-base sm:text-lg mt-0.5 ${
+                      <div className="text-[10px] text-slate-500 font-bold uppercase">Selisih Kas</div>
+                      <div className={`font-black text-sm sm:text-base mt-0.5 truncate ${
                         (opname.selisih_kas || 0) === 0 
                           ? 'text-emerald-600' 
                           : (opname.selisih_kas || 0) > 0 
@@ -433,33 +459,22 @@ export function SerahTerimaPage() {
                   </div>
                 )}
 
-                {/* Pesan Catatan Kasir */}
+                {/* Cashier Message / Note */}
                 {opname?.catatan && (
-                  <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 p-3 rounded-xl text-xs">
-                    <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-200 mb-1">
+                  <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 p-3 rounded-2xl text-xs">
+                    <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-200 mb-0.5">
                       <FileText className="w-3.5 h-3.5" />
-                      <span>Catatan / Pesan Kasir Pengirim:</span>
+                      <span>Catatan Kasir Pengirim:</span>
                     </div>
                     <p className="text-amber-800 dark:text-amber-300 italic">"{opname.catatan}"</p>
                   </div>
                 )}
 
-                {/* Alasan Penolakan (Jika ditolak sebelumnya) */}
-                {selectedItem.alasan_penolakan && (
-                  <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 p-3 rounded-xl text-xs text-rose-700 dark:text-rose-300">
-                    <div className="font-bold flex items-center gap-1.5 mb-1">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      <span>Alasan Penolakan Shift:</span>
-                    </div>
-                    <p>{selectedItem.alasan_penolakan}</p>
-                  </div>
-                )}
-
-                {/* Rincian Audit Stok (Cycle Count) Table */}
+                {/* Stock Cycle Count Table */}
                 {opname && (
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs sm:text-sm flex items-center gap-2">
+                      <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs sm:text-sm flex items-center gap-1.5">
                         <ScanLine className="w-4 h-4 text-blue-600" /> Hasil Audit Fisik Barang (Cycle Count)
                       </h4>
                       <span className="text-xs font-semibold text-slate-500">
@@ -468,13 +483,13 @@ export function SerahTerimaPage() {
                     </div>
 
                     {barangSelisihCount > 0 ? (
-                      <div className="bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 p-3 rounded-xl text-xs flex gap-2 border border-rose-200 dark:border-rose-900">
+                      <div className="bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 p-3 rounded-2xl text-xs flex gap-2.5 border border-rose-200 dark:border-rose-900">
                         <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
                         <div>
-                          <div className="font-bold">Peringatan: Terdapat {barangSelisihCount} barang yang selisih/tidak sesuai!</div>
+                          <div className="font-black">Peringatan: Terdapat {barangSelisihCount} barang selisih!</div>
                           {totalMinusNominal > 0 && (
-                            <div className="text-[11px] mt-0.5">
-                              Estimasi potensi kerugian fisik barang minus: <b>{formatRupiah(totalMinusNominal)}</b>
+                            <div className="text-[11px] mt-0.5 font-bold">
+                              Estimasi potensi kerugian fisik barang minus: {formatRupiah(totalMinusNominal)}
                             </div>
                           )}
                           <div className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 font-semibold">
@@ -485,13 +500,13 @@ export function SerahTerimaPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 p-2.5 rounded-xl text-xs flex items-center gap-2 border border-emerald-200 dark:border-emerald-900">
-                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <div className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 p-3 rounded-2xl text-xs flex items-center gap-2 border border-emerald-200 dark:border-emerald-900 font-semibold">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                         <span>Seluruh hitungan fisik barang 100% cocok dengan stok sistem koperasi.</span>
                       </div>
                     )}
 
-                    {/* Modal Filter Chips for Fast 1-Minute Exception Review */}
+                    {/* Filter chips for modal */}
                     {(() => {
                       const rokokCount = items.filter((i: any) => 
                         i.risk_badge === 'Rokok' || 
@@ -505,8 +520,8 @@ export function SerahTerimaPage() {
                         const aSel = a.selisih !== 0 ? 1 : 0
                         const bSel = b.selisih !== 0 ? 1 : 0
                         if (aSel !== bSel) return bSel - aSel
-                        const aRok = (a.risk_badge === 'Rokok' || (a.nama_barang || '').toLowerCase().includes('rokok') || (a.nama_barang || '').toLowerCase().includes('samsu') || (a.nama_barang || '').toLowerCase().includes('surya')) ? 1 : 0
-                        const bRok = (b.risk_badge === 'Rokok' || (b.nama_barang || '').toLowerCase().includes('rokok') || (b.nama_barang || '').toLowerCase().includes('samsu') || (b.nama_barang || '').toLowerCase().includes('surya')) ? 1 : 0
+                        const aRok = (a.risk_badge === 'Rokok' || (a.nama_barang || '').toLowerCase().includes('rokok')) ? 1 : 0
+                        const bRok = (b.risk_badge === 'Rokok' || (b.nama_barang || '').toLowerCase().includes('rokok')) ? 1 : 0
                         return bRok - aRok
                       })
 
@@ -523,14 +538,14 @@ export function SerahTerimaPage() {
 
                       return (
                         <>
-                          <div className="flex items-center gap-2 overflow-x-auto py-1 text-xs">
+                          <div className="flex items-center gap-1.5 overflow-x-auto py-1 text-xs">
                             <button
                               type="button"
                               onClick={() => setModalFilter('all')}
-                              className={`px-3 py-1 rounded-lg font-bold transition-colors ${
+                              className={`px-3 py-1 rounded-xl font-bold transition-colors ${
                                 modalFilter === 'all' 
                                   ? 'bg-blue-600 text-white shadow-xs' 
-                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                               }`}
                             >
                               Semua ({items.length})
@@ -539,13 +554,12 @@ export function SerahTerimaPage() {
                               <button
                                 type="button"
                                 onClick={() => setModalFilter('selisih')}
-                                className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1 transition-colors ${
+                                className={`px-3 py-1 rounded-xl font-bold flex items-center gap-1 transition-colors ${
                                   modalFilter === 'selisih' 
                                     ? 'bg-rose-600 text-white shadow-xs' 
-                                    : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 hover:bg-rose-200'
+                                    : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
                                 }`}
                               >
-                                <ShieldAlert className="w-3.5 h-3.5" />
                                 ⚠️ Selisih ({barangSelisihCount})
                               </button>
                             )}
@@ -553,92 +567,18 @@ export function SerahTerimaPage() {
                               <button
                                 type="button"
                                 onClick={() => setModalFilter('rokok')}
-                                className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1 transition-colors ${
+                                className={`px-3 py-1 rounded-xl font-bold flex items-center gap-1 transition-colors ${
                                   modalFilter === 'rokok' 
                                     ? 'bg-amber-600 text-white shadow-xs' 
-                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 hover:bg-amber-200'
+                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
                                 }`}
                               >
-                                <Flame className="w-3.5 h-3.5" />
                                 🔥 Rokok ({rokokCount})
                               </button>
                             )}
                           </div>
 
-                          {/* 1. Desktop / Tablet View (>= sm) */}
-                          <div className="hidden sm:block border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-2xs">
-                            <div className="overflow-x-auto">
-                              <table className="w-full text-left text-xs">
-                                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
-                                  <tr>
-                                    <th className="px-3 py-2.5 font-semibold">Barang & Kategori</th>
-                                    <th className="px-3 py-2.5 font-semibold text-center w-16">Sistem</th>
-                                    <th className="px-3 py-2.5 font-semibold text-center w-16">Fisik</th>
-                                    <th className="px-3 py-2.5 font-semibold text-center w-24">Selisih</th>
-                                    <th className="px-3 py-2.5 font-semibold text-right w-24">Nominal</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                  {filteredItems.map((item: any, idx: number) => {
-                                    const badge = item.risk_badge || (item.nama_barang.toLowerCase().includes('rokok') || item.nama_barang.toLowerCase().includes('sampoerna') || item.nama_barang.toLowerCase().includes('surya') ? 'Rokok' : null)
-                                    const isRokok = badge === 'Rokok'
-                                    const isMinus = item.selisih < 0
-
-                                    return (
-                                      <tr key={idx} className="bg-white dark:bg-slate-900 hover:bg-slate-50/50">
-                                        <td className="px-3 py-2">
-                                          <div className="flex items-center gap-1 flex-wrap">
-                                            <span className="font-semibold text-slate-800 dark:text-slate-200">{item.nama_barang}</span>
-                                            {badge && (
-                                              <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
-                                                isRokok 
-                                                  ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' 
-                                                  : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
-                                              }`}>
-                                                {badge}
-                                              </span>
-                                            )}
-                                          </div>
-                                          <div className="text-[10px] text-slate-400">
-                                            {formatRupiah(item.harga_jual || item.harga || 0)}/pcs
-                                          </div>
-                                        </td>
-                                        <td className="px-3 py-2 text-center text-slate-500 font-medium">
-                                          {item.stok_input}
-                                        </td>
-                                        <td className="px-3 py-2 text-center font-bold text-slate-800 dark:text-slate-200">
-                                          {item.stok_aktual}
-                                        </td>
-                                        <td className="px-3 py-2 text-center">
-                                          {item.selisih === 0 ? (
-                                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded-md">
-                                              Cocok
-                                            </span>
-                                          ) : (
-                                            <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md ${
-                                              isMinus 
-                                                ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' 
-                                                : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
-                                            }`}>
-                                              {item.selisih > 0 ? `+${item.selisih}` : item.selisih}
-                                            </span>
-                                          )}
-                                        </td>
-                                        <td className={`px-3 py-2 text-right font-extrabold text-[11px] ${
-                                          item.selisih === 0 ? 'text-slate-400' : isMinus ? 'text-rose-600' : 'text-blue-600'
-                                        }`}>
-                                          {item.selisih_nominal ? formatRupiah(item.selisih_nominal) : item.selisih === 0 ? 'Rp 0' : formatRupiah((item.harga_jual || item.harga || 0) * item.selisih)}
-                                        </td>
-                                      </tr>
-                                    )
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-
-                          {/* 2. Mobile Card List (< sm) — Ultra Responsive for Small Screens */}
-                          <div className="sm:hidden space-y-2">
+                          <div className="space-y-2">
                             {filteredItems.map((item: any, idx: number) => {
                               const badge = item.risk_badge || (item.nama_barang.toLowerCase().includes('rokok') || item.nama_barang.toLowerCase().includes('sampoerna') || item.nama_barang.toLowerCase().includes('surya') ? 'Rokok' : null)
                               const isRokok = badge === 'Rokok'
@@ -656,7 +596,6 @@ export function SerahTerimaPage() {
                                       : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800'
                                   }`}
                                 >
-                                  {/* Line 1: Nama Barang + Status Badge */}
                                   <div className="flex items-start justify-between gap-2">
                                     <div className="min-w-0 flex-1">
                                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -695,7 +634,6 @@ export function SerahTerimaPage() {
                                     </div>
                                   </div>
 
-                                  {/* Line 2: Sistem vs Fisik & Nominal Selisih */}
                                   <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
                                     <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                                       <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md text-[11px]">
@@ -734,9 +672,9 @@ export function SerahTerimaPage() {
 
               {/* Action Buttons for Pending Handover */}
               {isPending && (
-                <div className="pt-3 mt-auto border-t border-slate-200 dark:border-slate-700 flex gap-3 bg-white dark:bg-slate-900 sticky bottom-0">
+                <div className="pt-3 mt-auto border-t border-slate-200 dark:border-slate-700 flex gap-2.5 bg-white dark:bg-slate-900 sticky bottom-0">
                   <Button 
-                    className="flex-1 text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 h-11 font-bold shadow-xs text-xs"
+                    className="flex-1 text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 h-11 font-bold rounded-2xl shadow-2xs text-xs"
                     variant="ghost"
                     loading={processingId === id}
                     onClick={() => setShowRejectModal(true)}
@@ -744,12 +682,12 @@ export function SerahTerimaPage() {
                     <XCircle className="w-4 h-4 mr-1.5" /> Tolak Shift
                   </Button>
                   <Button 
-                    className="flex-1 shadow-md h-11 font-bold text-xs" 
+                    className="flex-2 shadow-md h-11 font-black text-xs rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white" 
                     variant="primary"
                     loading={processingId === id}
                     onClick={() => handleApprove(id)}
                   >
-                    <CheckCircle className="w-4 h-4 mr-1.5" /> Terima & Sinkronkan Shift
+                    <CheckCircle className="w-4 h-4 mr-1.5" /> Terima & Mulai Shift
                   </Button>
                 </div>
               )}
