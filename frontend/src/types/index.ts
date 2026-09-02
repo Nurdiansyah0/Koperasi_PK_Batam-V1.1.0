@@ -152,6 +152,7 @@ export type PesananAnggota = Transaksi
 // ─── Dashboard Kasir ────────────────────────────────────────
 export interface DashboardKasir {
   total_transaksi_hari_ini: number
+  total_item_terjual_hari_ini?: number
   total_pendapatan_hari_ini: number
   total_transaksi_dilayani?: number
   saldo_kas: number
@@ -161,6 +162,7 @@ export interface DashboardKasir {
   totalPenjualanHariIni?: number
   totalTransaksiHariIni?: number
   totalTransaksiDilayani?: number
+  totalItemTerjualHariIni?: number
   hutangBelumLunas?: number
   stokMenipis?: number
 }

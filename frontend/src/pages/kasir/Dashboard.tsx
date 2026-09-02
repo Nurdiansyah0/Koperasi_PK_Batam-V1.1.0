@@ -67,33 +67,33 @@ export function KasirDashboard() {
 
   const statCards = [
     { 
-      label: 'Penjualan Hari Ini', 
-      value: formatRupiah(data?.total_pendapatan_hari_ini || 0), 
-      desc: 'Total omset toko shift ini',
-      icon: TrendingUp, 
-      color: 'text-emerald-600 dark:text-emerald-400', 
-      bg: 'from-emerald-500/10 to-teal-500/10 border-emerald-500/20' 
-    },
-    { 
-      label: 'Transaksi Hari Ini', 
+      label: 'Transaksi Shift Ini', 
       value: `${data?.total_transaksi_hari_ini || 0} Struk`, 
-      desc: 'Transaksi berhasil hari ini',
+      desc: 'Nota transaksi berhasil selesai',
       icon: ReceiptText, 
       color: 'text-blue-600 dark:text-blue-400', 
       bg: 'from-blue-500/10 to-indigo-500/10 border-blue-500/20' 
     },
     { 
-      label: 'Total Transaksi Dilayani', 
-      value: `${(data?.total_transaksi_dilayani ?? data?.total_transaksi_hari_ini ?? 0).toLocaleString('id-ID')} Trx`, 
-      desc: 'Akumulasi transaksi sukses kasir',
+      label: 'Item Terjual (Qty)', 
+      value: `${(data?.total_item_terjual_hari_ini ?? data?.totalItemTerjualHariIni ?? 0).toLocaleString('id-ID')} Pcs`, 
+      desc: 'Fisik barang keluar kasir',
       icon: ShoppingBag, 
+      color: 'text-emerald-600 dark:text-emerald-400', 
+      bg: 'from-emerald-500/10 to-teal-500/10 border-emerald-500/20' 
+    },
+    { 
+      label: 'Status Sesi Shift', 
+      value: activeShift ? 'Shift Aktif' : 'Shift Standby', 
+      desc: activeShift ? `Mulai: ${formatDate(activeShift.created_at)}` : 'Sesi kasir operasional POS',
+      icon: Clock, 
       color: 'text-indigo-600 dark:text-indigo-400', 
       bg: 'from-indigo-500/10 to-purple-500/10 border-indigo-500/20' 
     },
     { 
-      label: 'Pending Shift', 
+      label: 'Tugas Serah Terima', 
       value: `${data?.pending_serah_terima || 0} Antrean`, 
-      desc: 'Serah terima menunggu validasi',
+      desc: 'Verifikasi pergantian shift',
       icon: ArrowRightLeft, 
       color: 'text-amber-600 dark:text-amber-400', 
       bg: 'from-amber-500/10 to-orange-500/10 border-amber-500/20' 

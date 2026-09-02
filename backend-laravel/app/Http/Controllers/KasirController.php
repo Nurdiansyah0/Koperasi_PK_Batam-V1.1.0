@@ -74,10 +74,15 @@ class KasirController extends Controller
             ->where('status', 'selesai')
             ->sum('total_harga');
 
-        $transaksiHariIni = Transaksi::where('kasir_id', $kasirId)
+        $transaksiHariIniIds = Transaksi::where('kasir_id', $kasirId)
             ->whereDate('created_at', Carbon::today())
             ->where('status', 'selesai')
-            ->count();
+            ->pluck('transaksi_id');
+
+        $transaksiHariIni = $transaksiHariIniIds->count();
+        $itemTerjualHariIni = $transaksiHariIni > 0 
+            ? (int) TransaksiDetail::whereIn('transaksi_id', $transaksiHariIniIds)->sum('jumlah')
+            : 0;
 
         $totalTransaksiDilayani = Transaksi::where('kasir_id', $kasirId)
             ->where('status', 'selesai')
@@ -133,6 +138,7 @@ class KasirController extends Controller
             'data' => [
                 'total_pendapatan_hari_ini' => (float) $penjualanHariIni,
                 'total_transaksi_hari_ini' => (int) $transaksiHariIni,
+                'total_item_terjual_hari_ini' => (int) $itemTerjualHariIni,
                 'total_transaksi_dilayani' => (int) $totalTransaksiDilayani,
                 'saldo_kas' => (float) $uangCashMasuk,
                 'pending_serah_terima' => (int) $pendingSerahTerima,
@@ -145,6 +151,7 @@ class KasirController extends Controller
                 'totalPenjualanHariIni' => (float) $penjualanHariIni,
                 'totalTransaksiHariIni' => (int) $transaksiHariIni,
                 'totalTransaksiDilayani' => (int) $totalTransaksiDilayani,
+                'totalItemTerjualHariIni' => (int) $itemTerjualHariIni,
             ]
         ]);
     }
