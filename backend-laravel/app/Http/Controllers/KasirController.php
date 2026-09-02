@@ -34,13 +34,19 @@ class KasirController extends Controller
 
         $cashInSerah = \App\Models\SerahTerimaKasir::where('kasir_to', $kasirId)
             ->where('status', 'approved')
-            ->get()
-            ->sum(function($s) { return $s->hasil_opname['uang_fisik'] ?? 0; });
+            ->pluck('hasil_opname')
+            ->sum(function($h) {
+                if (is_string($h)) $h = json_decode($h, true);
+                return $h['uang_fisik'] ?? 0;
+            });
 
         $cashOutSerah = \App\Models\SerahTerimaKasir::where('kasir_from', $kasirId)
             ->where('status', 'approved')
-            ->get()
-            ->sum(function($s) { return $s->hasil_opname['uang_fisik'] ?? 0; });
+            ->pluck('hasil_opname')
+            ->sum(function($h) {
+                if (is_string($h)) $h = json_decode($h, true);
+                return $h['uang_fisik'] ?? 0;
+            });
 
         $cashOutSetor = \App\Models\SetoranKasir::where('kasir_id', $kasirId)
             ->where('status', 'approved')
