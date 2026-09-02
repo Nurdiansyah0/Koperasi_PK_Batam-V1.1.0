@@ -232,6 +232,75 @@ Untuk menjunjung tinggi prinsip dasar jati diri koperasi *"Dari Anggota, Oleh An
 
 ---
 
+## 9. MANAJEMEN INVENTORI 2-TIER, KADALUARSA (FEFO), & PICKING REFILL TOKO (ADMIN & GUDANG)
+
+Untuk menjaga akurasi pembukuan, mencegah kerugian susut (*shrinkage/waste*), dan memastikan kelancaran operasional harian kasir, pengelolaan persediaan barang diatur sebagai berikut:
+
+### A. Model Inventori 2-Tier (Display Toko vs Cadangan Gudang)
+1. **Pemisahan Fisik & Sistem:**
+   * **🏪 Stok Display Toko (`stok_toko`):** Persediaan barang yang dipajang di rak/etalase kasir. Kuantitas dibatasi maksimal sebesar **Penetapan Kuantitas Maksimum (PKM 4 Hari)**. Stok ini menjadi objek audit saat serah terima shift kasir.
+   * **📦 Stok Cadangan Gudang (`stok_gudang`):** Persediaan kartonan/bulk yang disimpan di gudang tertutup di bawah wewenang Admin/Staf Gudang. Kasir tidak dibebani menghitung stok gudang saat pergantian shift.
+2. **Keseimbangan Finansial Persediaan:**
+   $$\mathbf{\text{Total Persediaan}} = \mathbf{\text{Stok Display Toko}} + \mathbf{\text{Stok Cadangan Gudang}}$$
+   Nilai aset persediaan koperasi dihitung dari $\text{Total Stok} \times \text{Harga Modal}$.
+
+---
+
+### B. Prosedur Refill Display Toko 2-Langkah (*Picking Slip Work Order*)
+Untuk mencegah selisih data akibat perbedaan antara waktu mutasi di sistem dan eksekusi fisik penataan barang:
+
+```mermaid
+flowchart TD
+    A["1. Admin/Kasir Buka Menu Data Barang"] --> B["2. Klik 'Rencanakan Refill' (Buka Lembar Kerja)"]
+    B --> C{"Cek Ketersediaan Gudang"}
+    C -- "Stok Gudang Ada (>0)" --> D["3. Tab 'Siap Diambil': Salin Checklist ke HP/Kertas"]
+    C -- "Stok Gudang Kosong (=0)" --> E["4. Tab 'Butuh Kulakan': Klik 'Kulakan' ke Distributor"]
+    D --> F["5. Staf Ambil Barang di Gudang & Tata di Rak Etalase"]
+    F --> G["6. Verifikasi Kuantitas Fisik Riil & Klik 'Konfirmasi Selesai Ditata'"]
+    G --> H["7. Stok Toko & Gudang Resmi Termutasi di Database"]
+```
+
+1. **Langkah 1: Perencanaan & Buka Lembar Kerja (*Picking Slip*)**
+   * Admin/Staf menekan tombol **`[ ⚡ Rencanakan Refill ]`** di menu Data Barang ([/admin/barang](http://localhost:5173/admin/barang)).
+   * Sistem otomatis memetakan seluruh SKU yang stok display tokonya di bawah target PKM 4 hari.
+2. **Langkah 2: Pemilahan Status Ketersediaan (Multi-Tab Handling)**
+   * **Tab 🟢 Siap Diambil dari Gudang:** Menampilkan barang yang memiliki stok di gudang belakang. Staf dapat menggunakan tombol **`[ 📋 Salin Checklist ]`** untuk membawa daftar ke HP saat mengambil barang di gudang.
+   * **Tab 🔴 Gudang Kosong / Butuh Kulakan:** Menampung barang yang defisit di toko namun cadangan gudangnya 0 (Habis). Sistem menyediakan tombol cepat **`[ 🛒 Kulakan ]`** agar admin dapat langsung menerbitkan pesanan restock ke distributor tanpa menghambat refill barang lain.
+3. **Langkah 3: Pengambilan Fisik & Penataan Rak**
+   * Staf mengambil barang dari gudang, memeriksa kondisi fisik kemasan dan tanggal kadaluarsa, lalu memajangnya di rak etalase kasir.
+4. **Langkah 4: Konfirmasi Penyelesaian (*Final Verification*)**
+   * Staf/Admin menginput kuantitas fisik yang benar-benar berhasil dipindahkan (bila hanya diambil sebagian), lalu menekan **`[ ✅ Konfirmasi Selesai Ditata di Rak ]`**.
+   * Database baru mengeksekusi perpindahan stok dari gudang ke toko secara resmi.
+
+---
+
+### C. Manajemen Tanggal Kadaluarsa Berbasis FEFO (*First-Expired, First-Out*)
+1. **Pemisahan Catatan Expired 2-Tier:**
+   * **Tanggal Expired Rak (`tgl_kadaluarsa_toko`):** Mencatat tanggal kadaluarsa dari batch yang sedang dipajang di etalase toko. Batch dengan tanggal paling dekat **wajib diletakkan di rak paling depan** agar dibeli konsumen terlebih dahulu (*FEFO Principle*).
+   * **Tanggal Expired Gudang (`tgl_kadaluarsa_gudang`):** Mencatat tanggal kadaluarsa dari batch kartonan yang baru dikulak di gudang cadangan.
+2. **Radar Pengawasan Kadaluarsa di Dashboard Admin:**
+   * 🔴 **Status Kadaluarsa ($\le$ Hari Ini):** Ditandai badge merah menyala dan radar dashboard. Barang wajib segera ditarik dari rak menggunakan tombol **`[ 🗑️ Tarik Expired ]` (Write-Off Pemusnahan)** agar tidak terjual di kasir POS dan dicatat resmi sebagai pos biaya penyusutan (*Waste Shrinkage*).
+   * 🟠 **Status Near-Expiry ($\le 30$ Hari):** Ditandai badge oranye peringatan untuk memprioritaskan rotasi display toko atau mengaktifkan program diskon cuci gudang.
+3. **Pencatatan Expired saat Kulakan:**
+   * Setiap kali admin menginput nota kulakan masuk (*Restock*), admin wajib mencantumkan tanggal kadaluarsa faktur agar sistem memperbarui data expired lot terbaru secara akurat.
+
+---
+
+### D. Prosedur Mutasi Rak Internal & Kulakan Pengadaan
+1. **Mutasi Manual Pindah Rak (`/admin/mutasi-stok`):**
+   * Admin/Staf dapat memindahkan stok secara fleksibel per SKU:
+     * **Gudang ➔ Toko (Refill Parsial):** Membawa stok tambahan ke etalase toko.
+     * **Toko ➔ Gudang (Simpan Kembali):** Mengembalikan kelebihan stok rak ke gudang cadangan.
+2. **Pengadaan Kulakan Baru (Multi-Alokasi):**
+   * Saat menerima barang dari distributor/supplier, admin mencatat restock dengan opsi alokasi:
+     * 📦 **Masuk ke Gudang Cadangan (Direkomendasikan):** Barang disimpan di kardus belakang.
+     * 🏪 **Langsung ke Display Toko:** Barang langsung dipajang di rak depan.
+     * ⚡ **Auto-Refill PKM:** Otomatis mengisi etalase toko hingga batas PKM 4 hari, dan sisanya masuk ke gudang cadangan.
+   * Sumber dana wajib dipilih antara: **Kas Koperasi**, **Rekening Bank Koperasi**, atau **Dana Talangan Pengurus** untuk menjaga neraca kas.
+
+---
+
 **Disahkan oleh:**  
 *Pengurus & Manajemen Koperasi Karyawan PKPPK Batam*  
-*Tanggal Efektif: September 2026*
+*Tanggal Efektif: September 2026 (Revisi 2.2 - 2-Tier Inventory & FEFO Expiry)*
+
