@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
+import { IosBottomSheet } from '@/components/ios/IosBottomSheet'
 import {
   Search, Calendar, Download, Printer, RotateCcw,
   TrendingUp, ShoppingBag, CreditCard, Wallet, Users,
-  ArrowUpRight, DollarSign, Store, Eye, CheckCircle2,
-  ChevronLeft, ChevronRight, Layers, FileText, BarChart3
+  ArrowUpRight, Store, Eye, CheckCircle2, SlidersHorizontal,
+  ChevronLeft, ChevronRight, FileText, BarChart3, X, Check
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -30,6 +31,19 @@ export function LaporanTransaksi() {
   const [perPage, setPerPage] = useState<number>(20)
   const [activePreset, setActivePreset] = useState<string>('this_month')
 
+  // Mobile Filter Sheet State
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false)
+
+  // Temporary filter state for bottom sheet before applying
+  const [draftFilters, setDraftFilters] = useState({
+    tglMulai: '',
+    tglSelesai: '',
+    metode: 'all',
+    pembeliType: 'all',
+    kasirId: 'all',
+    activePreset: 'this_month'
+  })
+
   // Detail Modal State
   const [selectedTrx, setSelectedTrx] = useState<TransaksiLaporanItem | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
@@ -43,39 +57,37 @@ export function LaporanTransaksi() {
   }
 
   // Set Preset Dates
-  const applyPreset = (preset: string) => {
-    setActivePreset(preset)
-    setPage(1)
+  const getPresetDates = (preset: string) => {
     const now = new Date()
-    
     if (preset === 'today') {
       const todayStr = formatYmd(now)
-      setTglMulai(todayStr)
-      setTglSelesai(todayStr)
+      return { start: todayStr, end: todayStr }
     } else if (preset === 'yesterday') {
       const yest = new Date(now)
       yest.setDate(yest.getDate() - 1)
       const yestStr = formatYmd(yest)
-      setTglMulai(yestStr)
-      setTglSelesai(yestStr)
+      return { start: yestStr, end: yestStr }
     } else if (preset === '7days') {
       const past = new Date(now)
       past.setDate(past.getDate() - 6)
-      setTglMulai(formatYmd(past))
-      setTglSelesai(formatYmd(now))
+      return { start: formatYmd(past), end: formatYmd(now) }
     } else if (preset === 'this_month') {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
-      setTglMulai(formatYmd(firstDay))
-      setTglSelesai(formatYmd(now))
+      return { start: formatYmd(firstDay), end: formatYmd(now) }
     } else if (preset === 'last_month') {
       const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
       const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
-      setTglMulai(formatYmd(firstDayLastMonth))
-      setTglSelesai(formatYmd(lastDayLastMonth))
-    } else if (preset === 'all') {
-      setTglMulai('')
-      setTglSelesai('')
+      return { start: formatYmd(firstDayLastMonth), end: formatYmd(lastDayLastMonth) }
     }
+    return { start: '', end: '' }
+  }
+
+  const applyPreset = (preset: string) => {
+    setActivePreset(preset)
+    setPage(1)
+    const dates = getPresetDates(preset)
+    setTglMulai(dates.start)
+    setTglSelesai(dates.end)
   }
 
   const loadData = async (targetPage = page) => {
@@ -105,7 +117,7 @@ export function LaporanTransaksi() {
     applyPreset('this_month')
   }, [])
 
-  // Refetch when dates, filters, or page change
+  // Refetch when filters or page change
   useEffect(() => {
     loadData(page)
   }, [tglMulai, tglSelesai, metode, pembeliType, kasirId, page, perPage])
@@ -123,6 +135,39 @@ export function LaporanTransaksi() {
     setKasirId('all')
     applyPreset('this_month')
   }
+
+  // Open Filter Bottom Sheet and sync draft state
+  const handleOpenFilterSheet = () => {
+    setDraftFilters({
+      tglMulai,
+      tglSelesai,
+      metode,
+      pembeliType,
+      kasirId,
+      activePreset
+    })
+    setIsFilterSheetOpen(true)
+  }
+
+  // Apply filters from Bottom Sheet
+  const handleApplyDraftFilters = () => {
+    setTglMulai(draftFilters.tglMulai)
+    setTglSelesai(draftFilters.tglSelesai)
+    setMetode(draftFilters.metode)
+    setPembeliType(draftFilters.pembeliType)
+    setKasirId(draftFilters.kasirId)
+    setActivePreset(draftFilters.activePreset)
+    setPage(1)
+    setIsFilterSheetOpen(false)
+  }
+
+  // Count active non-default filters
+  let activeFilterCount = 0
+  if (metode !== 'all') activeFilterCount++
+  if (pembeliType !== 'all') activeFilterCount++
+  if (kasirId !== 'all') activeFilterCount++
+  if (activePreset === 'custom' || (tglMulai && activePreset !== 'this_month')) activeFilterCount++
+  if (search.trim()) activeFilterCount++
 
   // Export to CSV
   const handleExportCsv = async () => {
@@ -196,15 +241,15 @@ export function LaporanTransaksi() {
   const renderMetodeBadge = (m: string) => {
     switch (m?.toLowerCase()) {
       case 'cash':
-        return <Badge variant="success">💵 Tunai (Cash)</Badge>
+        return <Badge variant="success">💵 Tunai</Badge>
       case 'ewallet':
         return <Badge variant="info">📱 E-Wallet</Badge>
       case 'hutang':
-        return <Badge variant="danger">💳 Piutang (Kredit)</Badge>
+        return <Badge variant="danger">💳 Piutang</Badge>
       case 'qr':
         return <Badge variant="purple">⚡ QRIS</Badge>
       case 'transfer':
-        return <Badge variant="default">🏦 Transfer Bank</Badge>
+        return <Badge variant="default">🏦 Transfer</Badge>
       default:
         return <Badge variant="default">{m || '-'}</Badge>
     }
@@ -233,163 +278,187 @@ export function LaporanTransaksi() {
   const pagination = data?.pagination || { current_page: 1, last_page: 1, total: 0, per_page: 20 }
 
   return (
-    <div className="space-y-6 pb-24 max-w-7xl mx-auto">
+    <div className="space-y-4 sm:space-y-6 pb-24 max-w-7xl mx-auto">
       
-      {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* ── Page Header & Action Bar ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <BarChart3 className="w-7 h-7 text-blue-600 dark:text-blue-400" />
-            Laporan Transaksi & Penjualan
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <BarChart3 className="w-6 h-6 text-blue-600 dark:text-blue-400 shrink-0" />
+            Laporan Transaksi & Omset
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Audit keuangan POS kasir, margin laba kotor, piutang tempo, dan arsip struk penjualan.
+          <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+            Audit omset POS, HPP, margin laba kotor, dan arsip struk penjualan.
           </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           <Button 
             variant="outline" 
+            size="sm"
             onClick={handleExportCsv} 
-            className="text-xs font-bold gap-1.5 border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800"
+            className="text-xs font-bold gap-1.5 h-9 rounded-xl border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800"
           >
             <Download className="w-3.5 h-3.5 text-emerald-600" />
-            Export CSV
+            <span className="hidden xs:inline">Export</span> CSV
           </Button>
 
           <Button 
             variant="outline" 
+            size="sm"
             onClick={() => window.print()} 
-            className="text-xs font-bold gap-1.5 border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800"
+            className="text-xs font-bold gap-1.5 h-9 rounded-xl border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800"
           >
             <Printer className="w-3.5 h-3.5 text-blue-600" />
-            Cetak Rekap
+            Cetak
           </Button>
         </div>
       </div>
 
-      {/* ── Quick Preset Chips ── */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 shrink-0 flex items-center gap-1">
-          <Calendar className="w-3.5 h-3.5" /> Periode:
-        </span>
-        {[
-          { id: 'today', label: 'Hari Ini' },
-          { id: 'yesterday', label: 'Kemarin' },
-          { id: '7days', label: '7 Hari Terakhir' },
-          { id: 'this_month', label: 'Bulan Ini' },
-          { id: 'last_month', label: 'Bulan Lalu' },
-          { id: 'all', label: 'Semua Data' },
-        ].map(p => (
+      {/* ── Mobile-First Unified Search & Filter Bar ── */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          {/* Main Search Input */}
+          <form onSubmit={handleSearchSubmit} className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Cari no. struk / nama / kasir..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-8 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200 shadow-xs focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => { setSearch(''); setPage(1); }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </form>
+
+          {/* Trigger Filter Bottom Sheet */}
           <button
-            key={p.id}
-            onClick={() => applyPreset(p.id)}
-            className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all text-xs ${
-              activePreset === p.id
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-white dark:bg-zinc-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-zinc-700 hover:bg-slate-50'
+            onClick={handleOpenFilterSheet}
+            className={`h-[42px] px-3.5 rounded-2xl border flex items-center gap-2 text-xs font-bold transition-all shrink-0 active:scale-95 ${
+              activeFilterCount > 0
+                ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
             }`}
           >
-            {p.label}
+            <SlidersHorizontal className="w-4 h-4" />
+            <span className="hidden sm:inline">Filter</span>
+            {activeFilterCount > 0 && (
+              <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
           </button>
-        ))}
-      </div>
+        </div>
 
-      {/* ── Filter Bar Card ── */}
-      <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200/80 dark:border-zinc-800 shadow-xs space-y-3">
-        <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2.5 items-end text-xs">
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">Tanggal Mulai</label>
-            <input 
-              type="date" 
-              value={tglMulai} 
-              onChange={e => { setTglMulai(e.target.value); setActivePreset('custom'); setPage(1); }} 
-              className="w-full px-2.5 py-2 border rounded-xl bg-slate-50 dark:bg-zinc-800 font-semibold text-slate-800 dark:text-slate-200 text-xs outline-none focus:ring-2 focus:ring-blue-500" 
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">Tanggal Selesai</label>
-            <input 
-              type="date" 
-              value={tglSelesai} 
-              onChange={e => { setTglSelesai(e.target.value); setActivePreset('custom'); setPage(1); }} 
-              className="w-full px-2.5 py-2 border rounded-xl bg-slate-50 dark:bg-zinc-800 font-semibold text-slate-800 dark:text-slate-200 text-xs outline-none focus:ring-2 focus:ring-blue-500" 
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">Metode Bayar</label>
-            <select
-              value={metode}
-              onChange={e => { setMetode(e.target.value); setPage(1); }}
-              className="w-full px-2.5 py-2 border rounded-xl bg-slate-50 dark:bg-zinc-800 font-semibold text-slate-800 dark:text-slate-200 text-xs outline-none focus:ring-2 focus:ring-blue-500"
+        {/* ── Swipeable Horizontal Filter Pills (Thumb-friendly) ── */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
+          {[
+            { id: 'today', label: 'Hari Ini' },
+            { id: 'yesterday', label: 'Kemarin' },
+            { id: '7days', label: '7 Hari' },
+            { id: 'this_month', label: 'Bulan Ini' },
+            { id: 'last_month', label: 'Bulan Lalu' },
+            { id: 'all', label: 'Semua Waktu' },
+          ].map(p => (
+            <button
+              key={p.id}
+              onClick={() => applyPreset(p.id)}
+              className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all text-[11px] shrink-0 active:scale-95 ${
+                activePreset === p.id
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-zinc-800 hover:bg-slate-50'
+              }`}
             >
-              <option value="all">Semua Metode</option>
-              <option value="cash">💵 Tunai (Cash)</option>
-              <option value="ewallet">📱 E-Wallet Anggota</option>
-              <option value="hutang">💳 Piutang / Hutang</option>
-              <option value="qr">⚡ QRIS</option>
-              <option value="transfer">🏦 Transfer Bank</option>
-            </select>
-          </div>
+              {p.label}
+            </button>
+          ))}
 
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">Tipe Pelanggan</label>
-            <select
-              value={pembeliType}
-              onChange={e => { setPembeliType(e.target.value); setPage(1); }}
-              className="w-full px-2.5 py-2 border rounded-xl bg-slate-50 dark:bg-zinc-800 font-semibold text-slate-800 dark:text-slate-200 text-xs outline-none focus:ring-2 focus:ring-blue-500"
+          <div className="w-px h-5 bg-slate-200 dark:bg-zinc-800 shrink-0 mx-0.5" />
+
+          {/* Quick Payment Method Pills */}
+          {[
+            { id: 'all', label: 'Semua Bayar' },
+            { id: 'cash', label: '💵 Tunai' },
+            { id: 'ewallet', label: '📱 E-Wallet' },
+            { id: 'hutang', label: '💳 Piutang' },
+            { id: 'qr', label: '⚡ QRIS' },
+          ].map(m => (
+            <button
+              key={m.id}
+              onClick={() => { setMetode(m.id); setPage(1); }}
+              className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all text-[11px] shrink-0 active:scale-95 ${
+                metode === m.id
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                  : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-zinc-800 hover:bg-slate-50'
+              }`}
             >
-              <option value="all">Semua Pelanggan</option>
-              <option value="anggota">👥 Anggota Koperasi</option>
-              <option value="umum">🚶 Pelanggan Umum</option>
-            </select>
-          </div>
+              {m.label}
+            </button>
+          ))}
+        </div>
 
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">Petugas Kasir</label>
-            <select
-              value={kasirId}
-              onChange={e => { setKasirId(e.target.value); setPage(1); }}
-              className="w-full px-2.5 py-2 border rounded-xl bg-slate-50 dark:bg-zinc-800 font-semibold text-slate-800 dark:text-slate-200 text-xs outline-none focus:ring-2 focus:ring-blue-500"
+        {/* ── Active Filter Tags (Dismissible) ── */}
+        {activeFilterCount > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+            <span className="text-slate-400 text-[10px] font-bold uppercase">Filter Aktif:</span>
+
+            {metode !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-900">
+                Bayar: {metode.toUpperCase()}
+                <X className="w-3 h-3 cursor-pointer hover:text-blue-900" onClick={() => setMetode('all')} />
+              </span>
+            )}
+
+            {pembeliType !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-semibold border border-purple-200 dark:border-purple-900">
+                Tipe: {pembeliType === 'anggota' ? 'Anggota' : 'Umum'}
+                <X className="w-3 h-3 cursor-pointer hover:text-purple-900" onClick={() => setPembeliType('all')} />
+              </span>
+            )}
+
+            {kasirId !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-900">
+                Kasir: {(data?.daftar_kasir || []).find(k => String(k.user_id) === String(kasirId))?.username || kasirId}
+                <X className="w-3 h-3 cursor-pointer hover:text-emerald-900" onClick={() => setKasirId('all')} />
+              </span>
+            )}
+
+            {activePreset === 'custom' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-semibold border border-amber-200 dark:border-amber-900">
+                {tglMulai || 'Awal'} s/d {tglSelesai || 'Kini'}
+                <X className="w-3 h-3 cursor-pointer hover:text-amber-900" onClick={() => applyPreset('this_month')} />
+              </span>
+            )}
+
+            <button
+              onClick={handleResetFilter}
+              className="text-[10px] text-rose-500 hover:text-rose-700 font-bold px-1.5 py-0.5 rounded transition-colors"
             >
-              <option value="all">Semua Kasir</option>
-              {(data?.daftar_kasir || []).map(k => (
-                <option key={k.user_id} value={k.user_id}>{k.username}</option>
-              ))}
-            </select>
+              Reset Semua
+            </button>
           </div>
-
-          <div className="flex gap-1.5">
-            <div className="relative flex-1">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Cari struk / nama..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="w-full pl-8 pr-2 py-2 border rounded-xl bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-slate-200 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-              />
-            </div>
-            <Button type="button" variant="ghost" onClick={handleResetFilter} title="Reset Filter" className="p-2 h-auto text-slate-400 hover:text-slate-600">
-              <RotateCcw className="w-3.5 h-3.5" />
-            </Button>
-          </div>
-        </form>
+        )}
       </div>
 
       {/* ── 6-Card Executive Financial Metrics ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
         {/* Omset */}
-        <div className="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between mb-1.5">
+        <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Omset</span>
             <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600">
               <TrendingUp className="w-3.5 h-3.5" />
             </div>
           </div>
-          <h3 className="text-base font-black text-slate-900 dark:text-white leading-tight">
+          <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-tight">
             {formatRupiah(summary.total_pendapatan)}
           </h3>
           <p className="text-[10px] text-slate-400 mt-1">
@@ -398,30 +467,30 @@ export function LaporanTransaksi() {
         </div>
 
         {/* HPP */}
-        <div className="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between mb-1.5">
+        <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">HPP / Modal</span>
             <div className="p-1 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-600">
               <Store className="w-3.5 h-3.5" />
             </div>
           </div>
-          <h3 className="text-base font-black text-slate-700 dark:text-slate-300 leading-tight">
+          <h3 className="text-sm sm:text-base font-black text-slate-700 dark:text-slate-300 leading-tight">
             {formatRupiah(summary.total_hpp)}
           </h3>
           <p className="text-[10px] text-slate-400 mt-1">
-            Beban pokok persediaan
+            Beban pokok barang
           </p>
         </div>
 
         {/* Laba Kotor */}
-        <div className="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between mb-1.5">
+        <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Laba Kotor</span>
             <div className="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600">
               <ArrowUpRight className="w-3.5 h-3.5" />
             </div>
           </div>
-          <h3 className="text-base font-black text-emerald-600 dark:text-emerald-400 leading-tight">
+          <h3 className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 leading-tight">
             {formatRupiah(summary.total_keuntungan)}
           </h3>
           <p className="text-[10px] text-emerald-600 font-bold mt-1">
@@ -430,30 +499,30 @@ export function LaporanTransaksi() {
         </div>
 
         {/* Kas Likuid */}
-        <div className="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between mb-1.5">
+        <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kas Likuid</span>
             <div className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600">
               <Wallet className="w-3.5 h-3.5" />
             </div>
           </div>
-          <h3 className="text-base font-black text-indigo-600 dark:text-indigo-400 leading-tight">
+          <h3 className="text-sm sm:text-base font-black text-indigo-600 dark:text-indigo-400 leading-tight">
             {formatRupiah(kasLikuid)}
           </h3>
           <p className="text-[10px] text-slate-400 mt-1">
-            Tunai, E-Wallet & QRIS
+            Tunai, E-Wallet, QRIS
           </p>
         </div>
 
         {/* Piutang Baru */}
-        <div className="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between mb-1.5">
+        <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Piutang Baru</span>
             <div className="p-1 rounded-lg bg-rose-50 dark:bg-rose-900/30 text-rose-600">
               <CreditCard className="w-3.5 h-3.5" />
             </div>
           </div>
-          <h3 className="text-base font-black text-rose-600 dark:text-rose-400 leading-tight">
+          <h3 className="text-sm sm:text-base font-black text-rose-600 dark:text-rose-400 leading-tight">
             {formatRupiah(summary.total_hutang)}
           </h3>
           <p className="text-[10px] text-rose-500 font-bold mt-1">
@@ -462,58 +531,58 @@ export function LaporanTransaksi() {
         </div>
 
         {/* Avg Basket */}
-        <div className="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between mb-1.5">
+        <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Rata-Rata Struk</span>
             <div className="p-1 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600">
               <ShoppingBag className="w-3.5 h-3.5" />
             </div>
           </div>
-          <h3 className="text-base font-black text-amber-600 dark:text-amber-400 leading-tight">
+          <h3 className="text-sm sm:text-base font-black text-amber-600 dark:text-amber-400 leading-tight">
             {formatRupiah(summary.avg_transaksi)}
           </h3>
           <p className="text-[10px] text-slate-400 mt-1">
-            Basket size per transaksi
+            Basket size per struk
           </p>
         </div>
       </div>
 
       {/* ── Segmented Tabs ── */}
-      <div className="flex gap-2 border-b border-slate-200 dark:border-zinc-800 pb-2">
+      <div className="flex gap-1.5 border-b border-slate-200 dark:border-zinc-800 pb-2 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('transaksi')}
-          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+          className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 active:scale-95 ${
             activeTab === 'transaksi'
               ? 'bg-blue-600 text-white shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
           }`}
         >
           <FileText className="w-3.5 h-3.5" />
-          Daftar Struk Transaksi ({pagination.total})
+          Struk Penjualan ({pagination.total})
         </button>
 
         <button
           onClick={() => setActiveTab('kasir')}
-          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+          className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 active:scale-95 ${
             activeTab === 'kasir'
               ? 'bg-blue-600 text-white shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
           }`}
         >
           <Users className="w-3.5 h-3.5" />
-          Kinerja Kasir & Metode Bayar
+          Kinerja Kasir & Metode
         </button>
 
         <button
           onClick={() => setActiveTab('harian')}
-          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+          className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 active:scale-95 ${
             activeTab === 'harian'
               ? 'bg-blue-600 text-white shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
           }`}
         >
           <Calendar className="w-3.5 h-3.5" />
-          Rekapitulasi Harian
+          Rekap Harian
         </button>
       </div>
 
@@ -559,7 +628,7 @@ export function LaporanTransaksi() {
                         <td className="py-3 px-4 font-mono font-bold text-blue-600 dark:text-blue-400">
                           #{item.transaksi_id}
                         </td>
-                        <td className="py-3 px-4 text-slate-600 dark:text-slate-300">
+                        <td className="py-3 px-4 text-slate-600 dark:text-slate-300 whitespace-nowrap">
                           {formatDate(item.created_at)}
                         </td>
                         <td className="py-3 px-4">
@@ -576,16 +645,16 @@ export function LaporanTransaksi() {
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-slate-700 dark:text-slate-300 font-semibold">
+                        <td className="py-3 px-4 text-slate-700 dark:text-slate-300 font-semibold whitespace-nowrap">
                           {item.kasir_username || 'Kasir'}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 whitespace-nowrap">
                           {renderMetodeBadge(item.metode_pembayaran)}
                         </td>
-                        <td className="py-3 px-4 text-right font-black text-slate-900 dark:text-white text-sm">
+                        <td className="py-3 px-4 text-right font-black text-slate-900 dark:text-white text-sm whitespace-nowrap">
                           {formatRupiah(item.total_harga)}
                         </td>
-                        <td className="py-3 px-4 text-right font-bold text-emerald-600 dark:text-emerald-400 text-xs">
+                        <td className="py-3 px-4 text-right font-bold text-emerald-600 dark:text-emerald-400 text-xs whitespace-nowrap">
                           +{formatRupiah(item.total_keuntungan)}
                         </td>
                         <td className="py-3 px-4 text-center">
@@ -657,7 +726,7 @@ export function LaporanTransaksi() {
 
       {/* ── TAB 2: KINERJA KASIR & METODE BAYAR ── */}
       {activeTab === 'kasir' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Kasir Breakdown */}
           <Card className="rounded-3xl border border-slate-200/80 dark:border-zinc-800 shadow-xs bg-white dark:bg-zinc-900">
             <div className="p-4 border-b border-slate-100 dark:border-zinc-800 flex items-center gap-2">
@@ -698,11 +767,11 @@ export function LaporanTransaksi() {
             </div>
             <CardContent className="p-4 space-y-3">
               {[
-                { label: '💵 Tunai Kasir (Cash)', val: summary.total_cash, color: 'emerald' },
-                { label: '📱 Saldo E-Wallet Anggota', val: summary.total_ewallet, color: 'indigo' },
-                { label: '💳 Piutang Tempo / Hutang', val: summary.total_hutang, color: 'rose' },
-                { label: '⚡ QRIS Digital', val: summary.total_qr, color: 'purple' },
-                { label: '🏦 Transfer Bank Rekening', val: summary.total_transfer, color: 'blue' },
+                { label: '💵 Tunai Kasir (Cash)', val: summary.total_cash, color: 'bg-emerald-500' },
+                { label: '📱 Saldo E-Wallet Anggota', val: summary.total_ewallet, color: 'bg-indigo-500' },
+                { label: '💳 Piutang Tempo / Hutang', val: summary.total_hutang, color: 'bg-rose-500' },
+                { label: '⚡ QRIS Digital', val: summary.total_qr, color: 'bg-purple-500' },
+                { label: '🏦 Transfer Bank Rekening', val: summary.total_transfer, color: 'bg-blue-500' },
               ].map(item => {
                 const pct = summary.total_pendapatan > 0 ? ((item.val / summary.total_pendapatan) * 100).toFixed(1) : '0.0'
                 return (
@@ -715,7 +784,7 @@ export function LaporanTransaksi() {
                     </div>
                     <div className="h-2 bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                       <div 
-                        className={`h-full rounded-full bg-${item.color}-500 transition-all`}
+                        className={`h-full rounded-full ${item.color} transition-all`}
                         style={{ width: `${Math.min(100, Number(pct))}%` }}
                       />
                     </div>
@@ -751,7 +820,7 @@ export function LaporanTransaksi() {
                   const mPct = h.total_pendapatan > 0 ? ((h.total_keuntungan / h.total_pendapatan) * 100).toFixed(1) : '0.0'
                   return (
                     <tr key={h.tanggal} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50">
-                      <td className="py-3 px-4 font-bold text-slate-800 dark:text-slate-200">
+                      <td className="py-3 px-4 font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
                         {formatDate(h.tanggal)}
                       </td>
                       <td className="py-3 px-4 text-center font-semibold text-slate-600 dark:text-slate-300">
@@ -774,6 +843,198 @@ export function LaporanTransaksi() {
           </CardContent>
         </Card>
       )}
+
+      {/* ── MOBILE FILTER BOTTOM SHEET DRAWER (iOS / Material Design) ── */}
+      <IosBottomSheet
+        isOpen={isFilterSheetOpen}
+        onClose={() => setIsFilterSheetOpen(false)}
+        title="Filter Laporan Transaksi"
+      >
+        <div className="space-y-5 text-xs pb-4">
+          
+          {/* Section 1: Quick Presets */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+              Periode Waktu Cepat
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'today', label: 'Hari Ini' },
+                { id: 'yesterday', label: 'Kemarin' },
+                { id: '7days', label: '7 Hari' },
+                { id: 'this_month', label: 'Bulan Ini' },
+                { id: 'last_month', label: 'Bulan Lalu' },
+                { id: 'all', label: 'Semua Data' },
+              ].map(p => {
+                const isSelected = draftFilters.activePreset === p.id
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      const dates = getPresetDates(p.id)
+                      setDraftFilters({
+                        ...draftFilters,
+                        activePreset: p.id,
+                        tglMulai: dates.start,
+                        tglSelesai: dates.end
+                      })
+                    }}
+                    className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 ${
+                      isSelected
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    {isSelected && <Check className="w-3 h-3" />}
+                    {p.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Section 2: Custom Date Range */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+              Atur Rentang Tanggal Manual
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className="text-[10px] text-slate-400 block mb-1">Mulai:</span>
+                <input
+                  type="date"
+                  value={draftFilters.tglMulai}
+                  onChange={e => setDraftFilters({ ...draftFilters, tglMulai: e.target.value, activePreset: 'custom' })}
+                  className="w-full px-2.5 py-2 border rounded-xl bg-slate-50 dark:bg-zinc-800 font-semibold text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block mb-1">Sampai:</span>
+                <input
+                  type="date"
+                  value={draftFilters.tglSelesai}
+                  onChange={e => setDraftFilters({ ...draftFilters, tglSelesai: e.target.value, activePreset: 'custom' })}
+                  className="w-full px-2.5 py-2 border rounded-xl bg-slate-50 dark:bg-zinc-800 font-semibold text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Metode Pembayaran */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+              Metode Pembayaran
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {[
+                { id: 'all', label: 'Semua Metode' },
+                { id: 'cash', label: '💵 Tunai' },
+                { id: 'ewallet', label: '📱 E-Wallet' },
+                { id: 'hutang', label: '💳 Piutang' },
+                { id: 'qr', label: '⚡ QRIS' },
+                { id: 'transfer', label: '🏦 Transfer' },
+              ].map(m => {
+                const isSelected = draftFilters.metode === m.id
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setDraftFilters({ ...draftFilters, metode: m.id })}
+                    className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 ${
+                      isSelected
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                        : 'bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    {isSelected && <Check className="w-3 h-3" />}
+                    {m.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Section 4: Tipe Pelanggan */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+              Tipe Pelanggan
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'all', label: 'Semua' },
+                { id: 'anggota', label: '👥 Anggota' },
+                { id: 'umum', label: '🚶 Umum' },
+              ].map(t => {
+                const isSelected = draftFilters.pembeliType === t.id
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setDraftFilters({ ...draftFilters, pembeliType: t.id })}
+                    className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 ${
+                      isSelected
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    {isSelected && <Check className="w-3 h-3" />}
+                    {t.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Section 5: Petugas Kasir */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+              Petugas Kasir
+            </label>
+            <select
+              value={draftFilters.kasirId}
+              onChange={e => setDraftFilters({ ...draftFilters, kasirId: e.target.value })}
+              className="w-full px-3 py-2.5 border rounded-xl bg-slate-50 dark:bg-zinc-800 font-bold text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Semua Kasir</option>
+              {(data?.daftar_kasir || []).map(k => (
+                <option key={k.user_id} value={k.user_id}>{k.username}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sticky Bottom Actions */}
+          <div className="pt-3 border-t border-slate-100 dark:border-zinc-800 flex gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                const resetDates = getPresetDates('this_month')
+                setDraftFilters({
+                  tglMulai: resetDates.start,
+                  tglSelesai: resetDates.end,
+                  metode: 'all',
+                  pembeliType: 'all',
+                  kasirId: 'all',
+                  activePreset: 'this_month'
+                })
+              }}
+              className="flex-1 font-bold text-slate-600 dark:text-slate-400"
+            >
+              Reset
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleApplyDraftFilters}
+              className="flex-2 font-bold bg-blue-600 text-white"
+            >
+              Terapkan Filter
+            </Button>
+          </div>
+
+        </div>
+      </IosBottomSheet>
 
       {/* ── MODAL STRUK ELEKTRONIK (RECEIPT DRILL-DOWN) ── */}
       <Modal
