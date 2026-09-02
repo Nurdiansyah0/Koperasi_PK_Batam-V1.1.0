@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { adminService } from '@/services/adminService'
-import { formatRupiah, formatDate, formatDateOnly } from '@/lib/utils'
+import { formatRupiah, formatDate, formatDateOnly, printCleanElement } from '@/lib/utils'
 import type { LaporanTransaksi as LaporanTransaksiType, TransaksiLaporanItem, PengeluaranOperasional } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -99,12 +99,7 @@ export function LaporanTransaksi() {
   }
 
   const handlePrintLaporan = () => {
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'visible'
-    window.print()
-    setTimeout(() => {
-      document.body.style.overflow = prevOverflow
-    }, 1000)
+    printCleanElement('printable-laporan', 'Laporan PHU Koperasi PKP-PK')
   }
 
   const applyPreset = (preset: string) => {
@@ -1137,56 +1132,6 @@ export function LaporanTransaksi() {
         onClose={() => setIsCorporateModalOpen(false)}
         title="📑 Rekapitulasi Hasil Usaha & Kas Koperasi"
       >
-        {/* PRINT ISOLATION STYLES */}
-        <style dangerouslySetInnerHTML={{ __html: `
-          @media print {
-            @page {
-              size: A4 portrait;
-              margin: 12mm 15mm;
-            }
-            *, *::before, *::after {
-              box-sizing: border-box !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-            html, body {
-              height: auto !important;
-              background: #ffffff !important;
-              color: #000000 !important;
-              margin: 0 !important;
-              padding: 0 !important;
-            }
-            body * {
-              visibility: hidden !important;
-            }
-            #printable-laporan, #printable-laporan * {
-              visibility: visible !important;
-            }
-            #printable-laporan {
-              display: block !important;
-              position: absolute !important;
-              left: 0 !important;
-              top: 0 !important;
-              width: 100% !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              background: #ffffff !important;
-              color: #000000 !important;
-              z-index: 999999 !important;
-              font-family: Arial, "Segoe UI", Roboto, Helvetica, sans-serif !important;
-              font-size: 11px !important;
-              line-height: 1.4 !important;
-            }
-            .no-print {
-              display: none !important;
-            }
-            .avoid-break {
-              page-break-inside: avoid !important;
-              break-inside: avoid !important;
-            }
-          }
-        `}} />
-
         <div id="printable-laporan" className="space-y-4 text-xs max-h-[82vh] overflow-y-auto p-2 bg-white text-black">
           
           {/* ── KOP SURAT RESMI (MATCHING PKM & STANDAR DOKUMEN KOPKAR) ── */}

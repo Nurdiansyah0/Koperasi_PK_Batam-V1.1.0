@@ -19,7 +19,7 @@ import { adminService } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
-import { formatRupiah } from '@/lib/utils'
+import { formatRupiah, printCleanElement } from '@/lib/utils'
 import type { PkmItem } from '@/types'
 
 interface ShoppingCartItem {
@@ -179,7 +179,7 @@ export function ManajemenPkmPage() {
       toast.error('Pilih minimal 1 barang untuk dicetak')
       return
     }
-    window.print()
+    printCleanElement('printable-shopping-sheet', 'Lembar Rencana Kulakan Belanja - Koperasi PKP-PK')
   }
 
   // Open Inbound Receiving Modal (Pre-filled from Shopping List)
@@ -292,82 +292,8 @@ export function ManajemenPkmPage() {
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-20 max-w-5xl mx-auto">
-      {/* PRINT-ONLY CSS (STANDAR DOKUMEN ISO A4 & EXPORT PDF FLUID) */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @media screen {
-          #printable-shopping-sheet {
-            display: none !important;
-          }
-        }
-        @media print {
-          @page {
-            size: A4 portrait;
-            margin: 10mm 12mm;
-          }
-          *, *::before, *::after {
-            box-sizing: border-box !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          html, body {
-            height: auto !important;
-            background: #ffffff !important;
-            color: #000000 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          body * {
-            visibility: hidden !important;
-          }
-          #screen-content {
-            display: none !important;
-          }
-          #printable-shopping-sheet, #printable-shopping-sheet * {
-            visibility: visible !important;
-          }
-          #printable-shopping-sheet {
-            display: block !important;
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: #ffffff !important;
-            color: #000000 !important;
-            z-index: 999999 !important;
-            font-family: Arial, Helvetica, sans-serif !important;
-          }
-          table.print-table {
-            width: 100% !important;
-            max-width: 100% !important;
-            table-layout: fixed !important;
-            border-collapse: collapse !important;
-            page-break-inside: auto !important;
-            border: 1.5px solid #000000 !important;
-          }
-          table.print-table thead {
-            display: table-header-group !important;
-          }
-          table.print-table tfoot {
-            display: table-footer-group !important;
-          }
-          table.print-table th, table.print-table td {
-            border: 1px solid #000000 !important;
-            padding: 5px 6px !important;
-          }
-          table.print-table tr {
-            page-break-inside: avoid !important;
-            page-break-after: auto !important;
-          }
-          .avoid-break {
-            page-break-inside: avoid !important;
-          }
-        }
-      `}} />
-
-      {/* DEDICATED PRINTABLE A4 SHOPPING SHEET (STANDAR KOP RESMI A4 TANPA OVERFLOW) */}
-      <div id="printable-shopping-sheet" className="text-black bg-white">
+      {/* DEDICATED PRINTABLE A4 SHOPPING SHEET (STANDAR KOP RESMI A4) */}
+      <div id="printable-shopping-sheet" className="hidden text-black bg-white">
         {/* OFFICIAL LETTERHEAD (KOP SURAT) */}
         <div className="border-b-2 border-black pb-2.5 mb-3">
           <div className="flex items-center justify-between gap-3">
