@@ -1380,6 +1380,14 @@ class KasirController extends Controller
             ->exists() || ($request->user() && $request->user()->isAdmin());
 
         return response()->stream(function () use ($kasirId, $hasActiveShift) {
+            // Close PHP session lock immediately to allow other concurrent requests from this user
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_write_close();
+            }
+
+            @set_time_limit(35);
+            @ignore_user_abort(false);
+
             $lastPushedTime = microtime(true);
             $maxExecutionSeconds = 25; // Reconnect smoothly every 25s
             $startTime = time();
@@ -1392,8 +1400,8 @@ class KasirController extends Controller
                 'has_active_shift' => $hasActiveShift,
                 'server_time' => now()->toIso8601String()
             ]) . "\n\n";
-            ob_flush();
-            flush();
+            @ob_flush();
+            @flush();
 
             while ((time() - $startTime) < $maxExecutionSeconds) {
                 // If connection aborted by client
@@ -1415,16 +1423,16 @@ class KasirController extends Controller
                         'order' => $latestEvent
                     ]) . "\n\n";
 
-                    ob_flush();
-                    flush();
+                    @ob_flush();
+                    @flush();
                 }
 
                 // Heartbeat ping every 5 seconds to keep connection alive
                 if ((time() - $startTime) % 5 === 0) {
                     echo "event: heartbeat\n";
                     echo "data: " . json_encode(['timestamp' => time()]) . "\n\n";
-                    ob_flush();
-                    flush();
+                    @ob_flush();
+                    @flush();
                 }
 
                 usleep(300000); // 300ms sleep for micro-latency response
