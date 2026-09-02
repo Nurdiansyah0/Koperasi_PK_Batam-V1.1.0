@@ -12,7 +12,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: {
-        enabled: true,
+        enabled: false,
       },
       includeAssets: ['favicon.svg', 'Logo.svg', 'robots.txt'],
       manifest: {
@@ -58,6 +58,19 @@ export default defineConfig({
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),
     },
+  },
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      'lucide-react',
+      'axios',
+      'zustand',
+      'react-hot-toast',
+      'clsx',
+      'tailwind-merge'
+    ],
   },
   server: {
     host: '0.0.0.0', // Exposes network IP so mobile phones can connect over Wi-Fi
