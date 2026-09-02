@@ -95,22 +95,37 @@ export default defineConfig({
   build: {
     outDir: '../public_html',
     emptyOutDir: false,
-    chunkSizeWarningLimit: 800,
+    chunkSizeWarningLimit: 500,
+    // Vite 8 pakai rolldown+oxc secara default (lebih cepat dari esbuild)
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router') || id.includes('scheduler')) {
+            // React core — kritikal, cache lama
+            if (
+              id.includes('/react/') ||
+              id.includes('/react-dom/') ||
+              id.includes('/react-router') ||
+              id.includes('/scheduler/')
+            ) {
               return 'vendor-react'
             }
+            // Lucide icons — besar, jarang berubah
             if (id.includes('lucide-react')) {
               return 'vendor-icons'
             }
+            // State & HTTP
             if (id.includes('axios') || id.includes('zustand')) {
               return 'vendor-core'
             }
+            // Sisanya (react-hot-toast, clsx, dll)
             return 'vendor-libs'
           }
+
+          // Kelompokkan halaman per role agar bundle role lain tidak dimuat
+          if (id.includes('/pages/admin/')) return 'pages-admin'
+          if (id.includes('/pages/kasir/')) return 'pages-kasir'
+          if (id.includes('/pages/anggota/')) return 'pages-anggota'
         },
       },
     },
