@@ -302,24 +302,28 @@ export function ManajemenPkmPage() {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 12mm 15mm;
+            margin: 0mm !important; /* Menghilangkan header & footer otomatis browser (tanggal, URL, judul) */
           }
-          body * {
-            visibility: hidden !important;
+          html, body {
+            height: auto !important;
+            overflow: visible !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
-          #printable-shopping-sheet, #printable-shopping-sheet * {
-            visibility: visible !important;
+          #screen-content, nav, aside, header, footer, .sidebar, .navbar, .no-print {
+            display: none !important;
           }
           #printable-shopping-sheet {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
+            display: block !important;
+            position: relative !important;
             width: 100% !important;
             background: #ffffff !important;
             color: #000000 !important;
-            display: block !important;
-            padding: 0 !important;
+            padding: 15mm 20mm !important;
             margin: 0 !important;
+            box-sizing: border-box !important;
             font-family: Arial, sans-serif !important;
           }
         }
@@ -417,7 +421,7 @@ export function ManajemenPkmPage() {
       </div>
 
       {/* SCREEN UI (FOR NORMAL BROWSER VIEW) */}
-      <div className="space-y-4 sm:space-y-5">
+      <div id="screen-content" className="space-y-4 sm:space-y-5">
         {/* Header section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
