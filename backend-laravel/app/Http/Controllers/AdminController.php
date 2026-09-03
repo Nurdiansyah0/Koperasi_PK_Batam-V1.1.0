@@ -2,36 +2,39 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use \Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use App\Models\Barang;
-use App\Models\RiwayatRestock;
-use App\Models\Transaksi;
 use App\Models\Anggota;
-use App\Models\User;
+use App\Models\Barang;
+use App\Models\JabatanAnggota;
+use App\Models\KonversiShu;
+use App\Models\PengeluaranOperasional;
+use App\Models\RiwayatRestock;
+use App\Models\SerahTerimaKasir;
 use App\Models\SetoranKasir;
 use App\Models\ShuDistribusi;
-use App\Models\SerahTerimaKasir;
 use App\Models\TarikTunai;
-use App\Models\KonversiShu;
-use App\Models\JabatanAnggota;
-use App\Models\PengeluaranOperasional;
+use App\Models\Transaksi;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class AdminController extends Controller
 {
-    private function checkAdmin(Request $request) {
-        if (!$request->user() || !$request->user()->isAdmin()) {
+    private function checkAdmin(Request $request)
+    {
+        if (! $request->user() || ! $request->user()->isAdmin()) {
             abort(403, 'Unauthorized: Hanya Admin yang memiliki izin akses.');
         }
+
         return $request->user()->user_id;
     }
 
     public function getDashboardStats(Request $request)
     {
         $this->checkAdmin($request);
-        
+
         // 1. Daily Metrics
         $total_transaksi_hari_ini = Transaksi::whereDate('created_at', Carbon::today())
             ->where('status', 'selesai')->count();
@@ -41,34 +44,34 @@ class AdminController extends Controller
             ->where('status', 'selesai')->sum('total_keuntungan');
 
         // 2. Koperasi Assets & Liabilities
-        $total_anggota = \App\Models\Anggota::count();
-        $total_hutang_beredar = \App\Models\Anggota::sum('hutang');
-        $total_saldo_anggota = \App\Models\Anggota::sum('saldo'); // Simpanan / E-wallet
-        $total_shu_tersedia = \App\Models\Anggota::sum('shu'); // SHU allocated to members
+        $total_anggota = Anggota::count();
+        $total_hutang_beredar = Anggota::sum('hutang');
+        $total_saldo_anggota = Anggota::sum('saldo'); // Simpanan / E-wallet
+        $total_shu_tersedia = Anggota::sum('shu'); // SHU allocated to members
 
-        $total_shu_pengurus = \Illuminate\Support\Facades\DB::table('shu_distribusi')->sum('shu_10_percent') ?? 0;
-        $total_shu_koperasi = \Illuminate\Support\Facades\DB::table('shu_distribusi')->sum('shu_30_percent') ?? 0;
+        $total_shu_pengurus = DB::table('shu_distribusi')->sum('shu_10_percent') ?? 0;
+        $total_shu_koperasi = DB::table('shu_distribusi')->sum('shu_30_percent') ?? 0;
 
         // Nilai Aset Barang (Total Inventory Value = Stok * Harga Modal)
-        $total_aset_barang = \App\Models\Barang::sum(\Illuminate\Support\Facades\DB::raw('stok * harga_modal'));
+        $total_aset_barang = Barang::sum(DB::raw('stok * harga_modal'));
 
         // 3. Operational Central Nervous System Telemetry
         // A. Critical Restock (< PKM or stock <= 2)
-        $stok_kritis_query = \App\Models\Barang::where(function($q) {
+        $stok_kritis_query = Barang::where(function ($q) {
             $q->whereRaw('stok < COALESCE(pkm, 1)')->orWhere('stok', '<=', 2);
         });
         $stok_kritis_count = $stok_kritis_query->count();
         $stok_kritis_items = $stok_kritis_query->orderBy('stok', 'asc')->limit(5)->get(['barang_id', 'nama_barang', 'stok', 'pkm', 'harga_modal']);
 
         // B. Pending Setoran Kasir (Cash-in-Transit waiting for safe deposit)
-        $setoran_pending_count = \App\Models\SetoranKasir::where('status', 'pending')->count();
-        $setoran_pending_nominal = (float) (\App\Models\SetoranKasir::where('status', 'pending')->sum('nominal') ?? 0);
+        $setoran_pending_count = SetoranKasir::where('status', 'pending')->count();
+        $setoran_pending_nominal = (float) (SetoranKasir::where('status', 'pending')->sum('nominal') ?? 0);
 
         // C. Credit Risk Monitoring (Anggota with debt >= Rp 300.000, max limit is 400.000)
-        $anggota_limit_kritis_count = \App\Models\Anggota::where('hutang', '>=', 300000)->count();
+        $anggota_limit_kritis_count = Anggota::where('hutang', '>=', 300000)->count();
 
         // D. Monthly Restock Expenditure
-        $total_restock_bulan_ini = (float) (\App\Models\RiwayatRestock::whereMonth('created_at', Carbon::now()->month)
+        $total_restock_bulan_ini = (float) (RiwayatRestock::whereMonth('created_at', Carbon::now()->month)
             ->whereYear('created_at', Carbon::now()->year)
             ->sum('total_biaya') ?? 0);
 
@@ -76,18 +79,18 @@ class AdminController extends Controller
         $today = Carbon::today()->toDateString();
         $in30Days = Carbon::today()->addDays(30)->toDateString();
 
-        $expired_count = \App\Models\Barang::where(function($q) use ($today) {
-            $q->where(function($sq) use ($today) {
+        $expired_count = Barang::where(function ($q) use ($today) {
+            $q->where(function ($sq) use ($today) {
                 $sq->whereNotNull('tgl_kadaluarsa_toko')->where('tgl_kadaluarsa_toko', '<', $today)->where('stok_toko', '>', 0);
-            })->orWhere(function($sq) use ($today) {
+            })->orWhere(function ($sq) use ($today) {
                 $sq->whereNotNull('tgl_kadaluarsa_gudang')->where('tgl_kadaluarsa_gudang', '<', $today)->where('stok_gudang', '>', 0);
             });
         })->count();
 
-        $near_expiry_count = \App\Models\Barang::where(function($q) use ($today, $in30Days) {
-            $q->where(function($sq) use ($today, $in30Days) {
+        $near_expiry_count = Barang::where(function ($q) use ($today, $in30Days) {
+            $q->where(function ($sq) use ($today, $in30Days) {
                 $sq->whereNotNull('tgl_kadaluarsa_toko')->whereBetween('tgl_kadaluarsa_toko', [$today, $in30Days])->where('stok_toko', '>', 0);
-            })->orWhere(function($sq) use ($today, $in30Days) {
+            })->orWhere(function ($sq) use ($today, $in30Days) {
                 $sq->whereNotNull('tgl_kadaluarsa_gudang')->whereBetween('tgl_kadaluarsa_gudang', [$today, $in30Days])->where('stok_gudang', '>', 0);
             });
         })->count();
@@ -119,6 +122,7 @@ class AdminController extends Controller
     {
         $this->checkAdmin($request);
         $barang = Barang::all();
+
         return response()->json(['success' => true, 'data' => $barang]);
     }
 
@@ -162,13 +166,15 @@ class AdminController extends Controller
     {
         $this->checkAdmin($request);
         $barang = Barang::find($request->barang_id);
-        if (!$barang) return response()->json(['success' => false, 'message' => 'Barang tidak ditemukan'], 404);
+        if (! $barang) {
+            return response()->json(['success' => false, 'message' => 'Barang tidak ditemukan'], 404);
+        }
 
         $pkm = $request->has('pkm') ? (int) $request->pkm : (int) ($barang->pkm ?: 1);
         $stokToko = $request->has('stok_toko') ? (int) $request->stok_toko : (int) $barang->stok_toko;
         $stokGudang = $request->has('stok_gudang') ? (int) $request->stok_gudang : (int) $barang->stok_gudang;
 
-        if ($request->has('stok') && !$request->has('stok_toko') && !$request->has('stok_gudang')) {
+        if ($request->has('stok') && ! $request->has('stok_toko') && ! $request->has('stok_gudang')) {
             $inputStok = (int) $request->stok;
             $stokToko = min($inputStok, $pkm);
             $stokGudang = max(0, $inputStok - $stokToko);
@@ -179,8 +185,12 @@ class AdminController extends Controller
         $data['stok_toko'] = $stokToko;
         $data['stok_gudang'] = $stokGudang;
         $data['stok'] = $totalStok;
-        if ($request->has('tgl_kadaluarsa_toko')) $data['tgl_kadaluarsa_toko'] = $request->tgl_kadaluarsa_toko ?: null;
-        if ($request->has('tgl_kadaluarsa_gudang')) $data['tgl_kadaluarsa_gudang'] = $request->tgl_kadaluarsa_gudang ?: null;
+        if ($request->has('tgl_kadaluarsa_toko')) {
+            $data['tgl_kadaluarsa_toko'] = $request->tgl_kadaluarsa_toko ?: null;
+        }
+        if ($request->has('tgl_kadaluarsa_gudang')) {
+            $data['tgl_kadaluarsa_gudang'] = $request->tgl_kadaluarsa_gudang ?: null;
+        }
 
         $barang->update($data);
 
@@ -191,6 +201,7 @@ class AdminController extends Controller
     {
         $this->checkAdmin($request);
         Barang::destroy($request->barang_id);
+
         return response()->json(['success' => true, 'message' => 'Barang berhasil dihapus']);
     }
 
@@ -204,13 +215,15 @@ class AdminController extends Controller
             'sumber_dana' => 'required|string',
             'alokasi' => 'nullable|string|in:gudang,toko,auto',
             'tanggal_kadaluarsa' => 'nullable|date',
-            'catatan' => 'nullable|string'
+            'catatan' => 'nullable|string',
         ]);
 
-        \Illuminate\Support\Facades\DB::beginTransaction();
+        DB::beginTransaction();
         try {
             $barang = Barang::where('barang_id', $request->barang_id)->lockForUpdate()->first();
-            if (!$barang) throw new \Exception("Barang tidak ditemukan");
+            if (! $barang) {
+                throw new \Exception('Barang tidak ditemukan');
+            }
 
             $totalBiaya = $request->jumlah_tambah * $request->harga_beli_satuan;
             $alokasi = $request->input('alokasi', 'gudang');
@@ -225,13 +238,15 @@ class AdminController extends Controller
                 'total_biaya' => $totalBiaya,
                 'sumber_dana' => $request->sumber_dana,
                 'tanggal_kadaluarsa' => $tglExpired,
-                'catatan' => $request->catatan ? ($request->catatan . " [Alokasi: {$alokasi}]") : "Alokasi: {$alokasi}"
+                'catatan' => $request->catatan ? ($request->catatan." [Alokasi: {$alokasi}]") : "Alokasi: {$alokasi}",
             ]);
 
             // 2-Tier allocation & Expiry Sync
             if ($alokasi === 'toko') {
                 $barang->stok_toko += $jumlahTambah;
-                if ($tglExpired) $barang->tgl_kadaluarsa_toko = $tglExpired;
+                if ($tglExpired) {
+                    $barang->tgl_kadaluarsa_toko = $tglExpired;
+                }
             } elseif ($alokasi === 'auto') {
                 $pkm = (int) ($barang->pkm ?: 1);
                 $neededForDisplay = max(0, $pkm - ((int) $barang->stok_toko));
@@ -239,20 +254,25 @@ class AdminController extends Controller
                 $barang->stok_toko += $fillToko;
                 $barang->stok_gudang += ($jumlahTambah - $fillToko);
                 if ($tglExpired) {
-                    if ($fillToko > 0 && !$barang->tgl_kadaluarsa_toko) $barang->tgl_kadaluarsa_toko = $tglExpired;
+                    if ($fillToko > 0 && ! $barang->tgl_kadaluarsa_toko) {
+                        $barang->tgl_kadaluarsa_toko = $tglExpired;
+                    }
                     $barang->tgl_kadaluarsa_gudang = $tglExpired;
                 }
             } else {
                 // Default to warehouse stock
                 $barang->stok_gudang += $jumlahTambah;
-                if ($tglExpired) $barang->tgl_kadaluarsa_gudang = $tglExpired;
+                if ($tglExpired) {
+                    $barang->tgl_kadaluarsa_gudang = $tglExpired;
+                }
             }
 
             $barang->stok = $barang->stok_toko + $barang->stok_gudang;
             $barang->harga_modal = $request->harga_beli_satuan;
             $barang->save();
 
-            \Illuminate\Support\Facades\DB::commit();
+            DB::commit();
+
             return response()->json([
                 'success' => true,
                 'message' => "Restock berhasil: {$jumlahTambah} pcs dialokasikan ke {$alokasi}",
@@ -262,11 +282,12 @@ class AdminController extends Controller
                     'stok_gudang' => $barang->stok_gudang,
                     'tgl_kadaluarsa_toko' => $barang->tgl_kadaluarsa_toko,
                     'tgl_kadaluarsa_gudang' => $barang->tgl_kadaluarsa_gudang,
-                    'total_stok' => $barang->stok
-                ]
+                    'total_stok' => $barang->stok,
+                ],
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
+            DB::rollBack();
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -284,10 +305,10 @@ class AdminController extends Controller
             'sumber_dana' => 'required|string',
             'nomor_faktur' => 'nullable|string',
             'nama_supplier' => 'nullable|string',
-            'catatan' => 'nullable|string'
+            'catatan' => 'nullable|string',
         ]);
 
-        \Illuminate\Support\Facades\DB::beginTransaction();
+        DB::beginTransaction();
         try {
             $totalExpenditure = 0;
             $totalItemsCount = 0;
@@ -298,16 +319,20 @@ class AdminController extends Controller
 
             foreach ($request->input('items') as $itemData) {
                 $barang = Barang::where('barang_id', $itemData['barang_id'])->lockForUpdate()->first();
-                if (!$barang) continue;
+                if (! $barang) {
+                    continue;
+                }
 
                 $jumlahTambah = (int) $itemData['jumlah_tambah'];
                 $hargaBeliSatuan = (float) $itemData['harga_beli_satuan'];
                 $totalBiaya = $jumlahTambah * $hargaBeliSatuan;
                 $alokasi = $itemData['alokasi'] ?? 'gudang';
-                $tglExpired = !empty($itemData['tanggal_kadaluarsa']) ? $itemData['tanggal_kadaluarsa'] : null;
+                $tglExpired = ! empty($itemData['tanggal_kadaluarsa']) ? $itemData['tanggal_kadaluarsa'] : null;
 
                 $itemNote = "Faktur: {$faktur} | Supplier: {$supplier} [Alokasi: {$alokasi}]";
-                if ($globalNote) $itemNote .= " - " . $globalNote;
+                if ($globalNote) {
+                    $itemNote .= ' - '.$globalNote;
+                }
 
                 RiwayatRestock::create([
                     'barang_id' => $barang->barang_id,
@@ -317,13 +342,15 @@ class AdminController extends Controller
                     'total_biaya' => $totalBiaya,
                     'sumber_dana' => $sumberDana,
                     'tanggal_kadaluarsa' => $tglExpired,
-                    'catatan' => $itemNote
+                    'catatan' => $itemNote,
                 ]);
 
                 // 2-Tier allocation & Expiry Sync
                 if ($alokasi === 'toko') {
                     $barang->stok_toko += $jumlahTambah;
-                    if ($tglExpired) $barang->tgl_kadaluarsa_toko = $tglExpired;
+                    if ($tglExpired) {
+                        $barang->tgl_kadaluarsa_toko = $tglExpired;
+                    }
                 } elseif ($alokasi === 'auto') {
                     $pkm = (int) ($barang->pkm ?: 1);
                     $neededForDisplay = max(0, $pkm - ((int) $barang->stok_toko));
@@ -331,13 +358,17 @@ class AdminController extends Controller
                     $barang->stok_toko += $fillToko;
                     $barang->stok_gudang += ($jumlahTambah - $fillToko);
                     if ($tglExpired) {
-                        if ($fillToko > 0 && !$barang->tgl_kadaluarsa_toko) $barang->tgl_kadaluarsa_toko = $tglExpired;
+                        if ($fillToko > 0 && ! $barang->tgl_kadaluarsa_toko) {
+                            $barang->tgl_kadaluarsa_toko = $tglExpired;
+                        }
                         $barang->tgl_kadaluarsa_gudang = $tglExpired;
                     }
                 } else {
                     // Default to warehouse stock
                     $barang->stok_gudang += $jumlahTambah;
-                    if ($tglExpired) $barang->tgl_kadaluarsa_gudang = $tglExpired;
+                    if ($tglExpired) {
+                        $barang->tgl_kadaluarsa_gudang = $tglExpired;
+                    }
                 }
 
                 $barang->stok = $barang->stok_toko + $barang->stok_gudang;
@@ -348,19 +379,21 @@ class AdminController extends Controller
                 $totalItemsCount += $jumlahTambah;
             }
 
-            \Illuminate\Support\Facades\DB::commit();
+            DB::commit();
+
             return response()->json([
                 'success' => true,
-                'message' => "Faktur kulakan berhasil dicatat: {$totalItemsCount} pcs barang masuk (Total Rp " . number_format($totalExpenditure, 0, ',', '.') . ")",
+                'message' => "Faktur kulakan berhasil dicatat: {$totalItemsCount} pcs barang masuk (Total Rp ".number_format($totalExpenditure, 0, ',', '.').')',
                 'data' => [
                     'total_biaya' => $totalExpenditure,
                     'total_items' => $totalItemsCount,
                     'nomor_faktur' => $faktur,
-                    'nama_supplier' => $supplier
-                ]
+                    'nama_supplier' => $supplier,
+                ],
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
+            DB::rollBack();
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -372,25 +405,33 @@ class AdminController extends Controller
             'barang_id' => 'required|integer|exists:barang,barang_id',
             'lokasi' => 'required|in:toko,gudang,semua',
             'jumlah' => 'required|integer|min:1',
-            'alasan' => 'nullable|string'
+            'alasan' => 'nullable|string',
         ]);
 
-        \Illuminate\Support\Facades\DB::beginTransaction();
+        DB::beginTransaction();
         try {
             $barang = Barang::where('barang_id', $request->barang_id)->lockForUpdate()->first();
-            if (!$barang) throw new \Exception("Barang tidak ditemukan");
+            if (! $barang) {
+                throw new \Exception('Barang tidak ditemukan');
+            }
 
             $jumlah = (int) $request->jumlah;
             $lokasi = $request->lokasi;
 
             if ($lokasi === 'toko') {
-                if ($barang->stok_toko < $jumlah) throw new \Exception("Stok toko ({$barang->stok_toko} pcs) kurang dari jumlah write-off ({$jumlah} pcs)");
+                if ($barang->stok_toko < $jumlah) {
+                    throw new \Exception("Stok toko ({$barang->stok_toko} pcs) kurang dari jumlah write-off ({$jumlah} pcs)");
+                }
                 $barang->stok_toko -= $jumlah;
             } elseif ($lokasi === 'gudang') {
-                if ($barang->stok_gudang < $jumlah) throw new \Exception("Stok gudang ({$barang->stok_gudang} pcs) kurang dari jumlah write-off ({$jumlah} pcs)");
+                if ($barang->stok_gudang < $jumlah) {
+                    throw new \Exception("Stok gudang ({$barang->stok_gudang} pcs) kurang dari jumlah write-off ({$jumlah} pcs)");
+                }
                 $barang->stok_gudang -= $jumlah;
             } else {
-                if ($barang->stok < $jumlah) throw new \Exception("Total stok ({$barang->stok} pcs) kurang dari jumlah write-off ({$jumlah} pcs)");
+                if ($barang->stok < $jumlah) {
+                    throw new \Exception("Total stok ({$barang->stok} pcs) kurang dari jumlah write-off ({$jumlah} pcs)");
+                }
                 if ($barang->stok_toko >= $jumlah) {
                     $barang->stok_toko -= $jumlah;
                 } else {
@@ -403,7 +444,8 @@ class AdminController extends Controller
             $barang->stok = $barang->stok_toko + $barang->stok_gudang;
             $barang->save();
 
-            \Illuminate\Support\Facades\DB::commit();
+            DB::commit();
+
             return response()->json([
                 'success' => true,
                 'message' => "Pemusnahan/Tarik barang kadaluarsa {$barang->nama_barang} ({$jumlah} pcs dari {$lokasi}) berhasil dicatat!",
@@ -411,11 +453,12 @@ class AdminController extends Controller
                     'barang_id' => $barang->barang_id,
                     'stok_toko' => $barang->stok_toko,
                     'stok_gudang' => $barang->stok_gudang,
-                    'total_stok' => $barang->stok
-                ]
+                    'total_stok' => $barang->stok,
+                ],
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
+            DB::rollBack();
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
     }
@@ -427,13 +470,15 @@ class AdminController extends Controller
             'barang_id' => 'required|integer|exists:barang,barang_id',
             'tipe' => 'required|in:gudang_ke_toko,toko_ke_gudang',
             'jumlah' => 'required|integer|min:1',
-            'catatan' => 'nullable|string'
+            'catatan' => 'nullable|string',
         ]);
 
-        \Illuminate\Support\Facades\DB::beginTransaction();
+        DB::beginTransaction();
         try {
             $barang = Barang::where('barang_id', $request->barang_id)->lockForUpdate()->first();
-            if (!$barang) throw new \Exception("Barang tidak ditemukan");
+            if (! $barang) {
+                throw new \Exception('Barang tidak ditemukan');
+            }
 
             $jumlah = (int) $request->jumlah;
             if ($request->tipe === 'gudang_ke_toko') {
@@ -453,8 +498,9 @@ class AdminController extends Controller
             $barang->stok = $barang->stok_toko + $barang->stok_gudang;
             $barang->save();
 
-            \Illuminate\Support\Facades\DB::commit();
+            DB::commit();
             $arah = $request->tipe === 'gudang_ke_toko' ? 'Gudang ➔ Toko' : 'Toko ➔ Gudang';
+
             return response()->json([
                 'success' => true,
                 'message' => "Mutasi stok {$barang->nama_barang} ({$jumlah} pcs, {$arah}) berhasil!",
@@ -462,11 +508,12 @@ class AdminController extends Controller
                     'barang_id' => $barang->barang_id,
                     'stok_toko' => $barang->stok_toko,
                     'stok_gudang' => $barang->stok_gudang,
-                    'total_stok' => $barang->stok
-                ]
+                    'total_stok' => $barang->stok,
+                ],
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
+            DB::rollBack();
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
     }
@@ -474,7 +521,7 @@ class AdminController extends Controller
     public function autoRefillDisplay(Request $request)
     {
         $this->checkAdmin($request);
-        \Illuminate\Support\Facades\DB::beginTransaction();
+        DB::beginTransaction();
         try {
             $totalRefilled = 0;
             $itemsRefilled = 0;
@@ -484,7 +531,9 @@ class AdminController extends Controller
                 foreach ($request->input('items') as $item) {
                     $barangId = $item['barang_id'] ?? null;
                     $jumlah = (int) ($item['jumlah'] ?? 0);
-                    if (!$barangId || $jumlah <= 0) continue;
+                    if (! $barangId || $jumlah <= 0) {
+                        continue;
+                    }
 
                     $barang = Barang::where('barang_id', $barangId)->lockForUpdate()->first();
                     if ($barang) {
@@ -493,7 +542,7 @@ class AdminController extends Controller
                             $barang->stok_gudang -= $canTransfer;
                             $barang->stok_toko += $canTransfer;
                             $barang->stok = $barang->stok_toko + $barang->stok_gudang;
-                            if (!$barang->tgl_kadaluarsa_toko && $barang->tgl_kadaluarsa_gudang) {
+                            if (! $barang->tgl_kadaluarsa_toko && $barang->tgl_kadaluarsa_gudang) {
                                 $barang->tgl_kadaluarsa_toko = $barang->tgl_kadaluarsa_gudang;
                             }
                             $barang->save();
@@ -516,7 +565,7 @@ class AdminController extends Controller
                             $barang->stok_gudang -= $canTransfer;
                             $barang->stok_toko += $canTransfer;
                             $barang->stok = $barang->stok_toko + $barang->stok_gudang;
-                            if (!$barang->tgl_kadaluarsa_toko && $barang->tgl_kadaluarsa_gudang) {
+                            if (! $barang->tgl_kadaluarsa_toko && $barang->tgl_kadaluarsa_gudang) {
                                 $barang->tgl_kadaluarsa_toko = $barang->tgl_kadaluarsa_gudang;
                             }
                             $barang->save();
@@ -528,15 +577,17 @@ class AdminController extends Controller
                 }
             }
 
-            \Illuminate\Support\Facades\DB::commit();
+            DB::commit();
+
             return response()->json([
                 'success' => true,
                 'message' => "Refill berhasil dikonfirmasi: {$totalRefilled} pcs telah dipindahkan ke display rak toko ({$itemsRefilled} SKU)",
                 'total_refilled' => $totalRefilled,
-                'items_refilled' => $itemsRefilled
+                'items_refilled' => $itemsRefilled,
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
+            DB::rollBack();
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -545,35 +596,35 @@ class AdminController extends Controller
     {
         $this->checkAdmin($request);
         $riwayat = RiwayatRestock::with(['barang', 'admin'])
-                    ->orderBy('created_at', 'desc')
-                    ->get()
-                    ->map(function($r) {
-                        return [
-                            'restock_id' => $r->restock_id,
-                            'nama_barang' => $r->barang ? $r->barang->nama_barang : 'Barang Dihapus',
-                            'nama_admin' => $r->admin ? $r->admin->username : 'Unknown',
-                            'jumlah_tambah' => $r->jumlah_tambah,
-                            'harga_beli_satuan' => (float) $r->harga_beli_satuan,
-                            'total_biaya' => (float) $r->total_biaya,
-                            'sumber_dana' => $r->sumber_dana,
-                            'catatan' => $r->catatan,
-                            'tanggal' => $r->created_at->format('Y-m-d H:i')
-                        ];
-                    });
-        
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($r) {
+                return [
+                    'restock_id' => $r->restock_id,
+                    'nama_barang' => $r->barang ? $r->barang->nama_barang : 'Barang Dihapus',
+                    'nama_admin' => $r->admin ? $r->admin->username : 'Unknown',
+                    'jumlah_tambah' => $r->jumlah_tambah,
+                    'harga_beli_satuan' => (float) $r->harga_beli_satuan,
+                    'total_biaya' => (float) $r->total_biaya,
+                    'sumber_dana' => $r->sumber_dana,
+                    'catatan' => $r->catatan,
+                    'tanggal' => $r->created_at->format('Y-m-d H:i'),
+                ];
+            });
+
         $totalPengeluaran = RiwayatRestock::sum('total_biaya');
 
         return response()->json([
-            'success' => true, 
+            'success' => true,
             'data' => $riwayat,
-            'total_pengeluaran' => (float) $totalPengeluaran
+            'total_pengeluaran' => (float) $totalPengeluaran,
         ]);
     }
 
     public function getAnggota(Request $request)
     {
         $this->checkAdmin($request);
-        $anggota = Anggota::with('user')->get()->map(function($a) {
+        $anggota = Anggota::with('user')->get()->map(function ($a) {
             return [
                 'anggota_id' => $a->anggota_id,
                 'nama_lengkap' => $a->nama_lengkap,
@@ -583,6 +634,7 @@ class AdminController extends Controller
                 'shu' => (float) $a->shu,
             ];
         });
+
         return response()->json(['success' => true, 'data' => $anggota]);
     }
 
@@ -608,7 +660,7 @@ class AdminController extends Controller
             Anggota::create([
                 'user_id' => $user->user_id,
                 'nama_lengkap' => $request->nama_lengkap ?: $request->username,
-                'email' => strtolower($request->username) . '@koperasi.local',
+                'email' => strtolower($request->username).'@koperasi.local',
                 'saldo' => 0,
                 'hutang' => 0,
                 'shu' => 0,
@@ -627,9 +679,11 @@ class AdminController extends Controller
             }
 
             DB::commit();
+
             return response()->json(['success' => true, 'message' => 'User & anggota berhasil ditambahkan']);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
@@ -638,7 +692,9 @@ class AdminController extends Controller
     {
         $adminId = $this->checkAdmin($request);
         $user = User::find($request->user_id);
-        if (!$user) return response()->json(['success' => false, 'message' => 'User tidak ditemukan'], 404);
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'User tidak ditemukan'], 404);
+        }
 
         DB::beginTransaction();
         try {
@@ -669,7 +725,7 @@ class AdminController extends Controller
                 foreach ($oldMandates as $om) {
                     $om->status = 'nonaktif';
                     $om->revoked_at = now();
-                    $om->catatan = ($om->catatan ? $om->catatan . ' | ' : '') . 'Diubah melalui update user';
+                    $om->catatan = ($om->catatan ? $om->catatan.' | ' : '').'Diubah melalui update user';
                     $om->save();
                 }
 
@@ -686,9 +742,11 @@ class AdminController extends Controller
             }
 
             DB::commit();
+
             return response()->json(['success' => true, 'message' => 'User berhasil diupdate']);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
@@ -697,7 +755,9 @@ class AdminController extends Controller
     {
         $this->checkAdmin($request);
         $user = User::find($request->user_id);
-        if (!$user) return response()->json(['success' => false, 'message' => 'User tidak ditemukan'], 404);
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'User tidak ditemukan'], 404);
+        }
 
         if ($user->isAdmin()) {
             $adminCount = JabatanAnggota::where('role', 'admin')->where('status', 'aktif')->count();
@@ -707,15 +767,17 @@ class AdminController extends Controller
         }
 
         User::destroy($request->user_id);
+
         return response()->json(['success' => true, 'message' => 'User berhasil dihapus']);
     }
 
     public function getSetoranKasir(Request $request)
     {
         $this->checkAdmin($request);
-        $data = SetoranKasir::with('kasir.anggota')->orderBy('created_at', 'desc')->get()->map(function($s) {
+        $data = SetoranKasir::with('kasir.anggota')->orderBy('created_at', 'desc')->get()->map(function ($s) {
             $namaKasir = $s->kasir ? ($s->kasir->anggota ? $s->kasir->anggota->nama_lengkap : $s->kasir->username) : 'Kasir';
-            $tglIso = $s->created_at ? $s->created_at->toIso8601String() : ($s->tanggal ? \Carbon\Carbon::parse($s->tanggal)->toIso8601String() : null);
+            $tglIso = $s->created_at ? $s->created_at->toIso8601String() : ($s->tanggal ? Carbon::parse($s->tanggal)->toIso8601String() : null);
+
             return [
                 'id' => $s->setoran_id,
                 'setoran_id' => $s->setoran_id,
@@ -723,13 +785,14 @@ class AdminController extends Controller
                 'nama_kasir' => $namaKasir,
                 'kasir' => [
                     'nama_lengkap' => $namaKasir,
-                    'username' => $s->kasir ? $s->kasir->username : ''
+                    'username' => $s->kasir ? $s->kasir->username : '',
                 ],
                 'tanggal' => $tglIso,
                 'created_at' => $tglIso,
-                'status' => $s->status
+                'status' => $s->status,
             ];
         });
+
         return response()->json(['success' => true, 'data' => $data]);
     }
 
@@ -742,11 +805,13 @@ class AdminController extends Controller
             $setoran->status = ($action === 'reject') ? 'rejected' : 'approved';
             $setoran->approved_by = $adminId;
             $setoran->save();
+
             return response()->json([
                 'success' => true,
-                'message' => $action === 'reject' ? 'Setoran ditolak' : 'Setoran disetujui'
+                'message' => $action === 'reject' ? 'Setoran ditolak' : 'Setoran disetujui',
             ]);
         }
+
         return response()->json(['success' => false, 'error' => 'Setoran tidak ditemukan'], 404);
     }
 
@@ -754,11 +819,14 @@ class AdminController extends Controller
     {
         $this->checkAdmin($request);
         $user = User::where('username', $request->nama_anggota)->first();
-        if (!$user || !$user->anggota) return response()->json(['success' => false, 'message' => 'Anggota tidak ditemukan'], 404);
-        
+        if (! $user || ! $user->anggota) {
+            return response()->json(['success' => false, 'message' => 'Anggota tidak ditemukan'], 404);
+        }
+
         $anggota = $user->anggota;
         $anggota->shu += $request->nominal;
         $anggota->save();
+
         return response()->json(['success' => true, 'message' => 'SHU berhasil ditopup']);
     }
 
@@ -766,8 +834,10 @@ class AdminController extends Controller
     {
         $this->checkAdmin($request);
         $adjustments = $request->input('adjustments');
-        if (!$adjustments || !is_array($adjustments)) return response()->json(['success' => false, 'message' => 'Invalid data' ]);
-        \Illuminate\Support\Facades\DB::beginTransaction();
+        if (! $adjustments || ! is_array($adjustments)) {
+            return response()->json(['success' => false, 'message' => 'Invalid data']);
+        }
+        DB::beginTransaction();
         try {
             foreach ($adjustments as $adj) {
                 $barang = Barang::find($adj['barang_id']);
@@ -776,10 +846,12 @@ class AdminController extends Controller
                     $barang->save();
                 }
             }
-            \Illuminate\Support\Facades\DB::commit();
-            return response()->json(['success' => true, 'message' => 'Stok berhasil disesuaikan' ]);
+            DB::commit();
+
+            return response()->json(['success' => true, 'message' => 'Stok berhasil disesuaikan']);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
+            DB::rollBack();
+
             return response()->json(['success' => false, 'error' => $e->getMessage()]);
         }
     }
@@ -817,10 +889,10 @@ class AdminController extends Controller
                 $q->whereNull('anggota_id');
             }
             if ($search) {
-                $q->where(function($sub) use ($search) {
+                $q->where(function ($sub) use ($search) {
                     $sub->where('transaksi_id', 'like', "%{$search}%")
-                        ->orWhereHas('anggota', fn($a) => $a->where('nama_lengkap', 'like', "%{$search}%"))
-                        ->orWhereHas('kasir', fn($k) => $k->where('username', 'like', "%{$search}%"));
+                        ->orWhereHas('anggota', fn ($a) => $a->where('nama_lengkap', 'like', "%{$search}%"))
+                        ->orWhereHas('kasir', fn ($k) => $k->where('username', 'like', "%{$search}%"));
                 });
             }
 
@@ -860,7 +932,7 @@ class AdminController extends Controller
                 ->groupBy('kasir_id')
                 ->with('kasir:user_id,username')
                 ->get()
-                ->map(function($item) {
+                ->map(function ($item) {
                     return [
                         'kasir_id' => $item->kasir_id,
                         'kasir_username' => $item->kasir ? $item->kasir->username : 'System',
@@ -876,7 +948,7 @@ class AdminController extends Controller
                 ->groupBy(DB::raw('DATE(created_at)'))
                 ->orderBy('tanggal', 'asc')
                 ->get()
-                ->map(function($item) {
+                ->map(function ($item) {
                     return [
                         'tanggal' => $item->tanggal,
                         'jumlah_transaksi' => (int) $item->jumlah_transaksi,
@@ -889,7 +961,7 @@ class AdminController extends Controller
                 'kasir:user_id,username',
                 'anggota:anggota_id,nama_lengkap',
                 'details:detail_id,transaksi_id,barang_id,jumlah,harga_satuan,subtotal,keuntungan',
-                'details.barang:barang_id,nama_barang'
+                'details.barang:barang_id,nama_barang',
             ];
 
             // Pagination or All records
@@ -917,7 +989,7 @@ class AdminController extends Controller
                 $items = $paginator->items();
             }
 
-            $data = collect($items)->map(function($t) {
+            $data = collect($items)->map(function ($t) {
                 return [
                     'transaksi_id' => $t->transaksi_id,
                     'created_at' => $t->created_at ? $t->created_at->toIso8601String() : null,
@@ -931,18 +1003,18 @@ class AdminController extends Controller
                     'status' => $t->status,
                     'created_at' => $t->created_at ? $t->created_at->toISOString() : null,
                     'items_count' => $t->details ? $t->details->count() : 0,
-                    'details' => $t->details ? $t->details->map(function($d) {
+                    'details' => $t->details ? $t->details->map(function ($d) {
                         return [
                             'detail_id' => $d->detail_id,
                             'barang_id' => $d->barang_id,
-                            'nama_barang' => $d->barang ? $d->barang->nama_barang : 'Barang #' . $d->barang_id,
+                            'nama_barang' => $d->barang ? $d->barang->nama_barang : 'Barang #'.$d->barang_id,
                             'jumlah' => (int) $d->jumlah,
                             'harga_satuan' => (float) $d->harga_satuan,
                             'harga_beli_saat_ini' => (float) ($d->harga_beli_saat_ini ?? 0),
                             'subtotal' => (float) $d->subtotal,
                             'keuntungan' => (float) ($d->keuntungan ?? 0),
                         ];
-                    }) : []
+                    }) : [],
                 ];
             });
 
@@ -950,8 +1022,12 @@ class AdminController extends Controller
 
             // Total Beban Operasional Kas (OPEX)
             $qPengeluaran = PengeluaranOperasional::query();
-            if ($tglAwal) $qPengeluaran->whereDate('tanggal', '>=', $tglAwal);
-            if ($tglAkhir) $qPengeluaran->whereDate('tanggal', '<=', $tglAkhir);
+            if ($tglAwal) {
+                $qPengeluaran->whereDate('tanggal', '>=', $tglAwal);
+            }
+            if ($tglAkhir) {
+                $qPengeluaran->whereDate('tanggal', '<=', $tglAkhir);
+            }
 
             $totalBebanOperasional = (float) $qPengeluaran->sum('nominal');
             $daftarPengeluaran = (clone $qPengeluaran)->orderBy('tanggal', 'desc')->get();
@@ -992,7 +1068,7 @@ class AdminController extends Controller
                 ->get()
                 ->keyBy('anggota_id');
 
-            $rekapAnggota = $allAnggota->map(function($a) use ($txAggPerAnggota, $totalOmsetAnggota, $totalLabaAnggota, $shuAnggota60) {
+            $rekapAnggota = $allAnggota->map(function ($a) use ($txAggPerAnggota, $totalOmsetAnggota, $totalLabaAnggota, $shuAnggota60) {
                 $tx = $txAggPerAnggota->get($a->anggota_id);
                 $belanja = $tx ? (float) $tx->total_belanja : 0.0;
                 $lunas = $tx ? (float) $tx->total_lunas : 0.0;
@@ -1006,7 +1082,7 @@ class AdminController extends Controller
 
                 return [
                     'anggota_id' => $a->anggota_id,
-                    'nama_lengkap' => $a->nama_lengkap ?: 'Anggota #' . $a->anggota_id,
+                    'nama_lengkap' => $a->nama_lengkap ?: 'Anggota #'.$a->anggota_id,
                     'frekuensi_belanja' => $frek,
                     'total_belanja' => $belanja,
                     'total_lunas' => $lunas,
@@ -1020,7 +1096,7 @@ class AdminController extends Controller
             // Rekapitulasi Bulanan (Bila rentang waktu multi-bulan)
             $isSqlite = DB::connection()->getDriverName() === 'sqlite';
             $monthExpr = $isSqlite ? "strftime('%Y-%m', created_at)" : "DATE_FORMAT(created_at, '%Y-%m')";
-            
+
             $rekapBulanan = (clone $q)
                 ->selectRaw("
                     {$monthExpr} as periode_bulan,
@@ -1032,7 +1108,7 @@ class AdminController extends Controller
                 ->groupBy(DB::raw($monthExpr))
                 ->orderBy('periode_bulan', 'asc')
                 ->get()
-                ->map(function($m) {
+                ->map(function ($m) {
                     return [
                         'periode_bulan' => $m->periode_bulan,
                         'total_transaksi' => (int) $m->total_transaksi,
@@ -1045,8 +1121,8 @@ class AdminController extends Controller
             // ── 1. RASIO MANAJEMEN KEUANGAN & KESEHATAN KOPERASI (Permenkop UKM & Financial Ratio Analysis) ──
             $totalSeluruhAnggota = $allAnggota->count();
             $jumlahAnggotaAktif = $rekapAnggota->where('total_belanja', '>', 0)->count();
-            $rasioPartisipasiAnggota = $totalSeluruhAnggota > 0 
-                ? round(($jumlahAnggotaAktif / $totalSeluruhAnggota) * 100, 1) 
+            $rasioPartisipasiAnggota = $totalSeluruhAnggota > 0
+                ? round(($jumlahAnggotaAktif / $totalSeluruhAnggota) * 100, 1)
                 : 0;
 
             $kasLikuidMasuk = (float) (($summaryAgg->total_cash ?? 0) + ($summaryAgg->total_ewallet ?? 0) + ($summaryAgg->total_qr ?? 0) + ($summaryAgg->total_transfer ?? 0));
@@ -1073,7 +1149,7 @@ class AdminController extends Controller
             $skorEfisiensi = $oer <= 35 ? 20 : ($oer <= 60 ? 15 : ($oer <= 85 ? 10 : 5));
 
             $totalSkorKesehatan = $skorLikuiditas + $skorPiutang + $skorProfitabilitas + $skorEfisiensi;
-            
+
             if ($totalSkorKesehatan >= 80) {
                 $statusKesehatan = 'SEHAT (GRADE A)';
                 $badgeColor = 'green';
@@ -1142,20 +1218,20 @@ class AdminController extends Controller
                 'breakdown_kasir' => $breakdownKasir,
                 'transaksi_harian' => $transaksiHarian,
                 'daftar_kasir' => $daftarKasir,
-                'periode' => ['tanggal_awal' => $tglAwal, 'tanggal_akhir' => $tglAkhir]
+                'periode' => ['tanggal_awal' => $tglAwal, 'tanggal_akhir' => $tglAkhir],
             ]);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('getLaporanTransaksi Error: ' . $e->getMessage(), [
+            Log::error('getLaporanTransaksi Error: '.$e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
                 'line' => $e->getLine(),
-                'file' => basename($e->getFile())
+                'file' => basename($e->getFile()),
             ], 500);
         }
     }
@@ -1169,13 +1245,17 @@ class AdminController extends Controller
 
         $query = PengeluaranOperasional::with('user:user_id,username')->orderBy('tanggal', 'desc')->orderBy('created_at', 'desc');
 
-        if ($tglAwal) $query->whereDate('tanggal', '>=', $tglAwal);
-        if ($tglAkhir) $query->whereDate('tanggal', '<=', $tglAkhir);
+        if ($tglAwal) {
+            $query->whereDate('tanggal', '>=', $tglAwal);
+        }
+        if ($tglAkhir) {
+            $query->whereDate('tanggal', '<=', $tglAkhir);
+        }
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('nama_pengeluaran', 'like', "%{$search}%")
-                  ->orWhere('kategori', 'like', "%{$search}%")
-                  ->orWhere('keterangan', 'like', "%{$search}%");
+                    ->orWhere('kategori', 'like', "%{$search}%")
+                    ->orWhere('keterangan', 'like', "%{$search}%");
             });
         }
 
@@ -1185,7 +1265,7 @@ class AdminController extends Controller
         return response()->json([
             'success' => true,
             'total_pengeluaran' => (float) $totalNominal,
-            'data' => $data
+            'data' => $data,
         ]);
     }
 
@@ -1212,7 +1292,7 @@ class AdminController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Pengeluaran kas berhasil dicatat',
-            'data' => $item
+            'data' => $item,
         ]);
     }
 
@@ -1222,14 +1302,17 @@ class AdminController extends Controller
         $item = PengeluaranOperasional::find($id);
         if ($item) {
             $item->delete();
+
             return response()->json(['success' => true, 'message' => 'Catatan pengeluaran berhasil dihapus']);
         }
+
         return response()->json(['success' => false, 'error' => 'Data pengeluaran tidak ditemukan'], 404);
     }
 
     public function getMonitorBarang(Request $request)
     {
         $this->checkAdmin($request);
+
         return response()->json(['success' => true, 'data' => []]);
     }
 
@@ -1255,7 +1338,7 @@ class AdminController extends Controller
         $limit = (int) $request->input('limit', 100);
         $records = $query->limit($limit)->get();
 
-        $data = $records->map(function($s) {
+        $data = $records->map(function ($s) {
             return [
                 'shu_id' => $s->shu_id,
                 'anggota_id' => $s->anggota_id,
@@ -1278,8 +1361,8 @@ class AdminController extends Controller
                 'totalShu30' => (float) $aggregates->total_shu_30,
                 'totalAllShu' => (float) $aggregates->total_all_shu,
                 'totalDistribusi' => (int) $aggregates->total_distribusi,
-                'tahunAktif' => $request->input('tahun', 'All')
-            ]
+                'tahunAktif' => $request->input('tahun', 'All'),
+            ],
         ]);
     }
 
@@ -1292,7 +1375,7 @@ class AdminController extends Controller
             ->with('anggota')
             ->get()
             ->unique('user_id')
-            ->map(function($u) {
+            ->map(function ($u) {
                 return [
                     'user_id' => $u->user_id,
                     'username' => $u->username,
@@ -1300,6 +1383,7 @@ class AdminController extends Controller
                 ];
             })
             ->values();
+
         return response()->json(['success' => true, 'data' => $kasir]);
     }
 
@@ -1383,7 +1467,7 @@ class AdminController extends Controller
                 'avg_pkm' => round($data->avg('pkm'), 1),
                 'total_estimated_budget' => $totalEstimatedBudget,
                 'total_items_to_buy' => $totalItemsToBuy,
-            ]
+            ],
         ]);
     }
 
@@ -1392,7 +1476,7 @@ class AdminController extends Controller
         $this->checkAdmin($request);
         $request->validate([
             'barang_id' => 'required|integer|exists:barang,barang_id',
-            'pkm' => 'required|integer|min:1'
+            'pkm' => 'required|integer|min:1',
         ]);
 
         $barang = Barang::findOrFail($request->barang_id);
@@ -1401,7 +1485,7 @@ class AdminController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "PKM {$barang->nama_barang} berhasil diperbarui menjadi {$request->pkm} pcs."
+            'message' => "PKM {$barang->nama_barang} berhasil diperbarui menjadi {$request->pkm} pcs.",
         ]);
     }
 
@@ -1433,12 +1517,13 @@ class AdminController extends Controller
                 $b->save();
                 $count++;
             }
+
             return $count;
         });
 
         return response()->json([
             'success' => true,
-            'message' => "Berhasil mengkalkulasi dan menerapkan PKM 4 hari untuk {$updatedCount} produk berdasarkan data penjualan {$days} hari terakhir."
+            'message' => "Berhasil mengkalkulasi dan menerapkan PKM 4 hari untuk {$updatedCount} produk berdasarkan data penjualan {$days} hari terakhir.",
         ]);
     }
 
@@ -1456,7 +1541,9 @@ class AdminController extends Controller
 
         foreach ($handovers as $st) {
             $opname = $st->hasil_opname;
-            if (!$opname || !isset($opname['summary'])) continue;
+            if (! $opname || ! isset($opname['summary'])) {
+                continue;
+            }
 
             $totalMinusNominal = (float) ($opname['summary']['totalMinusNominal'] ?? 0);
             $selisihKas = (float) ($opname['selisih_kas'] ?? 0);
@@ -1466,7 +1553,7 @@ class AdminController extends Controller
             $fromName = $st->kasirFrom ? $st->kasirFrom->username : "Kasir #{$st->kasir_from}";
             $fromId = $st->kasir_from;
 
-            if (!isset($kasirLosses[$fromId])) {
+            if (! isset($kasirLosses[$fromId])) {
                 $kasirLosses[$fromId] = [
                     'kasir_id' => $fromId,
                     'kasir_name' => $fromName,
@@ -1520,7 +1607,7 @@ class AdminController extends Controller
             'data' => [
                 'rekap_per_kasir' => array_values($kasirLosses),
                 'riwayat_selisih' => $detailedLogs,
-            ]
+            ],
         ]);
     }
 
@@ -1560,7 +1647,7 @@ class AdminController extends Controller
                 'total_nominal_keluar' => $totalNominalTarik,
                 'total_sales_kontribusi' => $totalSalesPenyerta,
                 'rasio_sales_to_tarik' => $totalNominalTarik > 0 ? round(($totalSalesPenyerta / $totalNominalTarik) * 100, 1) : 0,
-            ]
+            ],
         ]);
     }
 
@@ -1581,7 +1668,7 @@ class AdminController extends Controller
                 'saldo' => (float) $a->saldo,
                 'shu' => (float) $a->shu,
                 'hutang' => (float) $a->hutang,
-                'has_master_consent' => !is_null($a->persetujuan_shu_master_at),
+                'has_master_consent' => ! is_null($a->persetujuan_shu_master_at),
                 'master_consent_at' => $a->persetujuan_shu_master_at,
             ];
         });
@@ -1616,7 +1703,7 @@ class AdminController extends Controller
                 ],
                 'anggota' => $anggotaList,
                 'riwayat_konversi' => $riwayatKonversi,
-            ]
+            ],
         ]);
     }
 
@@ -1637,11 +1724,13 @@ class AdminController extends Controller
 
             if ($mode === 'individual' || $mode === 'ke_saldo_belanja') {
                 $anggota = Anggota::lockForUpdate()->find($request->anggota_id);
-                if (!$anggota) throw new \Exception("Data anggota tidak ditemukan.");
+                if (! $anggota) {
+                    throw new \Exception('Data anggota tidak ditemukan.');
+                }
 
                 $nominal = (float) $request->nominal;
                 if ($nominal <= 0 || $nominal > $anggota->shu) {
-                    throw new \Exception("Nominal konversi tidak valid atau melebihi saldo SHU (Tersedia: Rp " . number_format($anggota->shu, 0, ',', '.') . ").");
+                    throw new \Exception('Nominal konversi tidak valid atau melebihi saldo SHU (Tersedia: Rp '.number_format($anggota->shu, 0, ',', '.').').');
                 }
 
                 $anggota->shu -= $nominal;
@@ -1653,24 +1742,26 @@ class AdminController extends Controller
                     'admin_id' => $adminId,
                     'nominal' => $nominal,
                     'tipe_konversi' => 'ke_saldo_belanja',
-                    'keterangan' => $request->keterangan ?: "Konversi SHU ke Saldo Belanja E-Wallet",
+                    'keterangan' => $request->keterangan ?: 'Konversi SHU ke Saldo Belanja E-Wallet',
                 ]);
 
-                $message = "Berhasil memindahkan SHU sebesar Rp " . number_format($nominal, 0, ',', '.') . " ke Saldo Belanja " . $anggota->nama_lengkap . ".";
+                $message = 'Berhasil memindahkan SHU sebesar Rp '.number_format($nominal, 0, ',', '.').' ke Saldo Belanja '.$anggota->nama_lengkap.'.';
 
             } elseif ($mode === 'pelunasan_hutang') {
                 $anggota = Anggota::lockForUpdate()->find($request->anggota_id);
-                if (!$anggota) throw new \Exception("Data anggota tidak ditemukan.");
+                if (! $anggota) {
+                    throw new \Exception('Data anggota tidak ditemukan.');
+                }
 
                 if ($anggota->hutang <= 0) {
-                    throw new \Exception("Anggota tidak memiliki tunggakan hutang.");
+                    throw new \Exception('Anggota tidak memiliki tunggakan hutang.');
                 }
 
                 $maxPotong = min($anggota->shu, $anggota->hutang);
                 $nominal = $request->nominal ? min((float) $request->nominal, $maxPotong) : $maxPotong;
 
                 if ($nominal <= 0) {
-                    throw new \Exception("Saldo SHU tidak mencukupi untuk memotong hutang.");
+                    throw new \Exception('Saldo SHU tidak mencukupi untuk memotong hutang.');
                 }
 
                 $anggota->shu -= $nominal;
@@ -1682,10 +1773,10 @@ class AdminController extends Controller
                     'admin_id' => $adminId,
                     'nominal' => $nominal,
                     'tipe_konversi' => 'pelunasan_hutang',
-                    'keterangan' => $request->keterangan ?: "Kompensasi Pelunasan Hutang dari Saldo SHU",
+                    'keterangan' => $request->keterangan ?: 'Kompensasi Pelunasan Hutang dari Saldo SHU',
                 ]);
 
-                $message = "Berhasil memotong SHU sebesar Rp " . number_format($nominal, 0, ',', '.') . " untuk pelunasan hutang " . $anggota->nama_lengkap . ".";
+                $message = 'Berhasil memotong SHU sebesar Rp '.number_format($nominal, 0, ',', '.').' untuk pelunasan hutang '.$anggota->nama_lengkap.'.';
 
             } elseif ($mode === 'massal_ke_saldo') {
                 $persentase = (float) ($request->persentase ?: 100);
@@ -1714,16 +1805,18 @@ class AdminController extends Controller
                     }
                 }
 
-                $message = "Distribusi massal berhasil! Rp " . number_format($totalConverted, 0, ',', '.') . " dipindahkan ke saldo belanja {$countMembers} anggota.";
+                $message = 'Distribusi massal berhasil! Rp '.number_format($totalConverted, 0, ',', '.')." dipindahkan ke saldo belanja {$countMembers} anggota.";
             }
 
             DB::commit();
+
             return response()->json([
                 'success' => true,
                 'message' => $message,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
@@ -1793,7 +1886,7 @@ class AdminController extends Controller
             if ($existing) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Anggota ini sudah memiliki mandat aktif sebagai ' . strtoupper($role) . '.',
+                    'message' => 'Anggota ini sudah memiliki mandat aktif sebagai '.strtoupper($role).'.',
                 ], 422);
             }
 
@@ -1817,13 +1910,15 @@ class AdminController extends Controller
             }
 
             DB::commit();
+
             return response()->json([
                 'success' => true,
-                'message' => "Mandat " . strtoupper($role) . " berhasil ditugaskan kepada anggota.",
+                'message' => 'Mandat '.strtoupper($role).' berhasil ditugaskan kepada anggota.',
                 'data' => $jabatan,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
@@ -1861,7 +1956,7 @@ class AdminController extends Controller
             $jabatan->status = 'nonaktif';
             $jabatan->revoked_at = now();
             if ($request->alasan) {
-                $jabatan->catatan = ($jabatan->catatan ? $jabatan->catatan . ' | ' : '') . 'Alasan pencabutan: ' . $request->alasan;
+                $jabatan->catatan = ($jabatan->catatan ? $jabatan->catatan.' | ' : '').'Alasan pencabutan: '.$request->alasan;
             }
             $jabatan->save();
 
@@ -1880,12 +1975,14 @@ class AdminController extends Controller
             }
 
             DB::commit();
+
             return response()->json([
                 'success' => true,
-                'message' => "Mandat jabatan berhasil dinonaktifkan/dicabut.",
+                'message' => 'Mandat jabatan berhasil dinonaktifkan/dicabut.',
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }

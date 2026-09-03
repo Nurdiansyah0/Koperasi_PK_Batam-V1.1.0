@@ -21,7 +21,7 @@ class ApiKey extends Model
         'is_active',
         'last_used_at',
         'expires_at',
-        'created_by'
+        'created_by',
     ];
 
     protected $casts = [
@@ -33,8 +33,8 @@ class ApiKey extends Model
 
     public static function createKey(string $name, array $permissions = ['*'], ?string $allowedOrigins = '*', ?int $expiresInDays = null, ?int $createdBy = null): self
     {
-        $key = 'kop_live_' . Str::random(32);
-        $secret = 'kop_sec_' . Str::random(48);
+        $key = 'kop_live_'.Str::random(32);
+        $secret = 'kop_sec_'.Str::random(48);
 
         return self::create([
             'name' => $name,
@@ -50,7 +50,7 @@ class ApiKey extends Model
 
     public function hasPermission(string $permission): bool
     {
-        if (!$this->is_active) {
+        if (! $this->is_active) {
             return false;
         }
 

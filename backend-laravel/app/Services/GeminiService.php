@@ -2,18 +2,20 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
-use App\Models\User;
+use App\Models\Anggota;
 use App\Models\Barang;
 use App\Models\Transaksi;
-use App\Models\Anggota;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class GeminiService
 {
     protected string $apiKey;
+
     protected string $model;
+
     protected string $baseUrl;
 
     public function __construct()
@@ -28,7 +30,7 @@ class GeminiService
      */
     public function isConfigured(): bool
     {
-        return !empty($this->apiKey) && $this->apiKey !== 'YOUR_GEMINI_API_KEY_HERE';
+        return ! empty($this->apiKey) && $this->apiKey !== 'YOUR_GEMINI_API_KEY_HERE';
     }
 
     /**
@@ -36,7 +38,7 @@ class GeminiService
      */
     public function generateContent(array $contents, ?string $systemInstruction = null, ?array $generationConfig = null): array
     {
-        if (!$this->isConfigured()) {
+        if (! $this->isConfigured()) {
             return [
                 'success' => false,
                 'is_demo' => true,
@@ -53,8 +55,8 @@ class GeminiService
         if ($systemInstruction) {
             $payload['systemInstruction'] = [
                 'parts' => [
-                    ['text' => $systemInstruction]
-                ]
+                    ['text' => $systemInstruction],
+                ],
             ];
         }
 
@@ -69,8 +71,9 @@ class GeminiService
                 ])
                 ->post($url, $payload);
 
-            if (!$response->successful()) {
-                Log::error('Gemini API Error: ' . $response->body());
+            if (! $response->successful()) {
+                Log::error('Gemini API Error: '.$response->body());
+
                 return [
                     'success' => false,
                     'status_code' => $response->status(),
@@ -87,10 +90,11 @@ class GeminiService
                 'raw' => $result,
             ];
         } catch (\Exception $e) {
-            Log::error('Gemini Exception: ' . $e->getMessage());
+            Log::error('Gemini Exception: '.$e->getMessage());
+
             return [
                 'success' => false,
-                'error' => 'Koneksi ke Google AI Studio gagal: ' . $e->getMessage(),
+                'error' => 'Koneksi ke Google AI Studio gagal: '.$e->getMessage(),
             ];
         }
     }
@@ -121,15 +125,15 @@ class GeminiService
         }
 
         $systemInstruction = "Anda adalah 'Asisten Pintar Koperasi PK Batam' yang ramah, profesional, ringkas, dan sangat membantu. "
-            . "Sistem ini merupakan aplikasi Koperasi Karyawan PK Batam (Sistem Kasir, Simpan Pinjam, Belanja Anggota, dan Manajemen Stok).\n"
-            . "Pengguna saat ini: '{$username}' dengan peran '{$role}'.\n"
-            . "Data konteks pengguna saat ini: " . json_encode($contextData, JSON_UNESCAPED_UNICODE) . "\n\n"
-            . "Pedoman Respon:\n"
-            . "1. Gunakan Bahasa Indonesia yang sopan, solutif, dan ramah.\n"
-            . "2. Jika ditanya tentang saldo/hutang/SHU anggota, gunakan data konteks di atas secara akurat.\n"
-            . "3. Bantu jelaskan fitur-fitur seperti cara belanja, pelunasan hutang, pembayaran QR/Cash/Saldo, serah terima kasir, opname stok, dan bagi hasil SHU (60% Anggota, 10% Cadangan, 30% Koperasi).\n"
-            . "4. Jika data tidak tersedia atau fitur membutuhkan otorisasi khusus, jelaskan dengan jelas dan sarankan langkah berikutnya.\n"
-            . "5. Format jawaban dengan markdown rapi (bullet points/bold bila perlu).";
+            ."Sistem ini merupakan aplikasi Koperasi Karyawan PK Batam (Sistem Kasir, Simpan Pinjam, Belanja Anggota, dan Manajemen Stok).\n"
+            ."Pengguna saat ini: '{$username}' dengan peran '{$role}'.\n"
+            .'Data konteks pengguna saat ini: '.json_encode($contextData, JSON_UNESCAPED_UNICODE)."\n\n"
+            ."Pedoman Respon:\n"
+            ."1. Gunakan Bahasa Indonesia yang sopan, solutif, dan ramah.\n"
+            ."2. Jika ditanya tentang saldo/hutang/SHU anggota, gunakan data konteks di atas secara akurat.\n"
+            ."3. Bantu jelaskan fitur-fitur seperti cara belanja, pelunasan hutang, pembayaran QR/Cash/Saldo, serah terima kasir, opname stok, dan bagi hasil SHU (60% Anggota, 10% Cadangan, 30% Koperasi).\n"
+            ."4. Jika data tidak tersedia atau fitur membutuhkan otorisasi khusus, jelaskan dengan jelas dan sarankan langkah berikutnya.\n"
+            .'5. Format jawaban dengan markdown rapi (bullet points/bold bila perlu).';
 
         // Build contents from history
         $contents = [];
@@ -138,8 +142,8 @@ class GeminiService
             $contents[] = [
                 'role' => $speaker,
                 'parts' => [
-                    ['text' => (string) ($item['content'] ?? '')]
-                ]
+                    ['text' => (string) ($item['content'] ?? '')],
+                ],
             ];
         }
 
@@ -147,17 +151,17 @@ class GeminiService
         $contents[] = [
             'role' => 'user',
             'parts' => [
-                ['text' => $message]
-            ]
+                ['text' => $message],
+            ],
         ];
 
         // If API key is not configured, provide an intelligent simulated offline response
-        if (!$this->isConfigured()) {
+        if (! $this->isConfigured()) {
             return $this->getMockChatResponse($message, $user);
         }
 
         $res = $this->generateContent($contents, $systemInstruction);
-        if (!$res['success']) {
+        if (! $res['success']) {
             // Fallback to offline assistant if network fails
             return $this->getMockChatResponse($message, $user, $res['error'] ?? null);
         }
@@ -202,16 +206,16 @@ class GeminiService
             'produk_terlaris' => $topSales,
         ];
 
-        if (!$this->isConfigured()) {
+        if (! $this->isConfigured()) {
             return [
                 'success' => true,
                 'is_demo' => true,
                 'data' => [
-                    'summary' => "Analisis Koperasi menunjukkan perputaran stok aktif dengan total " . count($topSales) . " kategori produk utama. Terdapat " . count($stokKritis) . " item stok kritis yang memerlukan restock segera untuk mencegah hilangnya potensi omset.",
+                    'summary' => 'Analisis Koperasi menunjukkan perputaran stok aktif dengan total '.count($topSales).' kategori produk utama. Terdapat '.count($stokKritis).' item stok kritis yang memerlukan restock segera untuk mencegah hilangnya potensi omset.',
                     'kpi_score' => 88,
                     'highlights' => [
                         'Produk terlaris mendominasi 40%+ dari perputaran harian.',
-                        'Terdapat ' . count($stokKritis) . ' barang dengan sisa stok <= 5 unit.',
+                        'Terdapat '.count($stokKritis).' barang dengan sisa stok <= 5 unit.',
                         'Rasio piutang terhadap saldo anggota berada dalam batas aman.',
                     ],
                     'recommendations' => [
@@ -220,28 +224,28 @@ class GeminiService
                         'Kirim notifikasi pengingat pelunasan bagi anggota dengan hutang mendekati limit.',
                     ],
                     'metrics' => $analyticsPayload,
-                ]
+                ],
             ];
         }
 
-        $systemInstruction = "Anda adalah AI Senior Financial & Business Analyst untuk Koperasi PK Batam. "
-            . "Analisis data operasional berikut dan berikan ringkasan eksekutif, highlight penting, dan rekomendasi aksi dalam format JSON terstruktur murni (valid JSON). "
-            . "Format JSON yang wajib dihasilkan:\n"
-            . "{\n"
-            . '  "summary": "string ringkasan eksekutif 2-3 kalimat",' . "\n"
-            . '  "kpi_score": 85,' . "\n"
-            . '  "highlights": ["point 1", "point 2", "point 3"],' . "\n"
-            . '  "recommendations": ["aksi 1", "aksi 2", "aksi 3"],' . "\n"
-            . '  "stock_action_needed": ["nama barang 1", "nama barang 2"]' . "\n"
-            . "}";
+        $systemInstruction = 'Anda adalah AI Senior Financial & Business Analyst untuk Koperasi PK Batam. '
+            .'Analisis data operasional berikut dan berikan ringkasan eksekutif, highlight penting, dan rekomendasi aksi dalam format JSON terstruktur murni (valid JSON). '
+            ."Format JSON yang wajib dihasilkan:\n"
+            ."{\n"
+            .'  "summary": "string ringkasan eksekutif 2-3 kalimat",'."\n"
+            .'  "kpi_score": 85,'."\n"
+            .'  "highlights": ["point 1", "point 2", "point 3"],'."\n"
+            .'  "recommendations": ["aksi 1", "aksi 2", "aksi 3"],'."\n"
+            .'  "stock_action_needed": ["nama barang 1", "nama barang 2"]'."\n"
+            .'}';
 
         $contents = [
             [
                 'role' => 'user',
                 'parts' => [
-                    ['text' => "Berikut data operasional koperasi:\n" . json_encode($analyticsPayload, JSON_PRETTY_PRINT)]
-                ]
-            ]
+                    ['text' => "Berikut data operasional koperasi:\n".json_encode($analyticsPayload, JSON_PRETTY_PRINT)],
+                ],
+            ],
         ];
 
         $res = $this->generateContent($contents, $systemInstruction, [
@@ -249,7 +253,7 @@ class GeminiService
             'temperature' => 0.2,
         ]);
 
-        if (!$res['success']) {
+        if (! $res['success']) {
             return [
                 'success' => false,
                 'error' => $res['error'] ?? 'Gagal menganalisis data bisnis.',
@@ -257,7 +261,7 @@ class GeminiService
         }
 
         $parsed = json_decode($res['text'], true);
-        if (!$parsed) {
+        if (! $parsed) {
             $parsed = [
                 'summary' => $res['text'],
                 'kpi_score' => 85,
@@ -285,7 +289,7 @@ class GeminiService
             $base64Image = $parts[1];
         }
 
-        if (!$this->isConfigured()) {
+        if (! $this->isConfigured()) {
             return [
                 'success' => true,
                 'is_demo' => true,
@@ -309,28 +313,28 @@ class GeminiService
                             'total_harga' => 77000,
                             'satuan' => 'Bks',
                         ],
-                    ]
-                ]
+                    ],
+                ],
             ];
         }
 
-        $systemInstruction = "Anda adalah AI OCR Akuntansi & Inventaris Koperasi. "
-            . "Tugas Anda adalah membaca gambar nota/struk/faktur pembelian barang dari supplier grosir. "
-            . "Ekstrak semua baris barang dan rincian harga ke dalam format JSON yang valid:\n"
-            . "{\n"
-            . '  "supplier_name": "Nama Toko / Distributor",' . "\n"
-            . '  "tanggal_nota": "YYYY-MM-DD atau null",' . "\n"
-            . '  "total_belanja": 100000,' . "\n"
-            . '  "items": [' . "\n"
-            . '    {' . "\n"
-            . '      "nama_barang": "Nama Barang Jelas",' . "\n"
-            . '      "jumlah": 10,' . "\n"
-            . '      "harga_beli_satuan": 5000,' . "\n"
-            . '      "total_harga": 50000,' . "\n"
-            . '      "satuan": "Pcs/Bks/Dus"' . "\n"
-            . '    }' . "\n"
-            . '  ]' . "\n"
-            . "}";
+        $systemInstruction = 'Anda adalah AI OCR Akuntansi & Inventaris Koperasi. '
+            .'Tugas Anda adalah membaca gambar nota/struk/faktur pembelian barang dari supplier grosir. '
+            ."Ekstrak semua baris barang dan rincian harga ke dalam format JSON yang valid:\n"
+            ."{\n"
+            .'  "supplier_name": "Nama Toko / Distributor",'."\n"
+            .'  "tanggal_nota": "YYYY-MM-DD atau null",'."\n"
+            .'  "total_belanja": 100000,'."\n"
+            .'  "items": ['."\n"
+            .'    {'."\n"
+            .'      "nama_barang": "Nama Barang Jelas",'."\n"
+            .'      "jumlah": 10,'."\n"
+            .'      "harga_beli_satuan": 5000,'."\n"
+            .'      "total_harga": 50000,'."\n"
+            .'      "satuan": "Pcs/Bks/Dus"'."\n"
+            .'    }'."\n"
+            .'  ]'."\n"
+            .'}';
 
         $contents = [
             [
@@ -341,10 +345,10 @@ class GeminiService
                         'inlineData' => [
                             'mimeType' => $mimeType,
                             'data' => $base64Image,
-                        ]
-                    ]
-                ]
-            ]
+                        ],
+                    ],
+                ],
+            ],
         ];
 
         $res = $this->generateContent($contents, $systemInstruction, [
@@ -352,7 +356,7 @@ class GeminiService
             'temperature' => 0.1,
         ]);
 
-        if (!$res['success']) {
+        if (! $res['success']) {
             return [
                 'success' => false,
                 'error' => $res['error'] ?? 'Gagal memproses gambar nota.',
@@ -360,7 +364,7 @@ class GeminiService
         }
 
         $parsed = json_decode($res['text'], true);
-        if (!$parsed) {
+        if (! $parsed) {
             return [
                 'success' => false,
                 'error' => 'Format hasil ekstraksi AI tidak valid.',
@@ -384,35 +388,35 @@ class GeminiService
         $name = $user ? $user->username : 'Bapak/Ibu';
         $lower = strtolower($message);
 
-        $reply = "";
+        $reply = '';
         if (str_contains($lower, 'saldo') || str_contains($lower, 'uang')) {
             if ($role === 'anggota' && $user && $user->anggota) {
                 $saldo = number_format($user->anggota->saldo, 0, ',', '.');
                 $reply = "Halo {$name}, saldo simpanan anggota Anda saat ini tercatat sebesar **Rp {$saldo}**.";
             } else {
-                $reply = "Fitur pengecekan saldo pribadi tersedia untuk akun Anggota.";
+                $reply = 'Fitur pengecekan saldo pribadi tersedia untuk akun Anggota.';
             }
         } elseif (str_contains($lower, 'hutang') || str_contains($lower, 'tagihan')) {
             if ($role === 'anggota' && $user && $user->anggota) {
                 $hutang = number_format($user->anggota->hutang, 0, ',', '.');
                 $reply = "Total tagihan hutang belanja Anda saat ini adalah **Rp {$hutang}**. Anda dapat mengajukan pembayaran via menu **Bayar Hutang**.";
             } else {
-                $reply = "Data hutang anggota dapat dipantau di menu Kasir atau Admin.";
+                $reply = 'Data hutang anggota dapat dipantau di menu Kasir atau Admin.';
             }
         } elseif (str_contains($lower, 'stok') || str_contains($lower, 'barang')) {
             $barangCount = Barang::count();
             $kritis = Barang::where('stok', '<=', 5)->count();
             $reply = "Katalog Koperasi saat ini memiliki total **{$barangCount} item barang**, dengan **{$kritis} item** berstatus stok menipis (<= 5).";
         } elseif (str_contains($lower, 'shu') || str_contains($lower, 'bagi hasil')) {
-            $reply = "SHU (Sisa Hasil Usaha) dihitung otomatis dari profit belanja Anda dengan skema pembagian: **60% untuk Anggota**, **10% Cadangan Koperasi**, dan **30% Operasional Koperasi**.";
+            $reply = 'SHU (Sisa Hasil Usaha) dihitung otomatis dari profit belanja Anda dengan skema pembagian: **60% untuk Anggota**, **10% Cadangan Koperasi**, dan **30% Operasional Koperasi**.';
         } else {
             $reply = "Halo {$name}! Saya adalah Asisten AI Koperasi PK Batam. "
-                . "Saya dapat membantu menjawab informasi saldo anggota, panduan belanja, cek ketersediaan stok barang, prosedur serah terima kasir, hingga rekapitulasi keuangan koperasi.";
+                .'Saya dapat membantu menjawab informasi saldo anggota, panduan belanja, cek ketersediaan stok barang, prosedur serah terima kasir, hingga rekapitulasi keuangan koperasi.';
         }
 
         if ($apiError) {
             $reply .= "\n\n*(Catatan: Mode Offline Aktif. Google AI Studio API: {$apiError})*";
-        } elseif (!$this->isConfigured()) {
+        } elseif (! $this->isConfigured()) {
             $reply .= "\n\n*(💡 Tips: Hubungkan Google AI Studio dengan mengisi `GEMINI_API_KEY` pada file `.env` untuk mengaktifkan pemrosesan AI Gemini 2.5 Flash secara penuh).*";
         }
 

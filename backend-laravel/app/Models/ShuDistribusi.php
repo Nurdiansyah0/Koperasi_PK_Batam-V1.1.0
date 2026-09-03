@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class ShuDistribusi extends Model
 {
     protected $table = 'shu_distribusi';
+
     protected $primaryKey = 'shu_id';
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -17,11 +19,11 @@ class ShuDistribusi extends Model
         'shu_10_percent',
         'shu_30_percent',
         'total_shu',
-        'created_at'
+        'created_at',
     ];
 
     protected $casts = [
-        'created_at' => 'datetime'
+        'created_at' => 'datetime',
     ];
 
     public function anggota()

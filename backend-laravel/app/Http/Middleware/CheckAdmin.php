@@ -11,10 +11,10 @@ class CheckAdmin
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if (!$user || !$user->isAdmin()) {
+        if (! $user || ! $user->isAdmin()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized: Hanya Admin yang memiliki izin akses fitur ini.'
+                'message' => 'Unauthorized: Hanya Admin yang memiliki izin akses fitur ini.',
             ], 403);
         }
 

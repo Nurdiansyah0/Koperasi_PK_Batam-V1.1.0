@@ -1,28 +1,30 @@
 <?php
+
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Tests\TestCase;
-use App\Models\User;
 use App\Models\Anggota;
-use App\Models\Transaksi;
 use App\Models\Barang;
 use App\Models\TarikTunai;
+use App\Models\Transaksi;
+use App\Models\User;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
-use Carbon\Carbon;
+use Tests\TestCase;
 
 class TarikTunaiTest extends TestCase
 {
     use DatabaseTransactions;
+
     private function authenticateAs(string $role, array $extra = [])
     {
         $user = User::create(array_merge([
-            'username' => $role . '_' . uniqid(),
+            'username' => $role.'_'.uniqid(),
             'password_hash' => Hash::make('password123'),
             'role' => $role,
         ], $extra));
 
         $token = $user->createToken('test-token')->plainTextToken;
+
         return [$user, $token];
     }
 
@@ -292,7 +294,7 @@ class TarikTunaiTest extends TestCase
                 'total_nominal_keluar',
                 'total_sales_kontribusi',
                 'rasio_sales_to_tarik',
-            ]
+            ],
         ]);
     }
 
@@ -439,7 +441,7 @@ class TarikTunaiTest extends TestCase
         ]);
 
         $b1 = Barang::first();
-        if (!$b1) {
+        if (! $b1) {
             $b1 = Barang::create([
                 'nama_barang' => 'Bearbrand',
                 'stok' => 50,
@@ -457,7 +459,7 @@ class TarikTunaiTest extends TestCase
                 'anggota_id' => $anggota->anggota_id,
                 'metode_pembayaran' => 'cash',
                 'items' => [
-                    ['barang_id' => $b1->barang_id, 'jumlah' => 1, 'harga_satuan' => 50000]
+                    ['barang_id' => $b1->barang_id, 'jumlah' => 1, 'harga_satuan' => 50000],
                 ],
                 'sertakan_tarik_tunai' => true,
                 'tarik_tunai_nominal' => 100000,
@@ -495,7 +497,7 @@ class TarikTunaiTest extends TestCase
             ->postJson('/laravel/api/anggota/transaksi', [
                 'metode_pembayaran' => 'cash',
                 'items' => [
-                    ['barang_id' => $b1->barang_id, 'jumlah' => 1, 'harga_satuan' => 30000]
+                    ['barang_id' => $b1->barang_id, 'jumlah' => 1, 'harga_satuan' => 30000],
                 ],
                 'sertakan_tarik_tunai' => true,
                 'tarik_tunai_nominal' => 60000,
@@ -533,7 +535,7 @@ class TarikTunaiTest extends TestCase
             ->postJson('/laravel/api/anggota/transaksi', [
                 'metode_pembayaran' => 'cash',
                 'items' => [
-                    ['barang_id' => $b1->barang_id, 'jumlah' => 2, 'harga_satuan' => 30000]
+                    ['barang_id' => $b1->barang_id, 'jumlah' => 2, 'harga_satuan' => 30000],
                 ],
                 'sertakan_tarik_tunai' => true,
                 'tarik_tunai_nominal' => 80000,
@@ -553,7 +555,7 @@ class TarikTunaiTest extends TestCase
         // Kasir rejects the order
         $rejectRes = $this->actingAs($kasir, 'sanctum')
             ->postJson('/laravel/api/kasir/tolak-pesanan-anggota', [
-                'transaksi_id' => $trxId
+                'transaksi_id' => $trxId,
             ]);
 
         $rejectRes->assertStatus(200);

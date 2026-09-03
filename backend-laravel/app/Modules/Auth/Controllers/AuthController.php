@@ -33,7 +33,7 @@ class AuthController extends Controller
     {
         return response()->json([
             'success' => true,
-            'user'    => $request->user(),
+            'user' => $request->user(),
         ]);
     }
 
@@ -50,9 +50,9 @@ class AuthController extends Controller
     public function resetPasswordWithChallenge(Request $request)
     {
         $request->validate([
-            'username'      => 'required|string',
-            'digit_hutang'  => 'required|string',
-            'digit_shu'     => 'required|string',
+            'username' => 'required|string',
+            'digit_hutang' => 'required|string',
+            'digit_shu' => 'required|string',
             'password_baru' => 'required|string|min:6',
         ]);
 

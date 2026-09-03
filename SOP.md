@@ -186,7 +186,7 @@ Untuk menjaga likuiditas kas toko dan memastikan keadilan pembagian SHU tahunan 
      - **Allowance Koperasi:** Tambahan pagu **+ Rp 100.000** bagi anggota.
      - Sisa limit pada kasir dihitung otomatis: `(Simpanan Pokok + Allowance 100.000) - Hutang Berjalan`.
    * **Plafon Checkout App Anggota (Limit Hard-Cap):** 
-     - Transaksi kasbon yang diproses langsung oleh anggota via *smartphone* dibatasi mutlak maksimal tagihan berjalan **Rp 600.000**.
+     - Transaksi kasbon yang diproses langsung oleh anggota via *smartphone* dibatasi mutlak maksimal tagihan berjalan **Rp 400.000**.
    * Kasir dan sistem POS secara otomatis menolak transaksi kasbon baru jika tagihan melebihi sisa pagu kredit masing-masing otorisasi.
 
 ---
@@ -351,7 +351,4 @@ Untuk mencegah selisih data akibat perbedaan antara waktu mutasi di sistem dan e
    * Nilai batas PKM seluruh produk di database langsung ter-update, sehingga audit serah terima shift kasir dan lembar kerja picking display toko selalu proporsional dan akurat.
 
 ---
-
-**Disahkan oleh:**  
-*Pengurus & Manajemen Koperasi Karyawan PKPPK BTH*  
 *Tanggal Efektif: September 2026 (Revisi 2.4 - Standar Operasional Prosedur Admin & Pengadaan)*

@@ -12,19 +12,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('tarik_tunai', function (Blueprint $table) {
-            if (!Schema::hasColumn('tarik_tunai', 'sumber_dana')) {
+            if (! Schema::hasColumn('tarik_tunai', 'sumber_dana')) {
                 $table->string('sumber_dana')->default('shu')->after('nominal');
             }
-            if (!Schema::hasColumn('tarik_tunai', 'transaksi_id')) {
+            if (! Schema::hasColumn('tarik_tunai', 'transaksi_id')) {
                 $table->unsignedBigInteger('transaksi_id')->nullable()->after('sumber_dana');
             }
-            if (!Schema::hasColumn('tarik_tunai', 'persetujuan_shu')) {
+            if (! Schema::hasColumn('tarik_tunai', 'persetujuan_shu')) {
                 $table->boolean('persetujuan_shu')->default(true)->after('transaksi_id');
             }
-            if (!Schema::hasColumn('tarik_tunai', 'keterangan')) {
+            if (! Schema::hasColumn('tarik_tunai', 'keterangan')) {
                 $table->string('keterangan')->nullable()->after('persetujuan_shu');
             }
-            if (!Schema::hasColumn('tarik_tunai', 'updated_at')) {
+            if (! Schema::hasColumn('tarik_tunai', 'updated_at')) {
                 $table->timestamp('updated_at')->nullable()->after('created_at');
             }
         });

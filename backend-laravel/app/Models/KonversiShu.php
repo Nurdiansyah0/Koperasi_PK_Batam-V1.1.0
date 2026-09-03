@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class KonversiShu extends Model
 {
     protected $table = 'konversi_shu';
+
     protected $primaryKey = 'konversi_id';
+
     public $timestamps = true;
 
     protected $fillable = [

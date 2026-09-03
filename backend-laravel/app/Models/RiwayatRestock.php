@@ -10,6 +10,7 @@ class RiwayatRestock extends Model
     use HasFactory;
 
     protected $table = 'riwayat_restock';
+
     protected $primaryKey = 'restock_id';
 
     protected $fillable = [
@@ -20,7 +21,7 @@ class RiwayatRestock extends Model
         'total_biaya',
         'sumber_dana',
         'tanggal_kadaluarsa',
-        'catatan'
+        'catatan',
     ];
 
     public function barang()

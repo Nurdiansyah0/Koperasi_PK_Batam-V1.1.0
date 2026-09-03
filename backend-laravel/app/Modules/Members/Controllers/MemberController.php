@@ -21,6 +21,7 @@ class MemberController extends Controller
         if ($user->role !== 'anggota') {
             abort(403, 'Akses ditolak. Anda bukan anggota.');
         }
+
         return $user->anggota->anggota_id;
     }
 
@@ -28,16 +29,17 @@ class MemberController extends Controller
     {
         $this->getAnggotaId($request);
         $profile = $this->memberService->getProfile($request->user());
+
         return response()->json([
             'success' => true,
-            'user'    => $profile,
+            'user' => $profile,
         ]);
     }
 
     public function updateProfile(Request $request)
     {
         $request->validate([
-            'username' => 'required|string|unique:users,username,' . $request->user()->user_id . ',user_id',
+            'username' => 'required|string|unique:users,username,'.$request->user()->user_id.',user_id',
         ]);
 
         $this->memberService->updateUsername($request->user(), $request->username);
@@ -52,7 +54,7 @@ class MemberController extends Controller
     {
         $request->validate([
             'current_password' => 'required|string',
-            'new_password'     => 'required|string|min:6',
+            'new_password' => 'required|string|min:6',
         ]);
 
         $res = $this->memberService->changePassword($request->user(), $request->current_password, $request->new_password);
@@ -72,8 +74,8 @@ class MemberController extends Controller
         $pembayaran = $this->memberService->submitDebtPayment($anggotaId, (float) $request->jumlah);
 
         return response()->json([
-            'success'       => true,
-            'message'       => 'Pengajuan pembayaran hutang berhasil dibuat, silakan bayar ke kasir.',
+            'success' => true,
+            'message' => 'Pengajuan pembayaran hutang berhasil dibuat, silakan bayar ke kasir.',
             'pembayaran_id' => $pembayaran->pembayaran_id,
         ]);
     }
@@ -85,7 +87,7 @@ class MemberController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $history,
+            'data' => $history,
         ]);
     }
 }

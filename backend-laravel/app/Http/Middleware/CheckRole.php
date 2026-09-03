@@ -11,10 +11,10 @@ class CheckRole
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthenticated.'
+                'message' => 'Unauthenticated.',
             ], 401);
         }
 
@@ -26,7 +26,7 @@ class CheckRole
 
         return response()->json([
             'success' => false,
-            'message' => 'Unauthorized: Role tidak memenuhi syarat untuk fitur ini.'
+            'message' => 'Unauthorized: Role tidak memenuhi syarat untuk fitur ini.',
         ], 403);
     }
 }

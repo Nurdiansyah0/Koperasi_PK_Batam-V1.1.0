@@ -1620,4 +1620,34 @@ class KasirController extends Controller
             'data' => $testEvent,
         ]);
     }
+    public function storePushSubscription(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) return response()->json(['success' => false], 401);
+        
+        $request->validate([
+            'endpoint' => 'required',
+            'keys.auth' => 'required',
+            'keys.p256dh' => 'required'
+        ]);
+
+        $user->updatePushSubscription(
+            $request->endpoint,
+            $request->keys['p256dh'],
+            $request->keys['auth']
+        );
+
+        return response()->json(['success' => true]);
+    }
+
+    public function deletePushSubscription(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) return response()->json(['success' => false], 401);
+        
+        $request->validate(['endpoint' => 'required']);
+        $user->deletePushSubscription($request->endpoint);
+
+        return response()->json(['success' => true]);
+    }
 }

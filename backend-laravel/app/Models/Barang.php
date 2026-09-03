@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class Barang extends Model
 {
     protected $table = 'barang';
+
     protected $primaryKey = 'barang_id';
-    
+
     // Disable timestamps if not present in the old schema
-    public $timestamps = false; 
+    public $timestamps = false;
 
     protected $fillable = [
         'nama_barang',
@@ -38,31 +40,51 @@ class Barang extends Model
 
     public function getHariKadaluarsaTokoAttribute()
     {
-        if (!$this->tgl_kadaluarsa_toko) return null;
-        return (int) \Carbon\Carbon::today()->diffInDays(\Carbon\Carbon::parse($this->tgl_kadaluarsa_toko), false);
+        if (! $this->tgl_kadaluarsa_toko) {
+            return null;
+        }
+
+        return (int) Carbon::today()->diffInDays(Carbon::parse($this->tgl_kadaluarsa_toko), false);
     }
 
     public function getStatusKadaluarsaTokoAttribute()
     {
         $days = $this->hari_kadaluarsa_toko;
-        if ($days === null) return 'tidak_ada';
-        if ($days < 0) return 'expired';
-        if ($days <= 30) return 'near_expiry';
+        if ($days === null) {
+            return 'tidak_ada';
+        }
+        if ($days < 0) {
+            return 'expired';
+        }
+        if ($days <= 30) {
+            return 'near_expiry';
+        }
+
         return 'aman';
     }
 
     public function getHariKadaluarsaGudangAttribute()
     {
-        if (!$this->tgl_kadaluarsa_gudang) return null;
-        return (int) \Carbon\Carbon::today()->diffInDays(\Carbon\Carbon::parse($this->tgl_kadaluarsa_gudang), false);
+        if (! $this->tgl_kadaluarsa_gudang) {
+            return null;
+        }
+
+        return (int) Carbon::today()->diffInDays(Carbon::parse($this->tgl_kadaluarsa_gudang), false);
     }
 
     public function getStatusKadaluarsaGudangAttribute()
     {
         $days = $this->hari_kadaluarsa_gudang;
-        if ($days === null) return 'tidak_ada';
-        if ($days < 0) return 'expired';
-        if ($days <= 30) return 'near_expiry';
+        if ($days === null) {
+            return 'tidak_ada';
+        }
+        if ($days < 0) {
+            return 'expired';
+        }
+        if ($days <= 30) {
+            return 'near_expiry';
+        }
+
         return 'aman';
     }
 

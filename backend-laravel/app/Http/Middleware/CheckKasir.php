@@ -11,10 +11,10 @@ class CheckKasir
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if (!$user || !$user->isKasir()) {
+        if (! $user || ! $user->isKasir()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized: Hanya Petugas Kasir atau Admin yang memiliki izin akses fitur ini.'
+                'message' => 'Unauthorized: Hanya Petugas Kasir atau Admin yang memiliki izin akses fitur ini.',
             ], 403);
         }
 

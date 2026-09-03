@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class TransaksiDetail extends Model
 {
     protected $table = 'transaksi_detail';
+
     protected $primaryKey = 'detail_id';
+
     public $timestamps = false; // Usually detail tables don't have timestamps
 
     protected $fillable = [

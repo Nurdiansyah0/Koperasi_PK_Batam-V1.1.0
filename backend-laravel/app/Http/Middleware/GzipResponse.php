@@ -11,7 +11,7 @@ class GzipResponse
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -24,7 +24,7 @@ class GzipResponse
         if (
             $isJsonOrText &&
             function_exists('gzencode') &&
-            !headers_sent() &&
+            ! headers_sent() &&
             str_contains($request->header('Accept-Encoding', ''), 'gzip') &&
             $response->getContent() &&
             strlen($response->getContent()) > 1024

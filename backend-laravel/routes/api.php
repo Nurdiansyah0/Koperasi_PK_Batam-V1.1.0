@@ -1,12 +1,11 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\AnggotaController;
-use App\Http\Controllers\KasirController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AnggotaController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ExternalApiController;
+use App\Http\Controllers\KasirController;
+use Illuminate\Support\Facades\Route;
 
 // Public routes with rate limiting
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
@@ -66,6 +65,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/reject-serah-terima', [KasirController::class, 'rejectSerahTerima']);
 
         // Real-Time 0s-Latency Push Notifications & SSE Stream for Active Cashiers
+        Route::post('/push-subscribe', [KasirController::class, 'storePushSubscription']);
+        Route::post('/push-unsubscribe', [KasirController::class, 'deletePushSubscription']);
+
         Route::get('/order-stream', [KasirController::class, 'orderStream']);
         Route::get('/latest-pending-orders', [KasirController::class, 'getLatestPendingOrders']);
         Route::post('/test-order-notification', [KasirController::class, 'testOrderNotification']);
@@ -135,4 +137,3 @@ Route::prefix('v1')->middleware('api_key')->group(function () {
     Route::match(['GET', 'OPTIONS'], '/assets', [ExternalApiController::class, 'getAssets']);
     Route::match(['GET', 'OPTIONS'], '/ui/widget-data', [ExternalApiController::class, 'getWidgetData']);
 });
-

@@ -3,9 +3,8 @@
 namespace App\Modules\Members\Services;
 
 use App\Models\Anggota;
-use App\Models\User;
 use App\Models\PembayaranHutang;
-use Illuminate\Support\Facades\DB;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
 class MemberService
@@ -13,15 +12,16 @@ class MemberService
     public function getProfile($user): array
     {
         $anggota = $user->anggota;
+
         return [
-            'anggota_id'        => $anggota->anggota_id,
-            'user_id'           => $user->user_id,
-            'nama_lengkap'      => $anggota->nama_lengkap,
-            'saldo'             => (float) $anggota->saldo,
-            'hutang'            => (float) $anggota->hutang,
-            'shu'               => (float) $anggota->shu,
-            'simpanan_pokok'    => (float) $anggota->simpanan_pokok,
-            'limit_hutang'      => (float) $anggota->limit_hutang,
+            'anggota_id' => $anggota->anggota_id,
+            'user_id' => $user->user_id,
+            'nama_lengkap' => $anggota->nama_lengkap,
+            'saldo' => (float) $anggota->saldo,
+            'hutang' => (float) $anggota->hutang,
+            'shu' => (float) $anggota->shu,
+            'simpanan_pokok' => (float) $anggota->simpanan_pokok,
+            'limit_hutang' => (float) $anggota->limit_hutang,
             'sisa_limit_hutang' => (float) $anggota->sisa_limit_hutang,
         ];
     }
@@ -34,11 +34,11 @@ class MemberService
 
     public function changePassword($user, string $currentPassword, string $newPassword): array
     {
-        if (!Hash::check($currentPassword, $user->password_hash)) {
+        if (! Hash::check($currentPassword, $user->password_hash)) {
             return [
                 'success' => false,
                 'message' => 'Password saat ini salah',
-                'status'  => 400,
+                'status' => 400,
             ];
         }
 
@@ -48,7 +48,7 @@ class MemberService
         return [
             'success' => true,
             'message' => 'Password berhasil diubah',
-            'status'  => 200,
+            'status' => 200,
         ];
     }
 
@@ -56,8 +56,8 @@ class MemberService
     {
         return PembayaranHutang::create([
             'anggota_id' => $anggotaId,
-            'nominal'    => $nominal,
-            'status'     => 'pending',
+            'nominal' => $nominal,
+            'status' => 'pending',
         ]);
     }
 

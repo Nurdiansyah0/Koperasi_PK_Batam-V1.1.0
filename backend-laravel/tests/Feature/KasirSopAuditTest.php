@@ -2,28 +2,29 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use App\Models\User;
-use App\Models\Barang;
 use App\Models\Anggota;
+use App\Models\Barang;
+use App\Models\PembayaranHutang;
+use App\Models\SerahTerimaKasir;
 use App\Models\Transaksi;
 use App\Models\TransaksiDetail;
-use App\Models\PembayaranHutang;
-use App\Models\SetoranKasir;
-use App\Models\SerahTerimaKasir;
-use App\Models\TarikTunai;
-use App\Models\JabatanAnggota;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Tests\TestCase;
 
 class KasirSopAuditTest extends TestCase
 {
     use DatabaseTransactions;
 
     protected $kasir;
+
     protected $kasir2;
+
     protected $token;
+
     protected $anggota;
+
     protected $barang;
 
     protected function setUp(): void
@@ -39,13 +40,13 @@ class KasirSopAuditTest extends TestCase
     }
 
     /* -------------------------------------------------------------------------- */
-    /* 1. DASHBOARD & TRANSAKSI TERBARU (SOP 1 & 2)                               */
+    /* 1. DASHBOARD & TRANSAKSI TERBARU (SOP 1 & 2) */
     /* -------------------------------------------------------------------------- */
 
     public function test_get_dashboard_success()
     {
         $res = $this->withHeader('Authorization', "Bearer {$this->token}")
-                    ->getJson('/laravel/api/kasir/dashboard');
+            ->getJson('/laravel/api/kasir/dashboard');
 
         $res->assertStatus(200)
             ->assertJsonStructure([
@@ -58,14 +59,14 @@ class KasirSopAuditTest extends TestCase
                     'pending_pesanan',
                     'pending_hutang',
                     'transaksi_terbaru',
-                ]
+                ],
             ]);
     }
 
     public function test_get_transaksi_terbaru_success()
     {
         $res = $this->withHeader('Authorization', "Bearer {$this->token}")
-                    ->getJson('/laravel/api/kasir/transaksi-terbaru');
+            ->getJson('/laravel/api/kasir/transaksi-terbaru');
 
         $res->assertStatus(200)->assertJson(['success' => true]);
     }
@@ -73,16 +74,16 @@ class KasirSopAuditTest extends TestCase
     public function test_get_barang_belanja_and_paket_belanja_success()
     {
         $res1 = $this->withHeader('Authorization', "Bearer {$this->token}")
-                     ->getJson('/laravel/api/kasir/barang-belanja');
+            ->getJson('/laravel/api/kasir/barang-belanja');
         $res1->assertStatus(200)->assertJson(['success' => true]);
 
         $res2 = $this->withHeader('Authorization', "Bearer {$this->token}")
-                     ->getJson('/laravel/api/kasir/paket-belanja');
+            ->getJson('/laravel/api/kasir/paket-belanja');
         $res2->assertStatus(200);
     }
 
     /* -------------------------------------------------------------------------- */
-    /* 2. TRANSAKSI POS & CREDIT ALLOWANCE (SOP 6.F)                              */
+    /* 2. TRANSAKSI POS & CREDIT ALLOWANCE (SOP 6.F) */
     /* -------------------------------------------------------------------------- */
 
     public function test_buat_transaksi_kasir_cash_success()
@@ -97,12 +98,12 @@ class KasirSopAuditTest extends TestCase
                     'barang_id' => $this->barang->barang_id,
                     'jumlah' => 2,
                     'harga_satuan' => $this->barang->harga_jual,
-                ]
-            ]
+                ],
+            ],
         ];
 
         $res = $this->withHeader('Authorization', "Bearer {$this->token}")
-                    ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
+            ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
 
         $res->assertStatus(200)->assertJson(['success' => true]);
 
@@ -123,12 +124,12 @@ class KasirSopAuditTest extends TestCase
                     'barang_id' => $this->barang->barang_id,
                     'jumlah' => 1,
                     'harga_satuan' => $this->barang->harga_jual,
-                ]
-            ]
+                ],
+            ],
         ];
 
         $res = $this->withHeader('Authorization', "Bearer {$this->token}")
-                    ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
+            ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
 
         $res->assertStatus(200)->assertJson(['success' => true]);
 
@@ -150,12 +151,12 @@ class KasirSopAuditTest extends TestCase
                     'barang_id' => $this->barang->barang_id,
                     'jumlah' => 10,
                     'harga_satuan' => 50000, // Total 500.000 exceeds limit
-                ]
-            ]
+                ],
+            ],
         ];
 
         $res = $this->withHeader('Authorization', "Bearer {$this->token}")
-                    ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
+            ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
 
         $res->assertStatus(400)
             ->assertJson(['success' => false]);
@@ -171,18 +172,18 @@ class KasirSopAuditTest extends TestCase
                     'barang_id' => $this->barang->barang_id,
                     'jumlah' => 99999, // Impossible stock
                     'harga_satuan' => $this->barang->harga_jual,
-                ]
-            ]
+                ],
+            ],
         ];
 
         $res = $this->withHeader('Authorization', "Bearer {$this->token}")
-                    ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
+            ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
 
         $res->assertStatus(400);
     }
 
     /* -------------------------------------------------------------------------- */
-    /* 3. PESANAN ANGGOTA & TOLAK DENGAN REFUND (SOP 6.E.2)                       */
+    /* 3. PESANAN ANGGOTA & TOLAK DENGAN REFUND (SOP 6.E.2) */
     /* -------------------------------------------------------------------------- */
 
     public function test_pesanan_anggota_listing_and_tolak_refund_stock_and_limit()
@@ -211,14 +212,14 @@ class KasirSopAuditTest extends TestCase
         ]);
 
         $resList = $this->withHeader('Authorization', "Bearer {$this->token}")
-                        ->getJson('/laravel/api/kasir/pesanan-anggota');
+            ->getJson('/laravel/api/kasir/pesanan-anggota');
         $resList->assertStatus(200);
 
         // Reject order
         $resReject = $this->withHeader('Authorization', "Bearer {$this->token}")
-                          ->postJson('/laravel/api/kasir/tolak-pesanan-anggota', [
-                              'transaksi_ids' => [$trx->transaksi_id]
-                          ]);
+            ->postJson('/laravel/api/kasir/tolak-pesanan-anggota', [
+                'transaksi_ids' => [$trx->transaksi_id],
+            ]);
         $resReject->assertStatus(200)->assertJson(['success' => true]);
 
         $this->barang->refresh();
@@ -229,21 +230,21 @@ class KasirSopAuditTest extends TestCase
     }
 
     /* -------------------------------------------------------------------------- */
-    /* 4. ANGGOTA & PEMBAYARAN HUTANG (SOP 6.A & 6.F)                             */
+    /* 4. ANGGOTA & PEMBAYARAN HUTANG (SOP 6.A & 6.F) */
     /* -------------------------------------------------------------------------- */
 
     public function test_all_anggota_and_cari_profil_anggota()
     {
         $res1 = $this->withHeader('Authorization', "Bearer {$this->token}")
-                     ->getJson('/laravel/api/kasir/all-anggota');
+            ->getJson('/laravel/api/kasir/all-anggota');
         $res1->assertStatus(200)->assertJson(['success' => true]);
 
         $res2 = $this->withHeader('Authorization', "Bearer {$this->token}")
-                     ->getJson("/laravel/api/kasir/cari-profil-anggota?anggota_id={$this->anggota->anggota_id}");
+            ->getJson("/laravel/api/kasir/cari-profil-anggota?anggota_id={$this->anggota->anggota_id}");
         $res2->assertStatus(200)->assertJson(['success' => true]);
 
         $res3 = $this->withHeader('Authorization', "Bearer {$this->token}")
-                     ->getJson("/laravel/api/kasir/cari-profil-anggota?anggota_id=999999");
+            ->getJson('/laravel/api/kasir/cari-profil-anggota?anggota_id=999999');
         $res3->assertStatus(404);
     }
 
@@ -262,15 +263,15 @@ class KasirSopAuditTest extends TestCase
 
         // 1. Invalid payload
         $resInvalid = $this->withHeader('Authorization', "Bearer {$this->token}")
-                           ->postJson('/laravel/api/kasir/approve-pembayaran-hutang', []);
+            ->postJson('/laravel/api/kasir/approve-pembayaran-hutang', []);
         $resInvalid->assertStatus(422);
 
         // 2. Approve
         $resApprove = $this->withHeader('Authorization', "Bearer {$this->token}")
-                           ->postJson('/laravel/api/kasir/approve-pembayaran-hutang', [
-                               'pembayaran_id' => $ph->pembayaran_id,
-                               'action' => 'approve'
-                           ]);
+            ->postJson('/laravel/api/kasir/approve-pembayaran-hutang', [
+                'pembayaran_id' => $ph->pembayaran_id,
+                'action' => 'approve',
+            ]);
         $resApprove->assertStatus(200)->assertJson(['success' => true]);
 
         $this->anggota->refresh();
@@ -278,21 +279,21 @@ class KasirSopAuditTest extends TestCase
     }
 
     /* -------------------------------------------------------------------------- */
-    /* 5. TARIK TUNAI SHU (SOP 6.A, 6.B, 6.D)                                     */
+    /* 5. TARIK TUNAI SHU (SOP 6.A, 6.B, 6.D) */
     /* -------------------------------------------------------------------------- */
 
     public function test_cek_kelayakan_tarik_tunai_and_antrean()
     {
         $resCheck = $this->withHeader('Authorization', "Bearer {$this->token}")
-                         ->getJson("/laravel/api/kasir/cek-kelayakan-tarik-tunai/{$this->anggota->anggota_id}");
+            ->getJson("/laravel/api/kasir/cek-kelayakan-tarik-tunai/{$this->anggota->anggota_id}");
         $resCheck->assertStatus(200)->assertJson(['success' => true]);
 
         $resQueue = $this->withHeader('Authorization', "Bearer {$this->token}")
-                         ->getJson('/laravel/api/kasir/antrean-tarik-tunai');
+            ->getJson('/laravel/api/kasir/antrean-tarik-tunai');
         $resQueue->assertStatus(200)->assertJson(['success' => true]);
 
         $resHistory = $this->withHeader('Authorization', "Bearer {$this->token}")
-                           ->getJson('/laravel/api/kasir/riwayat-tarik-tunai');
+            ->getJson('/laravel/api/kasir/riwayat-tarik-tunai');
         $resHistory->assertStatus(200)->assertJson(['success' => true]);
     }
 
@@ -312,7 +313,7 @@ class KasirSopAuditTest extends TestCase
         ];
 
         $res = $this->withHeader('Authorization', "Bearer {$this->token}")
-                    ->postJson('/laravel/api/kasir/tarik-tunai', $payload);
+            ->postJson('/laravel/api/kasir/tarik-tunai', $payload);
 
         $res->assertStatus(400)
             ->assertJson(['success' => false]);
@@ -345,7 +346,7 @@ class KasirSopAuditTest extends TestCase
         ];
 
         $res = $this->withHeader('Authorization', "Bearer {$this->token}")
-                    ->postJson('/laravel/api/kasir/tarik-tunai', $payload);
+            ->postJson('/laravel/api/kasir/tarik-tunai', $payload);
 
         $res->assertStatus(200)->assertJson(['success' => true]);
 
@@ -354,21 +355,21 @@ class KasirSopAuditTest extends TestCase
     }
 
     /* -------------------------------------------------------------------------- */
-    /* 6. SERAH TERIMA SHIFT KASIR (SOP 3 & 5)                                    */
+    /* 6. SERAH TERIMA SHIFT KASIR (SOP 3 & 5) */
     /* -------------------------------------------------------------------------- */
 
     public function test_serah_terima_draft_and_daftar_kasir()
     {
         $res1 = $this->withHeader('Authorization', "Bearer {$this->token}")
-                     ->getJson('/laravel/api/kasir/daftar-kasir');
+            ->getJson('/laravel/api/kasir/daftar-kasir');
         $res1->assertStatus(200)->assertJson(['success' => true]);
 
         $res2 = $this->withHeader('Authorization', "Bearer {$this->token}")
-                     ->getJson('/laravel/api/kasir/serah-terima-draft');
+            ->getJson('/laravel/api/kasir/serah-terima-draft');
         $res2->assertStatus(200)->assertJson(['success' => true]);
 
         $res3 = $this->withHeader('Authorization', "Bearer {$this->token}")
-                     ->getJson('/laravel/api/kasir/active-shift-info');
+            ->getJson('/laravel/api/kasir/active-shift-info');
         $res3->assertStatus(200)->assertJson(['success' => true]);
     }
 
@@ -382,7 +383,7 @@ class KasirSopAuditTest extends TestCase
         ];
 
         $res = $this->withHeader('Authorization', "Bearer {$this->token}")
-                    ->postJson('/laravel/api/kasir/create-serah-terima', $payload);
+            ->postJson('/laravel/api/kasir/create-serah-terima', $payload);
 
         $res->assertStatus(400)->assertJson(['success' => false]);
     }
@@ -405,19 +406,19 @@ class KasirSopAuditTest extends TestCase
                         'stok_input' => $initialStock + 2, // Surplus 2 pcs
                         'stok_aktual' => $initialStock,
                         'harga_jual' => $this->barang->harga_jual,
-                    ]
-                ]
+                    ],
+                ],
             ],
             'status' => 'pending',
-            'created_at' => Carbon::now()
+            'created_at' => Carbon::now(),
         ]);
 
         // 2. Kasir 2 approves
         $token2 = $this->kasir2->createToken('kasir2_token')->plainTextToken;
         $resApprove = $this->withHeader('Authorization', "Bearer {$token2}")
-                           ->postJson('/laravel/api/kasir/approve-serah-terima', [
-                               'serah_id' => $serah->serah_id
-                           ]);
+            ->postJson('/laravel/api/kasir/approve-serah-terima', [
+                'serah_id' => $serah->serah_id,
+            ]);
         $resApprove->assertStatus(200)->assertJson(['success' => true]);
 
         // Inventory is synced to physical input count (SOP 5.D.1)
@@ -441,28 +442,28 @@ class KasirSopAuditTest extends TestCase
                         'stok_input' => 1,
                         'stok_aktual' => $initialStock,
                         'harga_jual' => $this->barang->harga_jual,
-                    ]
-                ]
+                    ],
+                ],
             ],
             'status' => 'pending',
-            'created_at' => Carbon::now()
+            'created_at' => Carbon::now(),
         ]);
 
         $token2 = $this->kasir2->createToken('kasir2_token')->plainTextToken;
 
         // 2. Kasir 2 rejects without reason (fails 422)
         $resRejectFail = $this->withHeader('Authorization', "Bearer {$token2}")
-                              ->postJson('/laravel/api/kasir/reject-serah-terima', [
-                                  'serah_id' => $serah->serah_id,
-                              ]);
+            ->postJson('/laravel/api/kasir/reject-serah-terima', [
+                'serah_id' => $serah->serah_id,
+            ]);
         $resRejectFail->assertStatus(422);
 
         // 3. Kasir 2 rejects with valid reason
         $resRejectOk = $this->withHeader('Authorization', "Bearer {$token2}")
-                            ->postJson('/laravel/api/kasir/reject-serah-terima', [
-                                'serah_id' => $serah->serah_id,
-                                'alasan_penolakan' => 'Fisik barang di etalase tidak sesuai dengan yang diinput'
-                            ]);
+            ->postJson('/laravel/api/kasir/reject-serah-terima', [
+                'serah_id' => $serah->serah_id,
+                'alasan_penolakan' => 'Fisik barang di etalase tidak sesuai dengan yang diinput',
+            ]);
         $resRejectOk->assertStatus(200)->assertJson(['success' => true]);
 
         // Stock remains unchanged (SOP 3.4.5)
@@ -471,34 +472,34 @@ class KasirSopAuditTest extends TestCase
     }
 
     /* -------------------------------------------------------------------------- */
-    /* 7. SETORAN ADMIN & HISTORY TRANSAKSI (SOP 5.B)                             */
+    /* 7. SETORAN ADMIN & HISTORY TRANSAKSI (SOP 5.B) */
     /* -------------------------------------------------------------------------- */
 
     public function test_setor_admin_and_get_riwayat_setoran()
     {
         // 1. Invalid nominal
         $resFail = $this->withHeader('Authorization', "Bearer {$this->token}")
-                        ->postJson('/laravel/api/kasir/setor-admin', ['nominal' => 0]);
+            ->postJson('/laravel/api/kasir/setor-admin', ['nominal' => 0]);
         $resFail->assertStatus(422);
 
         // 2. Valid setoran
         $resOk = $this->withHeader('Authorization', "Bearer {$this->token}")
-                      ->postJson('/laravel/api/kasir/setor-admin', ['nominal' => 250000]);
+            ->postJson('/laravel/api/kasir/setor-admin', ['nominal' => 250000]);
         $resOk->assertStatus(200)->assertJson(['success' => true]);
 
         // 3. History
         $resHistory = $this->withHeader('Authorization', "Bearer {$this->token}")
-                           ->getJson('/laravel/api/kasir/setoran-history');
+            ->getJson('/laravel/api/kasir/setoran-history');
         $resHistory->assertStatus(200)->assertJson(['success' => true]);
     }
 
     public function test_history_transaksi_pagination_and_filters()
     {
         $res = $this->withHeader('Authorization', "Bearer {$this->token}")
-                    ->postJson('/laravel/api/kasir/history-transaksi', [
-                        'status' => 'selesai',
-                        'jenis_transaksi' => 'cash',
-                    ]);
+            ->postJson('/laravel/api/kasir/history-transaksi', [
+                'status' => 'selesai',
+                'jenis_transaksi' => 'cash',
+            ]);
 
         $res->assertStatus(200)
             ->assertJsonStructure([
@@ -510,10 +511,10 @@ class KasirSopAuditTest extends TestCase
                             'total_harga',
                             'metode_pembayaran',
                             'status',
-                            'details'
-                        ]
-                    ]
-                ]
+                            'details',
+                        ],
+                    ],
+                ],
             ]);
     }
 }

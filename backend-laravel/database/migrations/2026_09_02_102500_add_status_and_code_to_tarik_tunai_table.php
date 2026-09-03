@@ -12,16 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('tarik_tunai', function (Blueprint $table) {
-            if (!Schema::hasColumn('tarik_tunai', 'kode_penarikan')) {
+            if (! Schema::hasColumn('tarik_tunai', 'kode_penarikan')) {
                 $table->string('kode_penarikan')->nullable()->after('tarik_id');
             }
-            if (!Schema::hasColumn('tarik_tunai', 'status')) {
+            if (! Schema::hasColumn('tarik_tunai', 'status')) {
                 $table->string('status')->default('completed')->after('nominal');
             }
-            if (!Schema::hasColumn('tarik_tunai', 'approved_at')) {
+            if (! Schema::hasColumn('tarik_tunai', 'approved_at')) {
                 $table->timestamp('approved_at')->nullable()->after('persetujuan_shu');
             }
-            if (!Schema::hasColumn('tarik_tunai', 'alasan_tolak')) {
+            if (! Schema::hasColumn('tarik_tunai', 'alasan_tolak')) {
                 $table->string('alasan_tolak')->nullable()->after('approved_at');
             }
         });

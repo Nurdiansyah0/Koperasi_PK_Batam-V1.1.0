@@ -384,7 +384,7 @@ class AnggotaController extends Controller
             } else {
                 // If paying by hutang or ewallet
                 if ($metode === 'hutang') {
-                    $limit_hutang = 600000;
+                    $limit_hutang = 400000;
                     if (($anggota->hutang + $totalHarga) > $limit_hutang) {
                         $sisa_limit = $limit_hutang - $anggota->hutang;
                         throw new \Exception('Gagal: Limit hutang Koperasi tidak mencukupi. Sisa limit Anda: Rp '.number_format($sisa_limit > 0 ? $sisa_limit : 0, 0, ',', '.'));
@@ -454,6 +454,14 @@ class AnggotaController extends Controller
 
                 Cache::put('koperasi_latest_order_event', $orderEvent, 120);
                 Cache::put('koperasi_latest_order_timestamp', microtime(true), 120);
+
+                // Dispatch Web Push Notification
+                try {
+                    $kasirs = \App\Models\User::where('role', 'kasir')->get();
+                    \Illuminate\Support\Facades\Notification::send($kasirs, new \App\Notifications\PesananBaruNotification($orderEvent));
+                } catch (\Throwable $ex) {
+                    // Non-blocking
+                }
             } catch (\Throwable $e) {
                 // Non-blocking
             }

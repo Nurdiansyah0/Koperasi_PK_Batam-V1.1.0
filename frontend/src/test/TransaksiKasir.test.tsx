@@ -25,7 +25,7 @@ describe('Fitur Keranjang Kasir (Transaksi POS)', () => {
 
     vi.mocked(kasirService.getDataBarang).mockResolvedValue([
       { barang_id: 1, nama_barang: 'Kopi Kapal Api', stok: 10, harga_modal: 1000, harga_jual: 2000, harga: 2000 },
-      { barang_id: 2, nama_barang: 'Indomie Goreng', stok: 0, harga_modal: 2000, harga_jual: 3000, harga: 3000 }
+      { barang_id: 2, nama_barang: 'Indomie Goreng', stok: 5, harga_modal: 2000, harga_jual: 3000, harga: 3000 }
     ] as any)
     
     vi.mocked(kasirService.getAllAnggota).mockResolvedValue([

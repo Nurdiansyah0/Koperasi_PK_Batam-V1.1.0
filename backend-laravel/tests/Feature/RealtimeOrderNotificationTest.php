@@ -2,24 +2,27 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use App\Models\User;
-use App\Models\Barang;
 use App\Models\Anggota;
-use App\Models\Transaksi;
-use App\Models\SerahTerimaKasir;
+use App\Models\Barang;
+use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
+use Tests\TestCase;
 
 class RealtimeOrderNotificationTest extends TestCase
 {
     use DatabaseTransactions;
 
     protected $kasir;
+
     protected $anggotaUser;
+
     protected $anggota;
+
     protected $barang;
+
     protected $kasirToken;
+
     protected $anggotaToken;
 
     protected function setUp(): void
@@ -38,9 +41,11 @@ class RealtimeOrderNotificationTest extends TestCase
                 'nama_lengkap' => 'Zulkarnain Test',
                 'saldo' => 500000,
                 'hutang' => 0,
-                'shu' => 150000
+                'shu' => 150000,
             ]
         );
+        $this->anggota->hutang = 0;
+        $this->anggota->save();
 
         $this->barang = Barang::firstOrCreate(
             ['nama_barang' => 'Kopi Test Sachet'],
@@ -49,7 +54,7 @@ class RealtimeOrderNotificationTest extends TestCase
                 'harga_jual' => 3500,
                 'stok' => 50,
                 'stok_toko' => 20,
-                'stok_gudang' => 30
+                'stok_gudang' => 30,
             ]
         );
     }
@@ -59,16 +64,16 @@ class RealtimeOrderNotificationTest extends TestCase
         Cache::forget('koperasi_latest_order_event');
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->anggotaToken,
-            'Accept' => 'application/json'
+            'Authorization' => 'Bearer '.$this->anggotaToken,
+            'Accept' => 'application/json',
         ])->postJson('/laravel/api/anggota/transaksi', [
             'metode_pembayaran' => 'hutang',
             'items' => [
                 [
                     'barang_id' => $this->barang->barang_id,
-                    'jumlah' => 2
-                ]
-            ]
+                    'jumlah' => 2,
+                ],
+            ],
         ]);
 
         $response->assertStatus(200);
@@ -86,8 +91,8 @@ class RealtimeOrderNotificationTest extends TestCase
     public function test_kasir_can_fetch_latest_pending_orders_and_active_shift()
     {
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->kasirToken,
-            'Accept' => 'application/json'
+            'Authorization' => 'Bearer '.$this->kasirToken,
+            'Accept' => 'application/json',
         ])->getJson('/laravel/api/kasir/latest-pending-orders');
 
         $response->assertStatus(200);
@@ -96,15 +101,15 @@ class RealtimeOrderNotificationTest extends TestCase
             'is_active_shift',
             'pending_count',
             'orders',
-            'server_timestamp'
+            'server_timestamp',
         ]);
     }
 
     public function test_kasir_test_order_notification_endpoint_triggers_broadcast()
     {
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->kasirToken,
-            'Accept' => 'application/json'
+            'Authorization' => 'Bearer '.$this->kasirToken,
+            'Accept' => 'application/json',
         ])->postJson('/laravel/api/kasir/test-order-notification');
 
         $response->assertStatus(200);

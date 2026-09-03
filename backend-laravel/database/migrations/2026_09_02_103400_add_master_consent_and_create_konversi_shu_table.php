@@ -12,15 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('anggota', function (Blueprint $table) {
-            if (!Schema::hasColumn('anggota', 'persetujuan_shu_master_at')) {
+            if (! Schema::hasColumn('anggota', 'persetujuan_shu_master_at')) {
                 $table->timestamp('persetujuan_shu_master_at')->nullable()->after('shu');
             }
-            if (!Schema::hasColumn('anggota', 'persetujuan_shu_version')) {
+            if (! Schema::hasColumn('anggota', 'persetujuan_shu_version')) {
                 $table->string('persetujuan_shu_version')->nullable()->after('persetujuan_shu_master_at');
             }
         });
 
-        if (!Schema::hasTable('konversi_shu')) {
+        if (! Schema::hasTable('konversi_shu')) {
             Schema::create('konversi_shu', function (Blueprint $table) {
                 $table->id('konversi_id');
                 $table->unsignedBigInteger('anggota_id');

@@ -228,7 +228,4 @@ Untuk menjunjung tinggi prinsip dasar jati diri koperasi *"Dari Anggota, Oleh An
 2. Hal ini mencegah kekosongan otoritas manajemen (*administrative lockout*) dalam tata kelola aplikasi koperasi.
 
 ---
-
-**Disahkan oleh:**  
-*Pengurus & Manajemen Koperasi Karyawan PKPPK BTH*  
 *Tanggal Efektif: September 2026*

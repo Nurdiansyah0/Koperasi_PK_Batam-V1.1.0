@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User;
 
 class AuthController extends Controller
 {
@@ -17,13 +17,13 @@ class AuthController extends Controller
 
         $cleanUsername = strtolower(trim($request->username));
         $user = User::whereRaw('LOWER(username) = ?', [$cleanUsername])
-            ->orWhereHas('anggota', function($q) use ($cleanUsername) {
+            ->orWhereHas('anggota', function ($q) use ($cleanUsername) {
                 $q->whereRaw('LOWER(nama_lengkap) = ?', [$cleanUsername]);
             })
             ->first();
 
         // Check if user exists and password is correct
-        if (!$user || !Hash::check($request->password, $user->password_hash)) {
+        if (! $user || ! Hash::check($request->password, $user->password_hash)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Username atau password salah',
@@ -36,7 +36,7 @@ class AuthController extends Controller
         // Load anggota profile and active mandates
         $user->load(['anggota', 'jabatanAktif']);
         $userData = $user->toArray();
-        
+
         if ($user->anggota) {
             $userData['anggota_id'] = $user->anggota->anggota_id;
             $userData['nama_lengkap'] = $user->anggota->nama_lengkap;
@@ -49,8 +49,8 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Login berhasil',
-            'token'   => $token,
-            'user'    => $userData,
+            'token' => $token,
+            'user' => $userData,
         ]);
     }
 
@@ -69,7 +69,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'user'    => $userData,
+            'user' => $userData,
         ]);
     }
 
@@ -79,7 +79,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Logged out successfully'
+            'message' => 'Logged out successfully',
         ]);
     }
 
@@ -94,12 +94,12 @@ class AuthController extends Controller
 
         $cleanUsername = strtolower(trim($request->username));
         $user = User::whereRaw('LOWER(username) = ?', [$cleanUsername])
-            ->orWhereHas('anggota', function($q) use ($cleanUsername) {
+            ->orWhereHas('anggota', function ($q) use ($cleanUsername) {
                 $q->whereRaw('LOWER(nama_lengkap) = ?', [$cleanUsername]);
             })
             ->first();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
                 'message' => 'Username anggota tidak ditemukan',
@@ -107,7 +107,7 @@ class AuthController extends Controller
         }
 
         $anggota = $user->anggota;
-        if (!$anggota) {
+        if (! $anggota) {
             return response()->json([
                 'success' => false,
                 'message' => 'Akun ini bukan akun anggota atau data buku anggota tidak terdaftar',
@@ -128,21 +128,21 @@ class AuthController extends Controller
         $hutangMatch = ($inputHutang === $expectedHutang);
         $shuMatch = ($inputShu === $expectedShu);
 
-        if (!$hutangMatch && !$shuMatch) {
+        if (! $hutangMatch && ! $shuMatch) {
             return response()->json([
                 'success' => false,
                 'message' => '2 digit depan hutang dan 3 digit belakang SHU tidak cocok dengan data buku anggota.',
             ], 422);
         }
 
-        if (!$hutangMatch) {
+        if (! $hutangMatch) {
             return response()->json([
                 'success' => false,
                 'message' => '2 digit depan hutang tidak sesuai dengan data buku anggota (tanyakan ke kasir/pengurus jika lupa).',
             ], 422);
         }
 
-        if (!$shuMatch) {
+        if (! $shuMatch) {
             return response()->json([
                 'success' => false,
                 'message' => '3 digit belakang SHU tidak sesuai dengan data buku anggota (tanyakan ke kasir/pengurus jika lupa).',

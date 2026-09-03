@@ -25,11 +25,11 @@ class InventoryService
     {
         return Barang::create([
             'nama_barang' => $data['nama_barang'],
-            'stok'        => $data['stok'],
+            'stok' => $data['stok'],
             'harga_modal' => $data['harga_modal'] ?? 0,
-            'harga_jual'  => $data['harga_jual'] ?? ($data['harga'] ?? 0),
-            'kategori'    => $data['kategori'] ?? null,
-            'barcode'     => $data['barcode'] ?? null,
+            'harga_jual' => $data['harga_jual'] ?? ($data['harga'] ?? 0),
+            'kategori' => $data['kategori'] ?? null,
+            'barcode' => $data['barcode'] ?? null,
         ]);
     }
 
@@ -38,12 +38,13 @@ class InventoryService
         $barang = Barang::findOrFail($barangId);
         $barang->update([
             'nama_barang' => $data['nama_barang'] ?? $barang->nama_barang,
-            'stok'        => $data['stok'] ?? $barang->stok,
+            'stok' => $data['stok'] ?? $barang->stok,
             'harga_modal' => $data['harga_modal'] ?? $barang->harga_modal,
-            'harga_jual'  => $data['harga_jual'] ?? ($data['harga'] ?? $barang->harga_jual),
-            'kategori'    => $data['kategori'] ?? $barang->kategori,
-            'barcode'     => $data['barcode'] ?? $barang->barcode,
+            'harga_jual' => $data['harga_jual'] ?? ($data['harga'] ?? $barang->harga_jual),
+            'kategori' => $data['kategori'] ?? $barang->kategori,
+            'barcode' => $data['barcode'] ?? $barang->barcode,
         ]);
+
         return $barang;
     }
 
@@ -59,24 +60,28 @@ class InventoryService
             $barang = Barang::findOrFail($barangId);
             $stokSebelum = $barang->stok;
             $barang->stok += $jumlah;
-            if ($hargaModal > 0) $barang->harga_modal = $hargaModal;
-            if ($hargaJual > 0) $barang->harga_jual = $hargaJual;
+            if ($hargaModal > 0) {
+                $barang->harga_modal = $hargaModal;
+            }
+            if ($hargaJual > 0) {
+                $barang->harga_jual = $hargaJual;
+            }
             $barang->save();
 
             $log = RiwayatRestock::create([
-                'barang_id'     => $barangId,
-                'jumlah'        => $jumlah,
-                'harga_modal'   => $hargaModal > 0 ? $hargaModal : $barang->harga_modal,
-                'harga_jual'    => $hargaJual > 0 ? $hargaJual : $barang->harga_jual,
-                'stok_sebelum'  => $stokSebelum,
-                'stok_sesudah'  => $barang->stok,
-                'supplier'      => $supplier,
-                'created_at'    => now(),
+                'barang_id' => $barangId,
+                'jumlah' => $jumlah,
+                'harga_modal' => $hargaModal > 0 ? $hargaModal : $barang->harga_modal,
+                'harga_jual' => $hargaJual > 0 ? $hargaJual : $barang->harga_jual,
+                'stok_sebelum' => $stokSebelum,
+                'stok_sesudah' => $barang->stok,
+                'supplier' => $supplier,
+                'created_at' => now(),
             ]);
 
             return [
                 'barang' => $barang,
-                'log'    => $log,
+                'log' => $log,
             ];
         });
     }
@@ -111,17 +116,18 @@ class InventoryService
 
                 // Record opname log
                 $opname = BarangOpname::create([
-                    'barang_id'     => $barang->barang_id,
-                    'user_id'       => $adminId,
-                    'stok_sistem'   => $stokSistem,
-                    'stok_fisik'    => $stokFisik,
-                    'selisih'       => $selisih,
-                    'keterangan'    => $item['keterangan'] ?? 'Opname massal berkala',
-                    'created_at'    => now(),
+                    'barang_id' => $barang->barang_id,
+                    'user_id' => $adminId,
+                    'stok_sistem' => $stokSistem,
+                    'stok_fisik' => $stokFisik,
+                    'selisih' => $selisih,
+                    'keterangan' => $item['keterangan'] ?? 'Opname massal berkala',
+                    'created_at' => now(),
                 ]);
 
                 $results[] = $opname;
             }
+
             return $results;
         });
     }

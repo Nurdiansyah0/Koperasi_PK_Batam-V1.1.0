@@ -2,16 +2,17 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use App\Models\User;
 use App\Models\Barang;
+use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Tests\TestCase;
 
 class AdminOpnameTest extends TestCase
 {
     use DatabaseTransactions;
 
     protected $admin;
+
     protected $token;
 
     protected function setUp(): void
@@ -37,14 +38,14 @@ class AdminOpnameTest extends TestCase
                     'stok_awal' => $initialStock,
                     'stok_akhir' => $newStock,
                     'selisih' => 10,
-                    'keterangan' => 'Penyesuaian Opname Massal'
-                ]
-            ]
+                    'keterangan' => 'Penyesuaian Opname Massal',
+                ],
+            ],
         ];
 
         // 2. Act
         $response = $this->withHeader('Authorization', "Bearer {$this->token}")
-                         ->postJson('/laravel/api/admin/opname', $payload);
+            ->postJson('/laravel/api/admin/opname', $payload);
 
         // 3. Assert
         $response->assertStatus(200)->assertJson(['success' => true]);
@@ -52,7 +53,7 @@ class AdminOpnameTest extends TestCase
         // Verify stock was updated in DB
         $this->assertDatabaseHas('barang', [
             'barang_id' => $barang->barang_id,
-            'stok' => $newStock
+            'stok' => $newStock,
         ]);
     }
 }

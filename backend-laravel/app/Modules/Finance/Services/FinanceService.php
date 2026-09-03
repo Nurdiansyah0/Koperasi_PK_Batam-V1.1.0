@@ -4,13 +4,10 @@ namespace App\Modules\Finance\Services;
 
 use App\Models\Anggota;
 use App\Models\Barang;
-use App\Models\Transaksi;
 use App\Models\SetoranKasir;
-use App\Models\SerahTerima;
-use App\Models\ShuDistribusi;
+use App\Models\Transaksi;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Exception;
 
 class FinanceService
 {
@@ -37,16 +34,16 @@ class FinanceService
         $totalAsetBarang = Barang::sum(DB::raw('stok * harga_modal')) ?? 0;
 
         return [
-            'total_anggota'             => (int) $totalAnggota,
-            'total_transaksi_hari_ini'  => (int) $totalTransaksiHariIni,
+            'total_anggota' => (int) $totalAnggota,
+            'total_transaksi_hari_ini' => (int) $totalTransaksiHariIni,
             'total_pendapatan_hari_ini' => (float) $totalPendapatanHariIni,
             'total_keuntungan_hari_ini' => (float) $totalKeuntunganHariIni,
-            'total_hutang_beredar'      => (float) $totalHutangBeredar,
-            'total_saldo_anggota'       => (float) $totalSaldoAnggota,
-            'total_shu_tersedia'        => (float) $totalShuTersedia,
-            'total_shu_pengurus'        => (float) $totalShuPengurus,
-            'total_shu_koperasi'        => (float) $totalShuKoperasi,
-            'total_aset_barang'         => (float) $totalAsetBarang,
+            'total_hutang_beredar' => (float) $totalHutangBeredar,
+            'total_saldo_anggota' => (float) $totalSaldoAnggota,
+            'total_shu_tersedia' => (float) $totalShuTersedia,
+            'total_shu_pengurus' => (float) $totalShuPengurus,
+            'total_shu_koperasi' => (float) $totalShuKoperasi,
+            'total_aset_barang' => (float) $totalAsetBarang,
         ];
     }
 
@@ -86,12 +83,12 @@ class FinanceService
 
         return [
             'summary' => [
-                'tahun'            => (int) $targetTahun,
-                'total_penerima'   => (int) ($summary->total_penerima ?? 0),
-                'total_shu_60'     => (float) ($summary->total_shu_60 ?? 0),
-                'total_shu_10'     => (float) ($summary->total_shu_10 ?? 0),
-                'total_shu_30'     => (float) ($summary->total_shu_30 ?? 0),
-                'total_all_shu'    => (float) ($summary->total_all_shu ?? 0),
+                'tahun' => (int) $targetTahun,
+                'total_penerima' => (int) ($summary->total_penerima ?? 0),
+                'total_shu_60' => (float) ($summary->total_shu_60 ?? 0),
+                'total_shu_10' => (float) ($summary->total_shu_10 ?? 0),
+                'total_shu_30' => (float) ($summary->total_shu_30 ?? 0),
+                'total_all_shu' => (float) ($summary->total_all_shu ?? 0),
             ],
             'data' => $items,
         ];
@@ -105,12 +102,12 @@ class FinanceService
             $anggota->save();
 
             DB::table('shu_distribusi')->insert([
-                'anggota_id'     => $anggotaId,
-                'tahun'          => (int) date('Y'),
+                'anggota_id' => $anggotaId,
+                'tahun' => (int) date('Y'),
                 'shu_60_percent' => $nominal,
                 'shu_10_percent' => 0,
                 'shu_30_percent' => 0,
-                'created_at'     => now(),
+                'created_at' => now(),
             ]);
 
             return $anggota;
@@ -120,12 +117,12 @@ class FinanceService
     public function submitCashierDeposit(int $kasirId, float $nominal, float $totalPenjualan, ?string $keterangan = null): SetoranKasir
     {
         return SetoranKasir::create([
-            'kasir_id'        => $kasirId,
-            'nominal'         => $nominal,
+            'kasir_id' => $kasirId,
+            'nominal' => $nominal,
             'total_penjualan' => $totalPenjualan,
-            'keterangan'      => $keterangan,
-            'status'          => 'pending',
-            'created_at'      => now(),
+            'keterangan' => $keterangan,
+            'status' => 'pending',
+            'created_at' => now(),
         ]);
     }
 
@@ -135,6 +132,7 @@ class FinanceService
         $setoran->status = 'approved';
         $setoran->admin_id = $adminId;
         $setoran->save();
+
         return $setoran;
     }
 
@@ -143,8 +141,9 @@ class FinanceService
         $setoran = SetoranKasir::findOrFail($setoranId);
         $setoran->status = 'rejected';
         $setoran->admin_id = $adminId;
-        $setoran->keterangan = $alasan ? ($setoran->keterangan . " [Ditolak: {$alasan}]") : $setoran->keterangan;
+        $setoran->keterangan = $alasan ? ($setoran->keterangan." [Ditolak: {$alasan}]") : $setoran->keterangan;
         $setoran->save();
+
         return $setoran;
     }
 }

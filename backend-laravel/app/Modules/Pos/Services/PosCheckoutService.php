@@ -2,14 +2,13 @@
 
 namespace App\Modules\Pos\Services;
 
+use App\Models\Anggota;
 use App\Models\Barang;
+use App\Models\PembayaranHutang;
 use App\Models\Transaksi;
 use App\Models\TransaksiDetail;
-use App\Models\Anggota;
-use App\Models\PembayaranHutang;
-use App\Models\ShuDistribusi;
-use Illuminate\Support\Facades\DB;
 use Exception;
+use Illuminate\Support\Facades\DB;
 
 class PosCheckoutService
 {
@@ -42,13 +41,13 @@ class PosCheckoutService
 
                 if ($metodePembayaran === 'ewallet') {
                     if ($anggota->saldo < $totalHarga) {
-                        throw new Exception("Saldo e-wallet anggota tidak mencukupi (Saldo: Rp " . number_format($anggota->saldo, 0, ',', '.') . ")");
+                        throw new Exception('Saldo e-wallet anggota tidak mencukupi (Saldo: Rp '.number_format($anggota->saldo, 0, ',', '.').')');
                     }
                     $anggota->saldo -= $totalHarga;
                 } elseif ($metodePembayaran === 'hutang') {
                     $limitHutang = 1000000; // Standar plafon kredit karyawan
                     if (($anggota->hutang + $totalHarga) > $limitHutang) {
-                        throw new Exception("Transaksi melebihi batas limit hutang anggota");
+                        throw new Exception('Transaksi melebihi batas limit hutang anggota');
                     }
                     $anggota->hutang += $totalHarga;
                 }
@@ -56,13 +55,13 @@ class PosCheckoutService
 
             // 1. Create Transaction
             $trx = Transaksi::create([
-                'anggota_id'        => $anggotaId,
-                'kasir_id'          => $kasirId,
-                'total_harga'       => $totalHarga,
-                'total_keuntungan'  => $totalKeuntungan,
+                'anggota_id' => $anggotaId,
+                'kasir_id' => $kasirId,
+                'total_harga' => $totalHarga,
+                'total_keuntungan' => $totalKeuntungan,
                 'metode_pembayaran' => $metodePembayaran,
-                'status'            => 'selesai',
-                'created_at'        => now(),
+                'status' => 'selesai',
+                'created_at' => now(),
             ]);
 
             // 2. Reduce Stock and create detail lines
@@ -77,11 +76,11 @@ class PosCheckoutService
 
                 TransaksiDetail::create([
                     'transaksi_id' => $trx->transaksi_id,
-                    'barang_id'    => $barang->barang_id,
-                    'jumlah'       => $jumlah,
+                    'barang_id' => $barang->barang_id,
+                    'jumlah' => $jumlah,
                     'harga_satuan' => $barang->harga_jual,
-                    'subtotal'     => $subtotal,
-                    'keuntungan'   => $keuntungan,
+                    'subtotal' => $subtotal,
+                    'keuntungan' => $keuntungan,
                 ]);
             }
 
@@ -95,12 +94,12 @@ class PosCheckoutService
                 $anggota->save();
 
                 DB::table('shu_distribusi')->insert([
-                    'anggota_id'      => $anggotaId,
-                    'tahun'           => date('Y'),
-                    'shu_60_percent'  => $shu60,
-                    'shu_10_percent'  => $shu10,
-                    'shu_30_percent'  => $shu30,
-                    'created_at'      => now(),
+                    'anggota_id' => $anggotaId,
+                    'tahun' => date('Y'),
+                    'shu_60_percent' => $shu60,
+                    'shu_10_percent' => $shu10,
+                    'shu_30_percent' => $shu30,
+                    'created_at' => now(),
                 ]);
             } elseif ($anggota) {
                 $anggota->save();
@@ -131,14 +130,14 @@ class PosCheckoutService
 
             if ($metodePembayaran === 'ewallet') {
                 if ($anggota->saldo < $totalHarga) {
-                    throw new Exception("Saldo e-wallet tidak mencukupi");
+                    throw new Exception('Saldo e-wallet tidak mencukupi');
                 }
                 $anggota->saldo -= $totalHarga;
                 $anggota->save();
             } elseif ($metodePembayaran === 'hutang') {
                 $limitHutang = 1000000;
                 if (($anggota->hutang + $totalHarga) > $limitHutang) {
-                    throw new Exception("Plafon hutang tidak mencukupi");
+                    throw new Exception('Plafon hutang tidak mencukupi');
                 }
                 $anggota->hutang += $totalHarga;
                 $anggota->save();
@@ -152,13 +151,13 @@ class PosCheckoutService
             }
 
             $trx = Transaksi::create([
-                'anggota_id'        => $anggotaId,
-                'kasir_id'          => null,
-                'total_harga'       => $totalHarga,
-                'total_keuntungan'  => $totalKeuntungan,
+                'anggota_id' => $anggotaId,
+                'kasir_id' => null,
+                'total_harga' => $totalHarga,
+                'total_keuntungan' => $totalKeuntungan,
                 'metode_pembayaran' => $metodePembayaran,
-                'status'            => 'pending',
-                'created_at'        => now(),
+                'status' => 'pending',
+                'created_at' => now(),
             ]);
 
             foreach ($items as $item) {
@@ -169,11 +168,11 @@ class PosCheckoutService
 
                 TransaksiDetail::create([
                     'transaksi_id' => $trx->transaksi_id,
-                    'barang_id'    => $barang->barang_id,
-                    'jumlah'       => $jumlah,
+                    'barang_id' => $barang->barang_id,
+                    'jumlah' => $jumlah,
                     'harga_satuan' => $barang->harga_jual,
-                    'subtotal'     => $subtotal,
-                    'keuntungan'   => $keuntungan,
+                    'subtotal' => $subtotal,
+                    'keuntungan' => $keuntungan,
                 ]);
             }
 
@@ -204,12 +203,12 @@ class PosCheckoutService
                             $anggota->save();
 
                             DB::table('shu_distribusi')->insert([
-                                'anggota_id'     => $trx->anggota_id,
-                                'tahun'          => date('Y'),
+                                'anggota_id' => $trx->anggota_id,
+                                'tahun' => date('Y'),
                                 'shu_60_percent' => $shu60,
                                 'shu_10_percent' => $shu10,
                                 'shu_30_percent' => $shu30,
-                                'created_at'     => now(),
+                                'created_at' => now(),
                             ]);
                         }
                     }
@@ -238,7 +237,9 @@ class PosCheckoutService
                             $anggota->save();
                         } elseif ($trx->metode_pembayaran === 'hutang') {
                             $anggota->hutang -= $trx->total_harga;
-                            if ($anggota->hutang < 0) $anggota->hutang = 0;
+                            if ($anggota->hutang < 0) {
+                                $anggota->hutang = 0;
+                            }
                             $anggota->save();
                         }
                     }
@@ -264,7 +265,9 @@ class PosCheckoutService
             $anggota = Anggota::findOrFail($pembayaran->anggota_id);
 
             $anggota->hutang -= $pembayaran->nominal;
-            if ($anggota->hutang < 0) $anggota->hutang = 0;
+            if ($anggota->hutang < 0) {
+                $anggota->hutang = 0;
+            }
             $anggota->save();
 
             $pembayaran->status = 'approved';

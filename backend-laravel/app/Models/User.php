@@ -5,16 +5,18 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, Notifiable;
+    use HasApiTokens, Notifiable, HasPushSubscriptions;
 
     protected $table = 'users';
+
     protected $primaryKey = 'user_id';
-    
+
     public $timestamps = false;
-    
+
     protected $fillable = [
         'username',
         'password_hash',
@@ -58,12 +60,12 @@ class User extends Authenticatable
             : $this->jabatanAktif()->pluck('role')->toArray();
 
         // Include primary static role as well if not already present
-        if ($this->role && !in_array($this->role, $roles)) {
+        if ($this->role && ! in_array($this->role, $roles)) {
             $roles[] = $this->role;
         }
 
         // Everyone is fundamentally an anggota
-        if (!in_array('anggota', $roles)) {
+        if (! in_array('anggota', $roles)) {
             $roles[] = 'anggota';
         }
 
@@ -94,7 +96,7 @@ class User extends Authenticatable
 
     public function isKasir(): bool
     {
-        return $this->hasRole('kasir') || $this->isAdmin();
+        return $this->hasRole('kasir');
     }
 
     public function getIsAdminAttribute(): bool

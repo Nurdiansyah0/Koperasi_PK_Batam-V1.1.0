@@ -2,10 +2,11 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
+use App\Models\Anggota;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
+use Tests\TestCase;
 
 class AuthTest extends TestCase
 {
@@ -16,7 +17,7 @@ class AuthTest extends TestCase
     {
         // 1. Arrange: Create or find a user
         $user = User::first();
-        
+
         // Ensure we know the password for testing
         $password = 'password123';
         $user->password_hash = Hash::make($password);
@@ -30,17 +31,17 @@ class AuthTest extends TestCase
 
         // 3. Assert: Check the response
         $response->assertStatus(200)
-                 ->assertJsonStructure([
-                     'success',
-                     'token',
-                     'user' => [
-                         'user_id',
-                         'username',
-                         'role'
-                     ]
-                 ])
-                 ->assertJson(['success' => true]);
-                 
+            ->assertJsonStructure([
+                'success',
+                'token',
+                'user' => [
+                    'user_id',
+                    'username',
+                    'role',
+                ],
+            ])
+            ->assertJson(['success' => true]);
+
         $this->assertDatabaseHas('personal_access_tokens', [
             'tokenable_id' => $user->user_id,
         ]);
@@ -60,11 +61,11 @@ class AuthTest extends TestCase
 
         // 3. Assert
         $response->assertStatus(401) // The API currently returns 401 with success:false
-                 ->assertJson([
-                     'success' => false,
-                     'message' => 'Username atau password salah'
-                 ]);
-                 
+            ->assertJson([
+                'success' => false,
+                'message' => 'Username atau password salah',
+            ]);
+
         $this->assertGuest();
     }
 
@@ -73,12 +74,12 @@ class AuthTest extends TestCase
         // 1. Arrange: Create an anggota user
         $password = 'password123';
         $user = User::create([
-            'username' => 'testanggota_' . rand(),
+            'username' => 'testanggota_'.rand(),
             'password_hash' => Hash::make($password),
-            'role' => 'anggota'
+            'role' => 'anggota',
         ]);
 
-        $anggota = \App\Models\Anggota::create([
+        $anggota = Anggota::create([
             'nama_lengkap' => 'Test Anggota',
             'no_identitas' => '12345678',
             'email' => 'test@example.com',
@@ -90,7 +91,7 @@ class AuthTest extends TestCase
             'shu' => 0,
             'created_at' => now(),
         ]);
-        
+
         // Link the user to the anggota (assuming there's a relationship or same ID)
         // If the relation is based on user_id in anggota table:
         // Wait, looking at the models, Anggota probably has user_id
@@ -106,7 +107,7 @@ class AuthTest extends TestCase
 
         // 3. Assert
         $response->assertStatus(200);
-        $this->assertEquals(10000, (float)$response->json('user.saldo'));
+        $this->assertEquals(10000, (float) $response->json('user.saldo'));
     }
 
     public function test_it_can_get_current_user_profile()
@@ -115,10 +116,10 @@ class AuthTest extends TestCase
         $token = $user->createToken('test_profile')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
-                         ->getJson('/laravel/api/me');
-        
+            ->getJson('/laravel/api/me');
+
         $response->assertStatus(200)
-                 ->assertJsonStructure(['success', 'user']);
+            ->assertJsonStructure(['success', 'user']);
     }
 
     public function test_it_can_logout()
@@ -127,27 +128,27 @@ class AuthTest extends TestCase
         $token = $user->createToken('test_logout')->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
-                         ->postJson('/laravel/api/logout');
-        
+            ->postJson('/laravel/api/logout');
+
         $response->assertStatus(200)
-                 ->assertJson(['success' => true]);
-                 
+            ->assertJson(['success' => true]);
+
         // Verify token deleted
         $this->assertDatabaseMissing('personal_access_tokens', [
             'tokenable_id' => $user->user_id,
-            'name' => 'test_logout'
+            'name' => 'test_logout',
         ]);
     }
 
     public function test_reset_password_with_valid_challenge()
     {
         $user = User::create([
-            'username' => 'anggota_reset_' . rand(1000, 9999),
+            'username' => 'anggota_reset_'.rand(1000, 9999),
             'password_hash' => Hash::make('oldpassword'),
-            'role' => 'anggota'
+            'role' => 'anggota',
         ]);
 
-        $anggota = \App\Models\Anggota::create([
+        $anggota = Anggota::create([
             'user_id' => $user->user_id,
             'nama_lengkap' => 'Anggota Reset Test',
             'no_identitas' => '87654321',
@@ -167,7 +168,7 @@ class AuthTest extends TestCase
         ]);
 
         $response->assertStatus(200)
-                 ->assertJson(['success' => true]);
+            ->assertJson(['success' => true]);
 
         $user->refresh();
         $this->assertTrue(Hash::check('newpassword123', $user->password_hash));
@@ -176,12 +177,12 @@ class AuthTest extends TestCase
     public function test_reset_password_fails_with_invalid_challenge()
     {
         $user = User::create([
-            'username' => 'anggota_fail_' . rand(1000, 9999),
+            'username' => 'anggota_fail_'.rand(1000, 9999),
             'password_hash' => Hash::make('oldpassword'),
-            'role' => 'anggota'
+            'role' => 'anggota',
         ]);
 
-        \App\Models\Anggota::create([
+        Anggota::create([
             'user_id' => $user->user_id,
             'nama_lengkap' => 'Anggota Fail Test',
             'no_identitas' => '87654322',
@@ -199,7 +200,7 @@ class AuthTest extends TestCase
         ]);
 
         $response->assertStatus(422)
-                 ->assertJson(['success' => false]);
+            ->assertJson(['success' => false]);
     }
 
     public function test_reset_password_fails_if_username_not_found()
@@ -212,18 +213,18 @@ class AuthTest extends TestCase
         ]);
 
         $response->assertStatus(404)
-                 ->assertJson(['success' => false]);
+            ->assertJson(['success' => false]);
     }
 
     public function test_reset_password_fails_if_shu_wrong()
     {
         $user = User::create([
-            'username' => 'anggota_shu_fail_' . rand(1000, 9999),
+            'username' => 'anggota_shu_fail_'.rand(1000, 9999),
             'password_hash' => Hash::make('oldpassword'),
-            'role' => 'anggota'
+            'role' => 'anggota',
         ]);
 
-        \App\Models\Anggota::create([
+        Anggota::create([
             'user_id' => $user->user_id,
             'nama_lengkap' => 'Anggota SHU Fail Test',
             'no_identitas' => '87654323',
@@ -241,6 +242,6 @@ class AuthTest extends TestCase
         ]);
 
         $response->assertStatus(422)
-                 ->assertJson(['success' => false]);
+            ->assertJson(['success' => false]);
     }
 }

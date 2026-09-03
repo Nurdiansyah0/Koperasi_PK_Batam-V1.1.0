@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\ApiKey;
 use App\Models\Anggota;
+use App\Models\ApiKey;
 use App\Models\Barang;
-use App\Models\Transaksi;
 use App\Models\PengeluaranOperasional;
+use App\Models\Transaksi;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ExternalApiController extends Controller
@@ -25,7 +25,7 @@ class ExternalApiController extends Controller
                     'id' => $k->id,
                     'name' => $k->name,
                     'key' => $k->key,
-                    'masked_secret' => $k->secret ? substr($k->secret, 0, 10) . '...' . substr($k->secret, -6) : null,
+                    'masked_secret' => $k->secret ? substr($k->secret, 0, 10).'...'.substr($k->secret, -6) : null,
                     'permissions' => $k->permissions ?: ['*'],
                     'allowed_origins' => $k->allowed_origins ?: '*',
                     'is_active' => (bool) $k->is_active,
@@ -42,7 +42,7 @@ class ExternalApiController extends Controller
             'status' => 'SUCCESS',
             'data' => $keys,
             'total' => $keys->count(),
-            'gateway_url' => url('/laravel/api/v1')
+            'gateway_url' => url('/laravel/api/v1'),
         ]);
     }
 
@@ -80,14 +80,14 @@ class ExternalApiController extends Controller
                 'allowed_origins' => $apiKey->allowed_origins,
                 'expires_at' => $apiKey->expires_at ? $apiKey->expires_at->toIso8601String() : null,
                 'created_at' => $apiKey->created_at->toIso8601String(),
-            ]
+            ],
         ], 201);
     }
 
     public function toggleApiKey(Request $request, $id)
     {
         $apiKey = ApiKey::findOrFail($id);
-        $apiKey->is_active = !$apiKey->is_active;
+        $apiKey->is_active = ! $apiKey->is_active;
         $apiKey->save();
 
         return response()->json([
@@ -98,7 +98,7 @@ class ExternalApiController extends Controller
                 'id' => $apiKey->id,
                 'name' => $apiKey->name,
                 'is_active' => $apiKey->is_active,
-            ]
+            ],
         ]);
     }
 
@@ -110,7 +110,7 @@ class ExternalApiController extends Controller
         return response()->json([
             'success' => true,
             'status' => 'DELETED',
-            'message' => 'API Key berhasil dihapus secara permanen.'
+            'message' => 'API Key berhasil dihapus secara permanen.',
         ]);
     }
 
@@ -134,19 +134,19 @@ class ExternalApiController extends Controller
             'timestamp' => now()->toIso8601String(),
             'client_authenticated' => [
                 'name' => $apiKey->name,
-                'key_preview' => substr($apiKey->key, 0, 12) . '...',
+                'key_preview' => substr($apiKey->key, 0, 12).'...',
                 'permissions' => $apiKey->permissions,
                 'allowed_origins' => $apiKey->allowed_origins,
             ],
             'available_endpoints' => [
-                'summary'     => url('/laravel/api/v1/summary'),
-                'katalog'     => url('/laravel/api/v1/katalog'),
-                'anggota'     => url('/laravel/api/v1/anggota'),
-                'laporan'     => url('/laravel/api/v1/laporan'),
-                'transaksi'   => url('/laravel/api/v1/transaksi'),
-                'assets'      => url('/laravel/api/v1/assets'),
+                'summary' => url('/laravel/api/v1/summary'),
+                'katalog' => url('/laravel/api/v1/katalog'),
+                'anggota' => url('/laravel/api/v1/anggota'),
+                'laporan' => url('/laravel/api/v1/laporan'),
+                'transaksi' => url('/laravel/api/v1/transaksi'),
+                'assets' => url('/laravel/api/v1/assets'),
                 'widget_data' => url('/laravel/api/v1/ui/widget-data'),
-            ]
+            ],
         ]);
     }
 
@@ -194,7 +194,7 @@ class ExternalApiController extends Controller
                     'total_piutang_berjalan' => (float) $txAgg->total_piutang_bon,
                 ],
                 'server_time' => now()->toIso8601String(),
-            ]
+            ],
         ]);
     }
 
@@ -206,7 +206,7 @@ class ExternalApiController extends Controller
         $q = Barang::query();
 
         if ($request->filled('search')) {
-            $s = '%' . $request->search . '%';
+            $s = '%'.$request->search.'%';
             $q->where('nama_barang', 'like', $s);
         }
 
@@ -242,7 +242,7 @@ class ExternalApiController extends Controller
                 'last_page' => $paginator->lastPage(),
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
-            ]
+            ],
         ]);
     }
 
@@ -254,10 +254,10 @@ class ExternalApiController extends Controller
         $q = Anggota::query();
 
         if ($request->filled('search')) {
-            $s = '%' . $request->search . '%';
+            $s = '%'.$request->search.'%';
             $q->where(function ($query) use ($s) {
                 $query->where('nama_lengkap', 'like', $s)
-                      ->orWhere('email', 'like', $s);
+                    ->orWhere('email', 'like', $s);
             });
         }
 
@@ -289,11 +289,11 @@ class ExternalApiController extends Controller
     {
         $member = Anggota::where('anggota_id', $id)->first();
 
-        if (!$member) {
+        if (! $member) {
             return response()->json([
                 'success' => false,
                 'status' => 'NOT_FOUND',
-                'message' => 'Anggota tidak ditemukan.'
+                'message' => 'Anggota tidak ditemukan.',
             ], 404);
         }
 
@@ -326,7 +326,7 @@ class ExternalApiController extends Controller
                     'saldo_shu' => (float) ($member->shu ?? 0),
                 ],
                 'transaksi_terbaru' => $recentTx,
-            ]
+            ],
         ]);
     }
 
@@ -384,7 +384,7 @@ class ExternalApiController extends Controller
                 'items' => $t->details->map(function ($d) {
                     return [
                         'barang_id' => $d->barang_id,
-                        'nama_barang' => $d->barang ? $d->barang->nama_barang : 'Item #' . $d->barang_id,
+                        'nama_barang' => $d->barang ? $d->barang->nama_barang : 'Item #'.$d->barang_id,
                         'jumlah' => (int) $d->jumlah,
                         'harga_satuan' => (float) $d->harga_satuan,
                         'subtotal' => (float) $d->subtotal,
@@ -402,7 +402,7 @@ class ExternalApiController extends Controller
                 'last_page' => $paginator->lastPage(),
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
-            ]
+            ],
         ]);
     }
 
@@ -415,30 +415,30 @@ class ExternalApiController extends Controller
 
         $assets = [
             'branding' => [
-                'logo_svg' => $baseUrl . '/Logo.svg',
-                'logo_png' => $baseUrl . '/icon-512x512.png',
-                'favicon'  => $baseUrl . '/favicon.ico',
+                'logo_svg' => $baseUrl.'/Logo.svg',
+                'logo_png' => $baseUrl.'/icon-512x512.png',
+                'favicon' => $baseUrl.'/favicon.ico',
             ],
             'pwa_icons' => [
-                'icon_192' => $baseUrl . '/icon-192x192.png',
-                'icon_512' => $baseUrl . '/icon-512x512.png',
-                'manifest' => $baseUrl . '/manifest.webmanifest',
+                'icon_192' => $baseUrl.'/icon-192x192.png',
+                'icon_512' => $baseUrl.'/icon-512x512.png',
+                'manifest' => $baseUrl.'/manifest.webmanifest',
             ],
             'media_endpoints' => [
-                'product_images_base' => $baseUrl . '/storage/barang/',
-                'documents_base'      => $baseUrl . '/storage/documents/',
+                'product_images_base' => $baseUrl.'/storage/barang/',
+                'documents_base' => $baseUrl.'/storage/documents/',
             ],
             'embed_snippets' => [
-                'html_logo' => '<img src="' . $baseUrl . '/Logo.svg" alt="Koperasi PKP-PK" width="120" />',
-                'iframe_widget' => '<iframe src="' . $baseUrl . '/widget/koperasi" width="100%" height="400" frameborder="0"></iframe>',
-            ]
+                'html_logo' => '<img src="'.$baseUrl.'/Logo.svg" alt="Koperasi PKP-PK" width="120" />',
+                'iframe_widget' => '<iframe src="'.$baseUrl.'/widget/koperasi" width="100%" height="400" frameborder="0"></iframe>',
+            ],
         ];
 
         return response()->json([
             'success' => true,
             'status' => 'SUCCESS',
             'data' => $assets,
-            'base_url' => $baseUrl
+            'base_url' => $baseUrl,
         ]);
     }
 
@@ -480,18 +480,18 @@ class ExternalApiController extends Controller
             'widget' => [
                 'koperasi_title' => 'Koperasi Karyawan PKP-PK Bandara Hang Nadim',
                 'stats' => [
-                    'total_omset_formatted' => 'Rp ' . number_format((float) $summary->omset, 0, ',', '.'),
-                    'total_shu_formatted'   => 'Rp ' . number_format($netShu, 0, ',', '.'),
-                    'total_anggota'         => Anggota::count(),
-                    'total_produk'          => Barang::count(),
+                    'total_omset_formatted' => 'Rp '.number_format((float) $summary->omset, 0, ',', '.'),
+                    'total_shu_formatted' => 'Rp '.number_format($netShu, 0, ',', '.'),
+                    'total_anggota' => Anggota::count(),
+                    'total_produk' => Barang::count(),
                 ],
                 'popular_items' => $popularProducts,
                 'branding' => [
                     'logo_url' => url('/Logo.svg'),
                     'primary_color' => '#2563eb',
                     'accent_color' => '#10b981',
-                ]
-            ]
+                ],
+            ],
         ]);
     }
 }

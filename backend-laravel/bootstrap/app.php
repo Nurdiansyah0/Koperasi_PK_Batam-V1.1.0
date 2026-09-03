@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Middleware\ApiKeyMiddleware;
+use App\Http\Middleware\CheckAdmin;
+use App\Http\Middleware\CheckKasir;
+use App\Http\Middleware\CheckRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,10 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'admin'   => \App\Http\Middleware\CheckAdmin::class,
-            'kasir'   => \App\Http\Middleware\CheckKasir::class,
-            'role'    => \App\Http\Middleware\CheckRole::class,
-            'api_key' => \App\Http\Middleware\ApiKeyMiddleware::class,
+            'admin' => CheckAdmin::class,
+            'kasir' => CheckKasir::class,
+            'role' => CheckRole::class,
+            'api_key' => ApiKeyMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

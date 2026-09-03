@@ -2,19 +2,21 @@
 
 namespace Tests\Feature;
 
+use App\Models\Barang;
+use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
-use App\Models\User;
-use App\Models\Barang;
-use App\Models\Transaksi;
-use App\Models\TransaksiDetail;
 
 class PkmTest extends TestCase
 {
     use DatabaseTransactions;
+
     protected $admin;
+
     protected $adminToken;
+
     protected $kasir;
+
     protected $kasirToken;
 
     protected function setUp(): void
@@ -38,36 +40,36 @@ class PkmTest extends TestCase
     public function admin_can_get_pkm_analysis()
     {
         $response = $this->withHeader('Authorization', "Bearer {$this->adminToken}")
-                         ->getJson('/laravel/api/admin/pkm-analysis?days=30&lead_time_days=4');
+            ->getJson('/laravel/api/admin/pkm-analysis?days=30&lead_time_days=4');
 
         $response->assertStatus(200)
-                 ->assertJson(['success' => true])
-                 ->assertJsonStructure([
-                     'success',
-                     'data' => [
-                         '*' => [
-                             'barang_id',
-                             'nama_barang',
-                             'stok',
-                             'ads',
-                             'recommended_pkm',
-                             'pkm'
-                         ]
-                     ],
-                     'summary' => [
-                         'total_barang',
-                         'days',
-                         'lead_time_days',
-                         'total_pkm_units'
-                     ]
-                 ]);
+            ->assertJson(['success' => true])
+            ->assertJsonStructure([
+                'success',
+                'data' => [
+                    '*' => [
+                        'barang_id',
+                        'nama_barang',
+                        'stok',
+                        'ads',
+                        'recommended_pkm',
+                        'pkm',
+                    ],
+                ],
+                'summary' => [
+                    'total_barang',
+                    'days',
+                    'lead_time_days',
+                    'total_pkm_units',
+                ],
+            ]);
     }
 
     /** @test */
     public function kasir_cannot_access_pkm_analysis()
     {
         $response = $this->withHeader('Authorization', "Bearer {$this->kasirToken}")
-                         ->getJson('/laravel/api/admin/pkm-analysis');
+            ->getJson('/laravel/api/admin/pkm-analysis');
 
         $response->assertStatus(403);
     }
@@ -78,13 +80,13 @@ class PkmTest extends TestCase
         $barang = Barang::firstOrFail();
 
         $response = $this->withHeader('Authorization', "Bearer {$this->adminToken}")
-                         ->postJson('/laravel/api/admin/update-pkm', [
-                             'barang_id' => $barang->barang_id,
-                             'pkm' => 5
-                         ]);
+            ->postJson('/laravel/api/admin/update-pkm', [
+                'barang_id' => $barang->barang_id,
+                'pkm' => 5,
+            ]);
 
         $response->assertStatus(200)
-                 ->assertJson(['success' => true]);
+            ->assertJson(['success' => true]);
 
         $this->assertEquals(5, Barang::find($barang->barang_id)->pkm);
     }
@@ -93,12 +95,12 @@ class PkmTest extends TestCase
     public function admin_can_auto_calculate_all_pkm()
     {
         $response = $this->withHeader('Authorization', "Bearer {$this->adminToken}")
-                         ->postJson('/laravel/api/admin/auto-calculate-pkm', [
-                             'days' => 30,
-                             'lead_time_days' => 4
-                         ]);
+            ->postJson('/laravel/api/admin/auto-calculate-pkm', [
+                'days' => 30,
+                'lead_time_days' => 4,
+            ]);
 
         $response->assertStatus(200)
-                 ->assertJson(['success' => true]);
+            ->assertJson(['success' => true]);
     }
 }

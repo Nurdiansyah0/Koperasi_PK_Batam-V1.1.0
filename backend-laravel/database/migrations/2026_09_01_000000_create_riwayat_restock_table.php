@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('catatan')->nullable();
             $table->timestamps();
 
-            // Note: FK constraints skipped to avoid issues if legacy tables are MyISAM or different charsets, 
+            // Note: FK constraints skipped to avoid issues if legacy tables are MyISAM or different charsets,
             // but we can add logical indexes.
             $table->index('barang_id');
             $table->index('admin_id');

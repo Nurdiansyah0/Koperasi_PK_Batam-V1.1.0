@@ -2,27 +2,25 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use App\Models\User;
-use App\Models\Barang;
 use App\Models\Anggota;
-use App\Models\Transaksi;
-use App\Models\TransaksiDetail;
-use App\Models\SetoranKasir;
-use App\Models\ShuDistribusi;
-use App\Models\JabatanAnggota;
-use App\Models\SerahTerimaKasir;
-use App\Models\TarikTunai;
+use App\Models\Barang;
 use App\Models\RiwayatRestock;
+use App\Models\SerahTerimaKasir;
+use App\Models\SetoranKasir;
+use App\Models\Transaksi;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Tests\TestCase;
 
 class AdminSopAuditTest extends TestCase
 {
     use DatabaseTransactions;
 
     private $admin;
+
     private $adminToken;
+
     private $kasir;
 
     protected function setUp(): void
@@ -37,13 +35,13 @@ class AdminSopAuditTest extends TestCase
     private function authGet($uri, $params = [])
     {
         return $this->withHeader('Authorization', "Bearer {$this->adminToken}")
-                    ->getJson($uri . ($params ? '?' . http_build_query($params) : ''));
+            ->getJson($uri.($params ? '?'.http_build_query($params) : ''));
     }
 
     private function authPost($uri, $data = [])
     {
         return $this->withHeader('Authorization', "Bearer {$this->adminToken}")
-                    ->postJson($uri, $data);
+            ->postJson($uri, $data);
     }
 
     /** @test */
@@ -63,7 +61,7 @@ class AdminSopAuditTest extends TestCase
                 'total_shu_tersedia',
                 'total_shu_pengurus',
                 'total_shu_koperasi',
-                'total_aset_barang'
+                'total_aset_barang',
             ]);
 
         $this->assertTrue($res->json('success'));
@@ -119,7 +117,7 @@ class AdminSopAuditTest extends TestCase
             'jumlah_tambah' => 20,
             'harga_beli_satuan' => 15000,
             'sumber_dana' => 'kas_koperasi',
-            'catatan' => 'Restock pengadaan mingguan'
+            'catatan' => 'Restock pengadaan mingguan',
         ]);
 
         $resRestock->assertStatus(200)->assertJson(['success' => true]);
@@ -145,7 +143,7 @@ class AdminSopAuditTest extends TestCase
             'adjustments' => [
                 ['barang_id' => $b1->barang_id, 'stok_akhir' => 99],
                 ['barang_id' => $b2->barang_id, 'stok_akhir' => 88],
-            ]
+            ],
         ]);
 
         $resOpname->assertStatus(200)->assertJson(['success' => true]);
@@ -169,7 +167,7 @@ class AdminSopAuditTest extends TestCase
         $b = Barang::firstOrFail();
         $resUpdate = $this->authPost('/laravel/api/admin/update-pkm', [
             'barang_id' => $b->barang_id,
-            'pkm' => 15
+            'pkm' => 15,
         ]);
         $resUpdate->assertStatus(200)->assertJson(['success' => true]);
         $b->refresh();
@@ -178,7 +176,7 @@ class AdminSopAuditTest extends TestCase
         // 3. Auto Calculate PKM Massal
         $resAuto = $this->authPost('/laravel/api/admin/auto-calculate-pkm', [
             'days' => 30,
-            'lead_time_days' => 4
+            'lead_time_days' => 4,
         ]);
         $resAuto->assertStatus(200)->assertJson(['success' => true]);
     }
@@ -191,12 +189,12 @@ class AdminSopAuditTest extends TestCase
         $resAnggota->assertStatus(200)->assertJson(['success' => true]);
 
         // 2. Tambah User Staf
-        $testUsername = 'user_audit_' . time();
+        $testUsername = 'user_audit_'.time();
         $resAdd = $this->authPost('/laravel/api/admin/tambah-user', [
             'username' => $testUsername,
             'password' => 'password123',
             'role' => 'kasir',
-            'nama_lengkap' => 'Staff Audit POS'
+            'nama_lengkap' => 'Staff Audit POS',
         ]);
         $resAdd->assertStatus(200)->assertJson(['success' => true]);
 
@@ -207,15 +205,15 @@ class AdminSopAuditTest extends TestCase
         // 3. Update User
         $resUpdate = $this->authPost('/laravel/api/admin/update-user', [
             'user_id' => $createdUser->user_id,
-            'username' => $testUsername . '_edit',
+            'username' => $testUsername.'_edit',
             'role' => 'pengurus',
-            'nama_lengkap' => 'Staff Pengurus Audit'
+            'nama_lengkap' => 'Staff Pengurus Audit',
         ]);
         $resUpdate->assertStatus(200)->assertJson(['success' => true]);
 
         // 4. Hapus User
         $resDel = $this->authPost('/laravel/api/admin/hapus-user', [
-            'user_id' => $createdUser->user_id
+            'user_id' => $createdUser->user_id,
         ]);
         $resDel->assertStatus(200)->assertJson(['success' => true]);
 
@@ -224,7 +222,7 @@ class AdminSopAuditTest extends TestCase
         $adminUsers = User::where('role', 'admin')->get();
         if ($adminUsers->count() === 1) {
             $resDelAdmin = $this->authPost('/laravel/api/admin/hapus-user', [
-                'user_id' => $this->admin->user_id
+                'user_id' => $this->admin->user_id,
             ]);
             $resDelAdmin->assertStatus(422)->assertJson(['success' => false]);
         }
@@ -243,7 +241,7 @@ class AdminSopAuditTest extends TestCase
         $resAssign = $this->authPost('/laravel/api/admin/jabatan/assign', [
             'user_id' => $anggotaUser->user_id,
             'role' => 'kasir',
-            'catatan' => 'Penugasan kasir bantuan'
+            'catatan' => 'Penugasan kasir bantuan',
         ]);
         $resAssign->assertStatus(200)->assertJson(['success' => true]);
 
@@ -252,7 +250,7 @@ class AdminSopAuditTest extends TestCase
         // 3. Revoke Mandat
         $resRevoke = $this->authPost('/laravel/api/admin/jabatan/revoke', [
             'jabatan_id' => $jabatanId,
-            'alasan' => 'Masa tugas kasir bantuan berakhir'
+            'alasan' => 'Masa tugas kasir bantuan berakhir',
         ]);
         $resRevoke->assertStatus(200)->assertJson(['success' => true]);
     }
@@ -273,7 +271,7 @@ class AdminSopAuditTest extends TestCase
 
         // 3. Approve Setoran
         $resApprove = $this->authPost('/laravel/api/admin/approve-setoran-kasir', [
-            'setoran_id' => $setoran->setoran_id
+            'setoran_id' => $setoran->setoran_id,
         ]);
         $resApprove->assertStatus(200)->assertJson(['success' => true]);
 
@@ -306,7 +304,7 @@ class AdminSopAuditTest extends TestCase
             'mode' => 'ke_saldo_belanja',
             'anggota_id' => $anggota->anggota_id,
             'nominal' => 20000,
-            'keterangan' => 'Konversi e-wallet belanja toko'
+            'keterangan' => 'Konversi e-wallet belanja toko',
         ]);
         $resKonversi1->assertStatus(200)->assertJson(['success' => true]);
         $anggota->refresh();
@@ -319,7 +317,7 @@ class AdminSopAuditTest extends TestCase
             'mode' => 'pelunasan_hutang',
             'anggota_id' => $anggota->anggota_id,
             'nominal' => 15000,
-            'keterangan' => 'Auto-offset hutang dari SHU'
+            'keterangan' => 'Auto-offset hutang dari SHU',
         ]);
         $resKonversi2->assertStatus(200)->assertJson(['success' => true]);
         $anggota->refresh();
@@ -366,18 +364,18 @@ class AdminSopAuditTest extends TestCase
                 'summary' => [
                     'barangCocok' => 10,
                     'barangSelisih' => 1,
-                    'totalMinusNominal' => 25000
+                    'totalMinusNominal' => 25000,
                 ],
                 'items' => [
                     [
                         'nama_barang' => 'Djarum Super 12',
                         'selisih' => -1,
                         'harga_jual' => 25000,
-                        'selisih_nominal' => -25000
-                    ]
+                        'selisih_nominal' => -25000,
+                    ],
                 ],
-                'catatan' => 'Minus 1 rokok dan kurang kas 20rb'
-            ]
+                'catatan' => 'Minus 1 rokok dan kurang kas 20rb',
+            ],
         ]);
 
         // 2. Test getLaporanSelisihKasir
@@ -415,7 +413,7 @@ class AdminSopAuditTest extends TestCase
             'stok_gudang' => 16,
             'pkm' => 6,
             'harga_modal' => 30000,
-            'harga_jual' => 35000
+            'harga_jual' => 35000,
         ]);
 
         $this->assertEquals(20, $barang->stok);
@@ -427,7 +425,7 @@ class AdminSopAuditTest extends TestCase
             'barang_id' => $barang->barang_id,
             'tipe' => 'gudang_ke_toko',
             'jumlah' => 2,
-            'catatan' => 'Refill etalase minyak'
+            'catatan' => 'Refill etalase minyak',
         ]);
         $resMutasi->assertStatus(200)->assertJson(['success' => true]);
 
@@ -441,7 +439,7 @@ class AdminSopAuditTest extends TestCase
             'barang_id' => $barang->barang_id,
             'tipe' => 'toko_ke_gudang',
             'jumlah' => 1,
-            'catatan' => 'Kembalikan ke kardus'
+            'catatan' => 'Kembalikan ke kardus',
         ]);
         $resReturn->assertStatus(200)->assertJson(['success' => true]);
 
@@ -466,7 +464,7 @@ class AdminSopAuditTest extends TestCase
             'harga_beli_satuan' => 31000,
             'sumber_dana' => 'kas_koperasi',
             'alokasi' => 'gudang',
-            'catatan' => 'Kulakan kartonan supplier'
+            'catatan' => 'Kulakan kartonan supplier',
         ]);
         $resRestock->assertStatus(200)->assertJson(['success' => true]);
 
@@ -480,8 +478,8 @@ class AdminSopAuditTest extends TestCase
     public function audit_13_expiry_tracking_and_write_off()
     {
         // 1. Create an item with expired date on display toko
-        $yesterday = \Carbon\Carbon::yesterday()->toDateString();
-        $in15Days = \Carbon\Carbon::today()->addDays(15)->toDateString();
+        $yesterday = Carbon::yesterday()->toDateString();
+        $in15Days = Carbon::today()->addDays(15)->toDateString();
 
         $barang = Barang::create([
             'nama_barang' => 'Roti Tawar Manis Expired',
@@ -492,7 +490,7 @@ class AdminSopAuditTest extends TestCase
             'tgl_kadaluarsa_gudang' => $in15Days,
             'pkm' => 4,
             'harga_modal' => 10000,
-            'harga_jual' => 12000
+            'harga_jual' => 12000,
         ]);
 
         $this->assertEquals('expired', $barang->status_kadaluarsa_toko);
@@ -509,7 +507,7 @@ class AdminSopAuditTest extends TestCase
             'barang_id' => $barang->barang_id,
             'lokasi' => 'toko',
             'jumlah' => 4,
-            'alasan' => 'Pemusnahan roti jamuran lewat tanggal'
+            'alasan' => 'Pemusnahan roti jamuran lewat tanggal',
         ]);
         $resWriteOff->assertStatus(200)->assertJson(['success' => true]);
 
@@ -529,7 +527,7 @@ class AdminSopAuditTest extends TestCase
             'stok_gudang' => 3,
             'pkm' => 4,
             'harga_modal' => 2800,
-            'harga_jual' => 3500
+            'harga_jual' => 3500,
         ]);
 
         $b2 = Barang::create([
@@ -539,10 +537,10 @@ class AdminSopAuditTest extends TestCase
             'stok_gudang' => 6,
             'pkm' => 6,
             'harga_modal' => 4000,
-            'harga_jual' => 5000
+            'harga_jual' => 5000,
         ]);
 
-        $in6Months = \Carbon\Carbon::today()->addMonths(6)->toDateString();
+        $in6Months = Carbon::today()->addMonths(6)->toDateString();
 
         $payload = [
             'nomor_faktur' => 'FAK-TEST-9988',
@@ -555,16 +553,16 @@ class AdminSopAuditTest extends TestCase
                     'jumlah_tambah' => 40,
                     'harga_beli_satuan' => 2900,
                     'alokasi' => 'gudang',
-                    'tanggal_kadaluarsa' => $in6Months
+                    'tanggal_kadaluarsa' => $in6Months,
                 ],
                 [
                     'barang_id' => $b2->barang_id,
                     'jumlah_tambah' => 24,
                     'harga_beli_satuan' => 4100,
                     'alokasi' => 'auto',
-                    'tanggal_kadaluarsa' => $in6Months
-                ]
-            ]
+                    'tanggal_kadaluarsa' => $in6Months,
+                ],
+            ],
         ];
 
         $res = $this->authPost('/laravel/api/admin/bulk-restock', $payload);
@@ -589,12 +587,12 @@ class AdminSopAuditTest extends TestCase
         $this->assertDatabaseHas('riwayat_restock', [
             'barang_id' => $b1->barang_id,
             'jumlah_tambah' => 40,
-            'harga_beli_satuan' => 2900
+            'harga_beli_satuan' => 2900,
         ]);
         $this->assertDatabaseHas('riwayat_restock', [
             'barang_id' => $b2->barang_id,
             'jumlah_tambah' => 24,
-            'harga_beli_satuan' => 4100
+            'harga_beli_satuan' => 4100,
         ]);
     }
 }

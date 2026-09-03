@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class SerahTerimaKasir extends Model
 {
     protected $table = 'serah_terima_kasir';
+
     protected $primaryKey = 'serah_id';
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -16,20 +18,25 @@ class SerahTerimaKasir extends Model
         'hasil_opname',
         'status',
         'alasan_penolakan',
-        'created_at'
+        'created_at',
     ];
 
     public function getHasilOpnameAttribute($value)
     {
-        if (empty($value)) return null;
-        if (is_array($value)) return $value;
+        if (empty($value)) {
+            return null;
+        }
+        if (is_array($value)) {
+            return $value;
+        }
         $decoded = json_decode($value, true);
-        if (!$decoded && is_string($value)) {
+        if (! $decoded && is_string($value)) {
             $decoded = json_decode(stripslashes($value), true);
-            if (!$decoded) {
+            if (! $decoded) {
                 $decoded = json_decode(trim(stripslashes($value), '"'), true);
             }
         }
+
         return $decoded;
     }
 

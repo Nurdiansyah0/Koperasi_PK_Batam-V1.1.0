@@ -1,4 +1,5 @@
 <?php
+
 $file = 'app/Http/Controllers/KasirController.php';
 $content = file_get_contents($file);
 
@@ -45,4 +46,4 @@ METHOD;
 
 $content = preg_replace('/public function getDashboard\(Request \$request\).*?\]\);\s*}/s', $newMethod, $content);
 file_put_contents($file, $content);
-echo "Patched KasirController.php";
+echo 'Patched KasirController.php';

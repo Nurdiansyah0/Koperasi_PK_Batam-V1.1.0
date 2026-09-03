@@ -2,17 +2,18 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use App\Models\User;
-use App\Models\Barang;
 use App\Models\Anggota;
+use App\Models\Barang;
+use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Tests\TestCase;
 
 class KasirTest extends TestCase
 {
     use DatabaseTransactions;
 
     protected $kasir;
+
     protected $token;
 
     protected function setUp(): void
@@ -28,19 +29,19 @@ class KasirTest extends TestCase
     {
         // 2. Act
         $response = $this->withHeader('Authorization', "Bearer {$this->token}")
-                         ->getJson('/laravel/api/kasir/dashboard');
+            ->getJson('/laravel/api/kasir/dashboard');
 
         // 3. Assert
         $response->assertStatus(200)
-                 ->assertJsonStructure([
-                     'success',
-                     'data' => [
-                         'total_pendapatan_hari_ini',
-                         'total_transaksi_hari_ini',
-                         'saldo_kas',
-                         'pending_serah_terima',
-                     ]
-                 ]);
+            ->assertJsonStructure([
+                'success',
+                'data' => [
+                    'total_pendapatan_hari_ini',
+                    'total_transaksi_hari_ini',
+                    'saldo_kas',
+                    'pending_serah_terima',
+                ],
+            ]);
     }
 
     /** @test */
@@ -60,13 +61,13 @@ class KasirTest extends TestCase
                     'barang_id' => $barang->barang_id,
                     'jumlah' => $qty,
                     'harga_satuan' => $barang->harga_jual,
-                ]
-            ]
+                ],
+            ],
         ];
 
         // 2. Act: Process transaction
         $response = $this->withHeader('Authorization', "Bearer {$this->token}")
-                         ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
+            ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
 
         // Debug if it fails
         if ($response->status() !== 200) {
@@ -75,7 +76,7 @@ class KasirTest extends TestCase
 
         // 3. Assert: Verify response
         $response->assertStatus(200)
-                 ->assertJson(['success' => true]);
+            ->assertJson(['success' => true]);
 
         // Assert: Verify stock was reduced
         $this->assertDatabaseHas('barang', [
@@ -90,7 +91,7 @@ class KasirTest extends TestCase
             'kasir_id' => $this->kasir->user_id,
             'metode_pembayaran' => 'cash',
         ]);
-        
+
         $this->assertDatabaseHas('transaksi_detail', [
             'transaksi_id' => $transaksiId,
             'barang_id' => $barang->barang_id,
@@ -119,16 +120,18 @@ class KasirTest extends TestCase
                     'barang_id' => $barang->barang_id,
                     'jumlah' => $qty,
                     'harga_satuan' => $barang->harga_jual,
-                ]
-            ]
+                ],
+            ],
         ];
 
         // 2. Act
         $response = $this->withHeader('Authorization', "Bearer {$this->token}")
-                         ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
+            ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
 
         // 3. Assert
-        if ($response->status() !== 200) dd($response->getContent());
+        if ($response->status() !== 200) {
+            dd($response->getContent());
+        }
         $response->assertStatus(200)->assertJson(['success' => true]);
 
         // Assert: Verify anggota hutang increased
@@ -152,39 +155,39 @@ class KasirTest extends TestCase
                 [
                     'barang_id' => $barang->barang_id,
                     'jumlah' => $impossibleQty,
-                ]
-            ]
+                ],
+            ],
         ];
 
         // 2. Act
         $response = $this->withHeader('Authorization', "Bearer {$this->token}")
-                         ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
+            ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
 
         // 3. Assert: Transaction should fail
         $response->assertStatus(400);
-        $this->assertStringContainsString('Stok tidak mencukupi', $response->getContent());
+        $this->assertStringContainsString('Stok etalase tidak mencukupi', $response->getContent());
     }
 
     /** @test */
     public function kasir_can_get_paket_belanja()
     {
         $response = $this->withHeader('Authorization', "Bearer {$this->token}")
-                         ->getJson('/laravel/api/kasir/paket-belanja');
+            ->getJson('/laravel/api/kasir/paket-belanja');
 
         $response->assertStatus(200)
-                 ->assertJsonStructure([
-                     'success',
-                     'data' => [
-                         '*' => [
-                             'id',
-                             'nama_paket',
-                             'deskripsi',
-                             'tag',
-                             'total_harga',
-                             'items',
-                             'is_available',
-                         ]
-                     ]
-                 ]);
+            ->assertJsonStructure([
+                'success',
+                'data' => [
+                    '*' => [
+                        'id',
+                        'nama_paket',
+                        'deskripsi',
+                        'tag',
+                        'total_harga',
+                        'items',
+                        'is_available',
+                    ],
+                ],
+            ]);
     }
 }

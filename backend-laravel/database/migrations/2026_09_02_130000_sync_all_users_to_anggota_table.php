@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
@@ -18,11 +16,11 @@ return new class extends Migration
 
         foreach ($usersWithoutAnggota as $u) {
             $namaLengkap = $u->username === 'Admin' ? 'Administrator Utama' : $u->username;
-            
+
             DB::table('anggota')->insert([
                 'user_id' => $u->user_id,
                 'nama_lengkap' => $namaLengkap,
-                'email' => strtolower($u->username) . '@koperasi.local',
+                'email' => strtolower($u->username).'@koperasi.local',
                 'saldo' => 0,
                 'hutang' => 0,
                 'shu' => 0,

@@ -20,6 +20,7 @@ class InventoryController extends Controller
         if ($request->user()->role !== 'admin') {
             abort(403, 'Unauthorized');
         }
+
         return $request->user()->user_id;
     }
 
@@ -27,12 +28,14 @@ class InventoryController extends Controller
     {
         $this->checkAdmin($request);
         $barang = $this->inventoryService->getAllBarang();
+
         return response()->json(['success' => true, 'data' => $barang]);
     }
 
     public function getAvailableBarang()
     {
         $barang = $this->inventoryService->getAvailableBarang();
+
         return response()->json(['success' => true, 'data' => $barang]);
     }
 
@@ -41,13 +44,14 @@ class InventoryController extends Controller
         $this->checkAdmin($request);
         $request->validate([
             'nama_barang' => 'required|string',
-            'stok'        => 'required|integer|min:0',
+            'stok' => 'required|integer|min:0',
             'harga_modal' => 'nullable|numeric|min:0',
-            'harga_jual'  => 'nullable|numeric|min:0',
-            'harga'       => 'nullable|numeric|min:0',
+            'harga_jual' => 'nullable|numeric|min:0',
+            'harga' => 'nullable|numeric|min:0',
         ]);
 
         $barang = $this->inventoryService->tambahBarang($request->all());
+
         return response()->json(['success' => true, 'message' => 'Barang berhasil ditambahkan', 'data' => $barang]);
     }
 
@@ -55,6 +59,7 @@ class InventoryController extends Controller
     {
         $this->checkAdmin($request);
         $barang = $this->inventoryService->editBarang((int) $id, $request->all());
+
         return response()->json(['success' => true, 'message' => 'Barang berhasil diupdate', 'data' => $barang]);
     }
 
@@ -62,6 +67,7 @@ class InventoryController extends Controller
     {
         $this->checkAdmin($request);
         $this->inventoryService->hapusBarang((int) $id);
+
         return response()->json(['success' => true, 'message' => 'Barang berhasil dihapus']);
     }
 
@@ -69,11 +75,11 @@ class InventoryController extends Controller
     {
         $this->checkAdmin($request);
         $request->validate([
-            'barang_id'   => 'required|integer',
-            'jumlah'      => 'required|integer|min:1',
+            'barang_id' => 'required|integer',
+            'jumlah' => 'required|integer|min:1',
             'harga_modal' => 'nullable|numeric|min:0',
-            'harga_jual'  => 'nullable|numeric|min:0',
-            'supplier'    => 'nullable|string',
+            'harga_jual' => 'nullable|numeric|min:0',
+            'supplier' => 'nullable|string',
         ]);
 
         $result = $this->inventoryService->restockBarang(
@@ -91,6 +97,7 @@ class InventoryController extends Controller
     {
         $this->checkAdmin($request);
         $monitor = $this->inventoryService->getMonitorBarang();
+
         return response()->json(['success' => true, 'data' => $monitor]);
     }
 
@@ -98,19 +105,19 @@ class InventoryController extends Controller
     {
         $adminId = $this->checkAdmin($request);
         $request->validate([
-            'items'               => 'required|array|min:1',
-            'items.*.barang_id'   => 'required|integer|exists:barang,barang_id',
-            'items.*.stok_fisik'  => 'required|integer|min:0',
-            'items.*.keterangan'  => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.barang_id' => 'required|integer|exists:barang,barang_id',
+            'items.*.stok_fisik' => 'required|integer|min:0',
+            'items.*.keterangan' => 'nullable|string',
         ]);
 
         $results = $this->inventoryService->submitMassOpname($request->items, $adminId);
 
         return response()->json([
-            'success'        => true,
-            'message'        => 'Stock Opname berhasil disimpan',
+            'success' => true,
+            'message' => 'Stock Opname berhasil disimpan',
             'total_diupdate' => count($results),
-            'data'           => $results,
+            'data' => $results,
         ]);
     }
 }

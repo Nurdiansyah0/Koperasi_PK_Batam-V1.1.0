@@ -165,7 +165,9 @@ class RealtimeOrderManager {
     this.isConnected = true
 
     // Request notification permission if not yet decided
-    this.requestNotificationPermission().catch(() => {})
+    this.requestNotificationPermission().then((granted) => {
+      if (granted) this.setupWebPush()
+    }).catch(() => {})
 
     // Start streaming loop
     this.runStream(token)
@@ -199,6 +201,28 @@ class RealtimeOrderManager {
     if (this.visibilityHandler && typeof document !== 'undefined') {
       document.removeEventListener('visibilitychange', this.visibilityHandler)
       this.visibilityHandler = null
+    }
+  }
+
+  private async setupWebPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js')
+      await navigator.serviceWorker.ready
+
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: 'BC9sAxkHZSIMXEjr918ELsks1t-B0_W3qxwn_AlT4Hc2XNKZN4QTRxGu0bje8RBOI8Fjk-TapYU3-SHU3vW6GeI'
+      })
+
+      const subData = JSON.parse(JSON.stringify(subscription))
+      await api.post('/laravel/api/push-subscribe', {
+        endpoint: subData.endpoint,
+        keys: subData.keys
+      })
+    } catch (e) {
+      console.warn('Web Push Setup Failed:', e)
     }
   }
 

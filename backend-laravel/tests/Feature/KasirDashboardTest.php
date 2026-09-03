@@ -2,14 +2,14 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use App\Models\User;
-use App\Models\Barang;
 use App\Models\Anggota;
+use App\Models\Barang;
 use App\Models\Transaksi;
 use App\Models\TransaksiDetail;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Tests\TestCase;
 
 class KasirDashboardTest extends TestCase
 {
@@ -44,22 +44,22 @@ class KasirDashboardTest extends TestCase
         ]);
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
-                         ->getJson('/laravel/api/kasir/dashboard');
+            ->getJson('/laravel/api/kasir/dashboard');
 
         $response->assertStatus(200)
-                 ->assertJsonStructure([
-                     'success',
-                     'data' => [
-                         'total_pendapatan_hari_ini',
-                         'total_transaksi_hari_ini',
-                         'total_item_terjual_hari_ini',
-                         'total_transaksi_dilayani',
-                         'pending_serah_terima',
-                         'pending_pesanan',
-                         'pending_hutang',
-                         'transaksi_terbaru',
-                     ]
-                 ]);
+            ->assertJsonStructure([
+                'success',
+                'data' => [
+                    'total_pendapatan_hari_ini',
+                    'total_transaksi_hari_ini',
+                    'total_item_terjual_hari_ini',
+                    'total_transaksi_dilayani',
+                    'pending_serah_terima',
+                    'pending_pesanan',
+                    'pending_hutang',
+                    'transaksi_terbaru',
+                ],
+            ]);
 
         $this->assertGreaterThanOrEqual(1, $response->json('data.total_transaksi_hari_ini'));
         $this->assertGreaterThanOrEqual(4, $response->json('data.total_item_terjual_hari_ini'));

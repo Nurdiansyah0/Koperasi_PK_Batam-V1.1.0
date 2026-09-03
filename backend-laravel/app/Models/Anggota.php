@@ -3,13 +3,26 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class Anggota extends Model
 {
     protected $table = 'anggota';
+
     protected $primaryKey = 'anggota_id';
 
     const UPDATED_AT = null;
+
+    protected static function booted()
+    {
+        static::saved(function ($anggota) {
+            Cache::forget('kasir_all_anggota_slim');
+        });
+
+        static::deleted(function ($anggota) {
+            Cache::forget('kasir_all_anggota_slim');
+        });
+    }
 
     protected $fillable = [
         'user_id',
@@ -54,7 +67,7 @@ class Anggota extends Model
 
     public function getSisaLimitHutangAttribute(): float
     {
-        return (float) max(0, $this->limit_hutang - (float)$this->hutang);
+        return (float) max(0, $this->limit_hutang - (float) $this->hutang);
     }
 
     public function user()
