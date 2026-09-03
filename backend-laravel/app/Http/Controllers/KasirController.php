@@ -194,8 +194,8 @@ class KasirController extends Controller
         $this->checkKasir($request);
 
         $barang = Cache::remember('kasir_barang_catalog', 60, function () {
-            return Barang::select('barang_id', 'nama_barang', 'harga_jual', 'stok')
-                ->where('stok', '>', 0)
+            return Barang::select('barang_id', 'nama_barang', 'harga_jual', 'stok_toko as stok')
+                ->where('stok_toko', '>', 0)
                 ->orderBy('nama_barang', 'asc')
                 ->get();
         });
@@ -409,8 +409,8 @@ class KasirController extends Controller
 
             foreach ($request->items as $item) {
                 $barang = Barang::where('barang_id', $item['barang_id'])->lockForUpdate()->first();
-                if (! $barang || $barang->stok < $item['jumlah']) {
-                    throw new \Exception('Stok tidak mencukupi untuk barang ID: '.$item['barang_id']);
+                if (! $barang || $barang->stok_toko < $item['jumlah']) {
+                    throw new \Exception('Stok etalase tidak mencukupi untuk barang ID: '.$item['barang_id']);
                 }
 
                 $harga_satuan = $item['harga_satuan'] ?? $barang->harga_jual;
@@ -428,15 +428,7 @@ class KasirController extends Controller
                     'keuntungan' => $keuntungan,
                 ];
 
-                $sisa_jumlah = $item['jumlah'];
-                $ambil_toko = min($barang->stok_toko, $sisa_jumlah);
-                $barang->stok_toko -= $ambil_toko;
-                $sisa_jumlah -= $ambil_toko;
-                
-                if ($sisa_jumlah > 0) {
-                    $barang->stok_gudang -= $sisa_jumlah;
-                }
-                
+                $barang->stok_toko -= $item['jumlah'];
                 $barang->save();
             }
 
