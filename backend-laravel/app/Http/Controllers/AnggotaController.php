@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
+use App\Models\Anggota;
 use App\Models\Barang;
+use App\Models\PembayaranHutang;
+use App\Models\TarikTunai;
 use App\Models\Transaksi;
 use App\Models\TransaksiDetail;
-use App\Models\PembayaranHutang;
-use App\Models\Anggota;
-use App\Models\TarikTunai;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class AnggotaController extends Controller
 {
@@ -24,9 +25,10 @@ class AnggotaController extends Controller
     private function getAnggotaId(Request $request)
     {
         $user = $request->user();
-        if (!$user || !$user->anggota) {
+        if (! $user || ! $user->anggota) {
             abort(403, 'Akses ditolak. Akun Anda tidak memiliki profil data anggota terdaftar.');
         }
+
         return $user->anggota->anggota_id;
     }
 
@@ -39,29 +41,29 @@ class AnggotaController extends Controller
         return response()->json([
             'success' => true,
             'user' => [
-                'anggota_id'        => $anggota->anggota_id,
-                'user_id'           => $user->user_id,
-                'nama_lengkap'      => $anggota->nama_lengkap,
-                'saldo'             => (float) $anggota->saldo,
-                'hutang'            => (float) $anggota->hutang,
-                'shu'               => (float) $anggota->shu,
-                'simpanan_pokok'    => (float) $anggota->simpanan_pokok,
-                'allowance_hutang'  => (float) $anggota->allowance_hutang,
-                'limit_hutang'      => (float) $anggota->limit_hutang,
+                'anggota_id' => $anggota->anggota_id,
+                'user_id' => $user->user_id,
+                'nama_lengkap' => $anggota->nama_lengkap,
+                'saldo' => (float) $anggota->saldo,
+                'hutang' => (float) $anggota->hutang,
+                'shu' => (float) $anggota->shu,
+                'simpanan_pokok' => (float) $anggota->simpanan_pokok,
+                'allowance_hutang' => (float) $anggota->allowance_hutang,
+                'limit_hutang' => (float) $anggota->limit_hutang,
                 'sisa_limit_hutang' => (float) $anggota->sisa_limit_hutang,
-            ]
+            ],
         ]);
     }
 
     public function getDataBarangBelanja(Request $request)
     {
-        $barang = Barang::select('barang_id', 'nama_barang', 'stok', 'harga_jual')
-                        ->where('stok', '>', 0)
-                        ->get();
+        $barang = Barang::select('barang_id', 'nama_barang', 'stok_toko as stok', 'harga_jual')
+            ->where('stok_toko', '>', 0)
+            ->get();
 
         return response()->json([
             'success' => true,
-            'data' => $barang
+            'data' => $barang,
         ]);
     }
 
@@ -71,7 +73,7 @@ class AnggotaController extends Controller
         $anggotaId = ($user && $user->anggota) ? $user->anggota->anggota_id : null;
 
         // 1. Load active products indexed by ID
-        $allBarang = Barang::where('stok', '>', 0)->get()->keyBy('barang_id');
+        $allBarang = Barang::where('stok_toko', '>', 0)->get()->keyBy('barang_id');
 
         // Helper to build a package
         $makePackage = function ($id, $nama, $deskripsi, $tag, $icon, $itemDefs) use ($allBarang) {
@@ -84,7 +86,7 @@ class AnggotaController extends Controller
                 $qty = $def['jumlah'];
                 $barang = $allBarang->get($barangId);
 
-                if (!$barang || $barang->stok < $qty) {
+                if (! $barang || $barang->stok < $qty) {
                     $isAvailable = false;
                 }
 
@@ -94,24 +96,24 @@ class AnggotaController extends Controller
                 $totalHarga += $subtotal;
 
                 $items[] = [
-                    'barang_id'     => $barangId,
-                    'nama_barang'   => $namaBarang,
-                    'jumlah'        => $qty,
-                    'qty'           => $qty,
-                    'harga_satuan'  => $hargaSatuan,
-                    'subtotal'      => $subtotal,
+                    'barang_id' => $barangId,
+                    'nama_barang' => $namaBarang,
+                    'jumlah' => $qty,
+                    'qty' => $qty,
+                    'harga_satuan' => $hargaSatuan,
+                    'subtotal' => $subtotal,
                     'stok_tersedia' => $barang ? $barang->stok : 0,
                 ];
             }
 
             return [
-                'id'           => $id,
-                'nama_paket'   => $nama,
-                'deskripsi'    => $deskripsi,
-                'tag'          => $tag,
-                'icon'         => $icon,
-                'total_harga'  => $totalHarga,
-                'items'        => $items,
+                'id' => $id,
+                'nama_paket' => $nama,
+                'deskripsi' => $deskripsi,
+                'tag' => $tag,
+                'icon' => $icon,
+                'total_harga' => $totalHarga,
+                'items' => $items,
                 'is_available' => $isAvailable,
             ];
         };
@@ -231,21 +233,21 @@ class AnggotaController extends Controller
                     $b = $allBarang->get($th->barang_id);
                     if ($b) {
                         $itemDefs[] = [
-                            'barang_id'      => $b->barang_id,
-                            'jumlah'         => 1,
-                            'fallback_nama'  => $b->nama_barang,
-                            'fallback_harga' => (float)$b->harga_jual,
+                            'barang_id' => $b->barang_id,
+                            'jumlah' => 1,
+                            'fallback_nama' => $b->nama_barang,
+                            'fallback_harga' => (float) $b->harga_jual,
                         ];
                     }
                 }
 
-                if (!empty($itemDefs)) {
+                if (! empty($itemDefs)) {
                     $seringDibeli = $makePackage(
                         'sering_dibeli',
-                        "Yang Sering Anda Beli",
-                        "Kombinasi barang yang paling sering Anda beli dari histori transaksi Anda.",
-                        "Sering Anda Beli",
-                        "⭐",
+                        'Yang Sering Anda Beli',
+                        'Kombinasi barang yang paling sering Anda beli dari histori transaksi Anda.',
+                        'Sering Anda Beli',
+                        '⭐',
                         $itemDefs
                     );
                 }
@@ -253,9 +255,9 @@ class AnggotaController extends Controller
         }
 
         return response()->json([
-            'success'        => true,
-            'data'           => $paketList,
-            'sering_dibeli'  => $seringDibeli,
+            'success' => true,
+            'data' => $paketList,
+            'sering_dibeli' => $seringDibeli,
         ]);
     }
 
@@ -279,16 +281,16 @@ class AnggotaController extends Controller
         DB::beginTransaction();
         try {
             // LOCK THE ANGGOTA ROW TO PREVENT DOUBLE CHECKOUT RACE CONDITIONS
-            $anggota = \App\Models\Anggota::where('anggota_id', $anggotaId)->lockForUpdate()->first();
+            $anggota = Anggota::where('anggota_id', $anggotaId)->lockForUpdate()->first();
             $totalHarga = 0;
             $totalKeuntungan = 0;
             $transaksiItems = [];
 
             foreach ($items as $item) {
                 $barang = Barang::where('barang_id', $item['barang_id'])->lockForUpdate()->first();
-                
-                if (!$barang || $barang->stok < $item['jumlah']) {
-                    throw new \Exception("Stok tidak mencukupi untuk barang ID: " . $item['barang_id']);
+
+                if (! $barang || $barang->stok_toko < $item['jumlah']) {
+                    throw new \Exception('Stok etalase tidak mencukupi untuk barang ID: '.$item['barang_id']);
                 }
 
                 $subtotal = $barang->harga_jual * $item['jumlah'];
@@ -310,36 +312,36 @@ class AnggotaController extends Controller
             }
 
             $tarikTunaiData = null;
-            if (!empty($request->sertakan_tarik_tunai) && (float) $request->tarik_tunai_nominal > 0) {
+            if (! empty($request->sertakan_tarik_tunai) && (float) $request->tarik_tunai_nominal > 0) {
                 // 1. Debt check
                 if ((float) $anggota->hutang > 0) {
-                    throw new \Exception("Pengajuan gagal: Anda masih memiliki tagihan hutang berjalan sebesar Rp " . number_format($anggota->hutang, 0, ',', '.') . ". Wajib melunasi hutang terlebih dahulu.");
+                    throw new \Exception('Pengajuan gagal: Anda masih memiliki tagihan hutang berjalan sebesar Rp '.number_format($anggota->hutang, 0, ',', '.').'. Wajib melunasi hutang terlebih dahulu.');
                 }
 
                 // 2. Minimum purchase check (>= 25.000)
                 if ($totalHarga < 25000) {
-                    throw new \Exception("Syarat tarik tunai saat belanja: Total pesanan belanja minimal Rp 25.000 (Pesanan saat ini: Rp " . number_format($totalHarga, 0, ',', '.') . ").");
+                    throw new \Exception('Syarat tarik tunai saat belanja: Total pesanan belanja minimal Rp 25.000 (Pesanan saat ini: Rp '.number_format($totalHarga, 0, ',', '.').').');
                 }
 
                 // 3. Proportional limit check (Maks 2x Belanja, Plafon Rp 100.000)
                 $maxPlafon = min(100000, $totalHarga * 2);
                 $nominalTarik = (float) $request->tarik_tunai_nominal;
                 if ($nominalTarik > $maxPlafon) {
-                    throw new \Exception("Nominal tarik tunai (Rp " . number_format($nominalTarik, 0, ',', '.') . ") melebihi batas kuota proporsional Rp " . number_format($maxPlafon, 0, ',', '.') . " (Maks. 2x nilai belanja, Plafon Rp 100.000).");
+                    throw new \Exception('Nominal tarik tunai (Rp '.number_format($nominalTarik, 0, ',', '.').') melebihi batas kuota proporsional Rp '.number_format($maxPlafon, 0, ',', '.').' (Maks. 2x nilai belanja, Plafon Rp 100.000).');
                 }
 
                 $sumberTarik = $request->tarik_tunai_sumber ?: 'shu';
                 $available = ($sumberTarik === 'shu' ? (float) $anggota->shu : (float) $anggota->saldo);
                 if ($nominalTarik > $available) {
-                    throw new \Exception("Saldo {$sumberTarik} Anda tidak mencukupi (Tersedia: Rp " . number_format($available, 0, ',', '.') . ").");
+                    throw new \Exception("Saldo {$sumberTarik} Anda tidak mencukupi (Tersedia: Rp ".number_format($available, 0, ',', '.').').');
                 }
 
                 // Master consent check
-                if (!$anggota->persetujuan_shu_master_at && !$request->persetujuan_shu) {
-                    throw new \Exception("Wajib menyetujui ketentuan pemotongan SHU Hari Besar (Master Consent).");
+                if (! $anggota->persetujuan_shu_master_at && ! $request->persetujuan_shu) {
+                    throw new \Exception('Wajib menyetujui ketentuan pemotongan SHU Hari Besar (Master Consent).');
                 }
 
-                if (!$anggota->persetujuan_shu_master_at) {
+                if (! $anggota->persetujuan_shu_master_at) {
                     $anggota->persetujuan_shu_master_at = Carbon::now();
                     $anggota->persetujuan_shu_version = 'v1.0';
                 }
@@ -353,7 +355,7 @@ class AnggotaController extends Controller
                 $anggota->save();
 
                 $uangBersihDiserahkan = max(0, $nominalTarik - $totalHarga);
-                $kodePenarikan = 'TRK-' . date('ymd') . '-' . rand(1000, 9999);
+                $kodePenarikan = 'TRK-'.date('ymd').'-'.rand(1000, 9999);
 
                 $tarik = TarikTunai::create([
                     'kode_penarikan' => $kodePenarikan,
@@ -363,8 +365,8 @@ class AnggotaController extends Controller
                     'status' => 'pending',
                     'sumber_dana' => $sumberTarik,
                     'persetujuan_shu' => true,
-                    'keterangan' => "Tarik Tunai Belanja App (Potong Belanja Rp " . number_format($totalHarga, 0, ',', '.') . ", Kas Rp " . number_format($uangBersihDiserahkan, 0, ',', '.') . ")",
-                    'created_at' => Carbon::now()
+                    'keterangan' => 'Tarik Tunai Belanja App (Potong Belanja Rp '.number_format($totalHarga, 0, ',', '.').', Kas Rp '.number_format($uangBersihDiserahkan, 0, ',', '.').')',
+                    'created_at' => Carbon::now(),
                 ]);
 
                 $tarikTunaiData = [
@@ -385,14 +387,14 @@ class AnggotaController extends Controller
                     $limit_hutang = 600000;
                     if (($anggota->hutang + $totalHarga) > $limit_hutang) {
                         $sisa_limit = $limit_hutang - $anggota->hutang;
-                        throw new \Exception("Gagal: Limit hutang Koperasi tidak mencukupi. Sisa limit Anda: Rp " . number_format($sisa_limit > 0 ? $sisa_limit : 0, 0, ',', '.'));
+                        throw new \Exception('Gagal: Limit hutang Koperasi tidak mencukupi. Sisa limit Anda: Rp '.number_format($sisa_limit > 0 ? $sisa_limit : 0, 0, ',', '.'));
                     }
 
                     $anggota->hutang += $totalHarga;
                     $anggota->save();
                 } elseif ($metode === 'ewallet') {
                     if ($anggota->saldo < $totalHarga) {
-                        throw new \Exception("Saldo tidak mencukupi");
+                        throw new \Exception('Saldo tidak mencukupi');
                     }
                     $anggota->saldo -= $totalHarga;
                     $anggota->save();
@@ -424,8 +426,8 @@ class AnggotaController extends Controller
             try {
                 $itemNames = Barang::whereIn('barang_id', array_column($transaksiItems, 'barang_id'))
                     ->pluck('nama_barang', 'barang_id');
-                $itemsSummary = collect($transaksiItems)->map(function($it) use ($itemNames) {
-                    return $it['jumlah'] . 'x ' . ($itemNames[$it['barang_id']] ?? 'Item');
+                $itemsSummary = collect($transaksiItems)->map(function ($it) use ($itemNames) {
+                    return $it['jumlah'].'x '.($itemNames[$it['barang_id']] ?? 'Item');
                 })->implode(', ');
 
                 $orderEvent = [
@@ -437,21 +439,21 @@ class AnggotaController extends Controller
                     'metode_pembayaran' => $metode,
                     'items_count' => count($transaksiItems),
                     'items_summary' => $itemsSummary,
-                    'items' => collect($transaksiItems)->map(function($it) use ($itemNames) {
+                    'items' => collect($transaksiItems)->map(function ($it) use ($itemNames) {
                         return [
                             'barang_id' => $it['barang_id'],
-                            'nama_barang' => $itemNames[$it['barang_id']] ?? 'Item #' . $it['barang_id'],
+                            'nama_barang' => $itemNames[$it['barang_id']] ?? 'Item #'.$it['barang_id'],
                             'jumlah' => $it['jumlah'],
                             'harga_satuan' => (float) $it['harga_satuan'],
-                            'subtotal' => (float) $it['subtotal']
+                            'subtotal' => (float) $it['subtotal'],
                         ];
                     })->values()->all(),
                     'created_at' => now()->toIso8601String(),
-                    'timestamp' => microtime(true)
+                    'timestamp' => microtime(true),
                 ];
 
-                \Illuminate\Support\Facades\Cache::put('koperasi_latest_order_event', $orderEvent, 120);
-                \Illuminate\Support\Facades\Cache::put('koperasi_latest_order_timestamp', microtime(true), 120);
+                Cache::put('koperasi_latest_order_event', $orderEvent, 120);
+                Cache::put('koperasi_latest_order_timestamp', microtime(true), 120);
             } catch (\Throwable $e) {
                 // Non-blocking
             }
@@ -459,17 +461,18 @@ class AnggotaController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $tarikTunaiData
-                    ? 'Pesanan belanja & tiket tarik tunai #' . $tarikTunaiData['kode_penarikan'] . ' berhasil dibuat! Ambil kas bersih sebesar Rp ' . number_format($tarikTunaiData['uang_bersih_diserahkan'], 0, ',', '.') . ' di kasir.'
+                    ? 'Pesanan belanja & tiket tarik tunai #'.$tarikTunaiData['kode_penarikan'].' berhasil dibuat! Ambil kas bersih sebesar Rp '.number_format($tarikTunaiData['uang_bersih_diserahkan'], 0, ',', '.').' di kasir.'
                     : 'Pesanan berhasil dibuat, silakan ke kasir.',
                 'transaksi_id' => $transaksi->transaksi_id,
-                'tarik_tunai' => $tarikTunaiData
+                'tarik_tunai' => $tarikTunaiData,
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 400);
         }
     }
@@ -504,13 +507,13 @@ class AnggotaController extends Controller
                         'subtotal' => (float) $d->subtotal,
                         'keuntungan' => (float) $d->keuntungan,
                     ];
-                })
+                }),
             ];
         });
 
         return response()->json([
             'success' => true,
-            'data' => $paginator
+            'data' => $paginator,
         ]);
     }
 
@@ -521,17 +524,17 @@ class AnggotaController extends Controller
         ]);
 
         $anggotaId = $this->getAnggotaId($request);
-        
+
         $pembayaran = PembayaranHutang::create([
             'anggota_id' => $anggotaId,
             'nominal' => $request->jumlah,
-            'status' => 'pending'
+            'status' => 'pending',
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Pengajuan pembayaran hutang berhasil dibuat, silakan bayar ke kasir.',
-            'pembayaran_id' => $pembayaran->pembayaran_id
+            'pembayaran_id' => $pembayaran->pembayaran_id,
         ]);
     }
 
@@ -545,14 +548,14 @@ class AnggotaController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $history
+            'data' => $history,
         ]);
     }
 
     public function updateProfile(Request $request)
     {
         $request->validate([
-            'username' => 'required|string|unique:users,username,' . $request->user()->user_id . ',user_id'
+            'username' => 'required|string|unique:users,username,'.$request->user()->user_id.',user_id',
         ]);
 
         $user = $request->user();
@@ -561,7 +564,7 @@ class AnggotaController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Profil berhasil diupdate'
+            'message' => 'Profil berhasil diupdate',
         ]);
     }
 
@@ -569,15 +572,15 @@ class AnggotaController extends Controller
     {
         $request->validate([
             'current_password' => 'required|string',
-            'new_password' => 'required|string|min:6'
+            'new_password' => 'required|string|min:6',
         ]);
 
         $user = $request->user();
 
-        if (!Hash::check($request->current_password, $user->password_hash)) {
+        if (! Hash::check($request->current_password, $user->password_hash)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Password saat ini salah'
+                'message' => 'Password saat ini salah',
             ], 400);
         }
 
@@ -586,7 +589,7 @@ class AnggotaController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Password berhasil diubah'
+            'message' => 'Password berhasil diubah',
         ]);
     }
 
@@ -605,7 +608,7 @@ class AnggotaController extends Controller
             'data' => [
                 'has_master_consent' => true,
                 'persetujuan_shu_master_at' => $anggota->persetujuan_shu_master_at,
-            ]
+            ],
         ]);
     }
 
@@ -633,13 +636,13 @@ class AnggotaController extends Controller
 
         $ineligibleReasons = [];
         if ($hasDebt) {
-            $ineligibleReasons[] = "Anda memiliki saldo hutang berjalan sebesar Rp " . number_format($anggota->hutang, 0, ',', '.') . ". Wajib melunasi hutang terlebih dahulu.";
+            $ineligibleReasons[] = 'Anda memiliki saldo hutang berjalan sebesar Rp '.number_format($anggota->hutang, 0, ',', '.').'. Wajib melunasi hutang terlebih dahulu.';
         }
-        if (!$hasQualifyingPurchase) {
-            $ineligibleReasons[] = "Belum memiliki transaksi belanja produk toko minimal Rp 25.000 hari ini.";
+        if (! $hasQualifyingPurchase) {
+            $ineligibleReasons[] = 'Belum memiliki transaksi belanja produk toko minimal Rp 25.000 hari ini.';
         }
         if ($anggota->shu <= 0 && $anggota->saldo <= 0) {
-            $ineligibleReasons[] = "Saldo SHU dan E-Wallet Anda saat ini Rp 0.";
+            $ineligibleReasons[] = 'Saldo SHU dan E-Wallet Anda saat ini Rp 0.';
         }
 
         $isEligible = empty($ineligibleReasons);
@@ -658,7 +661,7 @@ class AnggotaController extends Controller
                 'saldo_ewallet' => (float) $anggota->saldo,
                 'hutang' => (float) $anggota->hutang,
                 'has_debt' => $hasDebt,
-                'has_master_consent' => !is_null($anggota->persetujuan_shu_master_at),
+                'has_master_consent' => ! is_null($anggota->persetujuan_shu_master_at),
                 'master_consent_at' => $anggota->persetujuan_shu_master_at,
                 'total_belanja_hari_ini' => $totalBelanjaHariIni,
                 'has_qualifying_purchase' => $hasQualifyingPurchase,
@@ -673,7 +676,7 @@ class AnggotaController extends Controller
                     'sumber_dana' => $pendingWithdrawal->sumber_dana,
                     'created_at' => $pendingWithdrawal->created_at,
                 ] : null,
-            ]
+            ],
         ]);
     }
 
@@ -691,17 +694,19 @@ class AnggotaController extends Controller
         DB::beginTransaction();
         try {
             $anggota = Anggota::lockForUpdate()->find($anggotaId);
-            if (!$anggota) throw new \Exception("Data anggota tidak ditemukan");
+            if (! $anggota) {
+                throw new \Exception('Data anggota tidak ditemukan');
+            }
 
             // Consent check (Master Consent or Explicit Checkbox)
-            if (!$anggota->persetujuan_shu_master_at && !$request->persetujuan_shu) {
+            if (! $anggota->persetujuan_shu_master_at && ! $request->persetujuan_shu) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Pengajuan gagal: Anda wajib menyetujui ketentuan pemotongan SHU Hari Besar (Master Consent) secara sadar.'
+                    'message' => 'Pengajuan gagal: Anda wajib menyetujui ketentuan pemotongan SHU Hari Besar (Master Consent) secara sadar.',
                 ], 422);
             }
 
-            if (!$anggota->persetujuan_shu_master_at && $request->persetujuan_shu) {
+            if (! $anggota->persetujuan_shu_master_at && $request->persetujuan_shu) {
                 $anggota->persetujuan_shu_master_at = Carbon::now();
                 $anggota->persetujuan_shu_version = 'v1.0';
                 $anggota->save();
@@ -709,7 +714,7 @@ class AnggotaController extends Controller
 
             // 1. Debt check
             if ((float) $anggota->hutang > 0) {
-                throw new \Exception("Pengajuan gagal: Anda masih memiliki hutang belum lunas sebesar Rp " . number_format($anggota->hutang, 0, ',', '.') . ". Harap lunasi hutang terlebih dahulu.");
+                throw new \Exception('Pengajuan gagal: Anda masih memiliki hutang belum lunas sebesar Rp '.number_format($anggota->hutang, 0, ',', '.').'. Harap lunasi hutang terlebih dahulu.');
             }
 
             // Check if there's already an active pending ticket
@@ -727,8 +732,8 @@ class AnggotaController extends Controller
                     ->where('anggota_id', $anggotaId)
                     ->where('status', 'selesai')
                     ->first();
-                if (!$trx || $trx->total_harga < 25000) {
-                    throw new \Exception("Transaksi belanja penyerta tidak memenuhi syarat minimal Rp 25.000.");
+                if (! $trx || $trx->total_harga < 25000) {
+                    throw new \Exception('Transaksi belanja penyerta tidak memenuhi syarat minimal Rp 25.000.');
                 }
             } else {
                 $validTrx = Transaksi::where('anggota_id', $anggotaId)
@@ -737,8 +742,8 @@ class AnggotaController extends Controller
                     ->where('total_harga', '>=', 25000)
                     ->orderBy('created_at', 'desc')
                     ->first();
-                if (!$validTrx) {
-                    throw new \Exception("Syarat belum terpenuhi: Wajib berbelanja produk koperasi minimal Rp 25.000 hari ini.");
+                if (! $validTrx) {
+                    throw new \Exception('Syarat belum terpenuhi: Wajib berbelanja produk koperasi minimal Rp 25.000 hari ini.');
                 }
                 $transaksiId = $validTrx->transaksi_id;
             }
@@ -753,22 +758,22 @@ class AnggotaController extends Controller
             $maxPlafon = min(100000, $totalBelanjaHariIni * 2);
 
             if ($request->nominal > $maxPlafon) {
-                throw new \Exception("Nominal penarikan (Rp " . number_format($request->nominal, 0, ',', '.') . ") melebihi batas kuota proporsional maksimal Rp " . number_format($maxPlafon, 0, ',', '.') . " (Maks. 2x Belanja Toko, Plafon Rp 100.000/hari).");
+                throw new \Exception('Nominal penarikan (Rp '.number_format($request->nominal, 0, ',', '.').') melebihi batas kuota proporsional maksimal Rp '.number_format($maxPlafon, 0, ',', '.').' (Maks. 2x Belanja Toko, Plafon Rp 100.000/hari).');
             }
 
             // 4. Balance check
             $sumber = $request->sumber_dana;
             if ($sumber === 'shu') {
                 if ($anggota->shu < $request->nominal) {
-                    throw new \Exception("Saldo SHU tidak mencukupi (Tersedia: Rp " . number_format($anggota->shu, 0, ',', '.') . ").");
+                    throw new \Exception('Saldo SHU tidak mencukupi (Tersedia: Rp '.number_format($anggota->shu, 0, ',', '.').').');
                 }
             } else {
                 if ($anggota->saldo < $request->nominal) {
-                    throw new \Exception("Saldo E-Wallet tidak mencukupi (Tersedia: Rp " . number_format($anggota->saldo, 0, ',', '.') . ").");
+                    throw new \Exception('Saldo E-Wallet tidak mencukupi (Tersedia: Rp '.number_format($anggota->saldo, 0, ',', '.').').');
                 }
             }
 
-            $kodePenarikan = 'TRK-' . date('ymd') . '-' . rand(1000, 9999);
+            $kodePenarikan = 'TRK-'.date('ymd').'-'.rand(1000, 9999);
 
             $tarik = TarikTunai::create([
                 'kode_penarikan' => $kodePenarikan,
@@ -780,7 +785,7 @@ class AnggotaController extends Controller
                 'transaksi_id' => $transaksiId,
                 'persetujuan_shu' => true,
                 'keterangan' => $request->keterangan ?: "Pengajuan mandiri dari {$sumber} (Trx Belanja #{$transaksiId})",
-                'created_at' => Carbon::now()
+                'created_at' => Carbon::now(),
             ]);
 
             DB::commit();
@@ -796,7 +801,7 @@ class AnggotaController extends Controller
                     'status' => 'pending',
                     'nama_anggota' => $anggota->nama_lengkap,
                     'created_at' => $tarik->created_at,
-                ]
+                ],
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -805,17 +810,17 @@ class AnggotaController extends Controller
             try {
                 if ($anggotaId && (float) $request->nominal > 0) {
                     TarikTunai::create([
-                        'kode_penarikan' => 'TRK-REJ-' . date('ymd') . '-' . rand(1000, 9999),
+                        'kode_penarikan' => 'TRK-REJ-'.date('ymd').'-'.rand(1000, 9999),
                         'anggota_id' => $anggotaId,
                         'kasir_id' => null,
                         'nominal' => (float) $request->nominal,
                         'status' => 'rejected',
                         'sumber_dana' => $request->sumber_dana ?: 'shu',
                         'transaksi_id' => $request->transaksi_id ?: null,
-                        'persetujuan_shu' => !empty($request->persetujuan_shu),
-                        'alasan_tolak' => 'Ditolak Otomatis Sistem: ' . $e->getMessage(),
+                        'persetujuan_shu' => ! empty($request->persetujuan_shu),
+                        'alasan_tolak' => 'Ditolak Otomatis Sistem: '.$e->getMessage(),
                         'keterangan' => 'Gagal Verifikasi Otomatis Sistem',
-                        'created_at' => Carbon::now()
+                        'created_at' => Carbon::now(),
                     ]);
                 }
             } catch (\Exception $logEx) {
@@ -829,7 +834,7 @@ class AnggotaController extends Controller
     public function getRiwayatTarikTunai(Request $request)
     {
         $anggotaId = $this->getAnggotaId($request);
-        $data = \App\Models\TarikTunai::with(['kasir', 'transaksi'])
+        $data = TarikTunai::with(['kasir', 'transaksi'])
             ->where('anggota_id', $anggotaId)
             ->orderBy('created_at', 'desc')
             ->get()
