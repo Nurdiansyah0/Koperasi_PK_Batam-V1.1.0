@@ -10,7 +10,11 @@ class AuthService
     public function login(string $username, string $password): array
     {
         $cleanUsername = strtolower(trim($username));
-        $user = User::whereRaw('LOWER(username) = ?', [$cleanUsername])->first();
+        $user = User::whereRaw('LOWER(username) = ?', [$cleanUsername])
+            ->orWhereHas('anggota', function ($q) use ($cleanUsername) {
+                $q->whereRaw('LOWER(nama_lengkap) = ?', [$cleanUsername]);
+            })
+            ->first();
 
         if (! $user || ! Hash::check($password, $user->password_hash)) {
             return [
@@ -22,15 +26,15 @@ class AuthService
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        $user->load(['anggota', 'jabatanAktif']);
         $userData = $user->toArray();
-        if ($user->role === 'anggota') {
-            $anggota = $user->anggota;
-            if ($anggota) {
-                $userData['anggota_id'] = $anggota->anggota_id;
-                $userData['saldo'] = $anggota->saldo;
-                $userData['hutang'] = $anggota->hutang;
-                $userData['shu'] = $anggota->shu;
-            }
+        if ($user->anggota) {
+            $userData['anggota_id'] = $user->anggota->anggota_id;
+            $userData['nama_lengkap'] = $user->anggota->nama_lengkap;
+            $userData['saldo'] = (float) $user->anggota->saldo;
+            $userData['hutang'] = (float) $user->anggota->hutang;
+            $userData['shu'] = (float) $user->anggota->shu;
+            $userData['persetujuan_shu_master_at'] = $user->anggota->persetujuan_shu_master_at;
         }
 
         return [
