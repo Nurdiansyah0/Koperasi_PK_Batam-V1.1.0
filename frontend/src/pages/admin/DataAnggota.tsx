@@ -90,12 +90,17 @@ export function DataAnggota() {
     if (!selectedAnggota || jumlahSHU <= 0) return
     setSaving(true)
     try {
-      await adminService.topupSHU(selectedAnggota.username, jumlahSHU)
-      toast.success('Berhasil topup SHU ke saldo anggota')
+      await adminService.prosesKonversiShu({
+        mode: 'individual',
+        anggota_id: selectedAnggota.anggota_id,
+        nominal: jumlahSHU,
+        keterangan: 'Pencairan SHU ke Saldo Belanja (via Data Anggota)'
+      })
+      toast.success('Berhasil mencairkan SHU ke saldo anggota')
       setIsModalOpen(false)
       loadData()
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Gagal topup SHU')
+      toast.error(error.response?.data?.message || error.response?.data?.error || 'Gagal mencairkan SHU')
     } finally {
       setSaving(false)
     }
