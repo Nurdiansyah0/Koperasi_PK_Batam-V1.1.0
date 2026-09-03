@@ -265,6 +265,8 @@ export function DataBarang() {
     if (item) {
       setFormData({
         ...item,
+        harga_modal: Number(item.harga_modal),
+        harga_jual: Number(item.harga_jual),
         stok_toko: item.stok_toko ?? Math.min(item.stok, item.pkm || 1),
         stok_gudang: item.stok_gudang ?? Math.max(0, item.stok - (item.pkm || 1)),
         pkm: item.pkm || 1,
@@ -294,7 +296,7 @@ export function DataBarang() {
       barang_id: item.barang_id,
       nama_barang: item.nama_barang,
       jumlah_tambah: '' as any, // Dikosongkan agar diisi manual oleh user
-      harga_beli_satuan: item.harga_modal || 0,
+      harga_beli_satuan: Number(item.harga_modal) || 0,
       sumber_dana: 'kas_koperasi',
       alokasi: 'gudang',
       tanggal_kadaluarsa: item.tgl_kadaluarsa_gudang ? item.tgl_kadaluarsa_gudang.split('T')[0] : '',
