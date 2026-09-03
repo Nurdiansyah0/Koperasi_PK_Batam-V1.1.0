@@ -138,6 +138,7 @@ class GetCashierDashboardQuery
 
         $cashWithdrawals = DB::table('tarik_tunai')
             ->where('kasir_id', $kasirId)
+            ->where('status', 'completed')
             ->sum('nominal');
 
         return (float) ($cashInTrx + $cashDebtRepay + $cashInSerah - $cashWithdrawals - $cashOutSerah - $cashOutSetor);
