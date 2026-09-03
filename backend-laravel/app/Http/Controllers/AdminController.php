@@ -759,9 +759,19 @@ class AdminController extends Controller
             return response()->json(['success' => false, 'message' => 'User tidak ditemukan'], 404);
         }
 
+        if ((int) $user->user_id === 1) {
+            return response()->json(['success' => false, 'message' => 'Tidak dapat menghapus Administrator Utama'], 422);
+        }
+
+        if ($user->role === 'admin' && User::where('role', 'admin')->count() <= 1) {
+            return response()->json(['success' => false, 'message' => 'Tidak dapat menghapus admin terakhir'], 422);
+        }
+
         if ($user->isAdmin()) {
-            $adminCount = JabatanAnggota::where('role', 'admin')->where('status', 'aktif')->count();
-            if ($adminCount <= 1) {
+            $activeAdminCount = JabatanAnggota::where('role', 'admin')->where('status', 'aktif')->count()
+                + User::where('role', 'admin')->whereNotIn('user_id', JabatanAnggota::where('role', 'admin')->where('status', 'aktif')->pluck('user_id'))->count();
+
+            if ($activeAdminCount <= 1) {
                 return response()->json(['success' => false, 'message' => 'Tidak dapat menghapus admin terakhir'], 422);
             }
         }
