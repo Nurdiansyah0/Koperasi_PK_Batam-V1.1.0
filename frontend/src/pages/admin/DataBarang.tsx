@@ -275,11 +275,11 @@ export function DataBarang() {
     } else {
       setFormData({
         nama_barang: '',
-        harga_modal: 0,
-        harga_jual: 0,
-        stok: 0,
-        stok_toko: 0,
-        stok_gudang: 0,
+        harga_modal: '' as any,
+        harga_jual: '' as any,
+        stok: '' as any,
+        stok_toko: '' as any,
+        stok_gudang: '' as any,
         pkm: 4,
         tgl_kadaluarsa_toko: '',
         tgl_kadaluarsa_gudang: ''
@@ -293,7 +293,7 @@ export function DataBarang() {
     setRestockData({
       barang_id: item.barang_id,
       nama_barang: item.nama_barang,
-      jumlah_tambah: (item.pkm || 4) * 2, // Suggest ordering 2x PKM
+      jumlah_tambah: '' as any, // Dikosongkan agar diisi manual oleh user
       harga_beli_satuan: item.harga_modal || 0,
       sumber_dana: 'kas_koperasi',
       alokasi: 'gudang',
@@ -998,8 +998,8 @@ export function DataBarang() {
             <Input 
               label="Jumlah yang Ditarik (Pcs)" 
               type="number" min="1" 
-              value={writeOffForm.jumlah} 
-              onChange={e => setWriteOffForm({ ...writeOffForm, jumlah: Math.max(1, Number(e.target.value)) })} 
+              value={writeOffForm.jumlah ?? ''} 
+              onChange={e => setWriteOffForm({ ...writeOffForm, jumlah: e.target.value === '' ? '' as any : Math.max(1, Number(e.target.value)) })} 
               required 
             />
 
@@ -1072,8 +1072,8 @@ export function DataBarang() {
               label="Jumlah yang Dipindahkan (Pcs)" 
               type="number" min="1" 
               max={mutasiForm.tipe === 'gudang_ke_toko' ? (selectedMutasiBarang.stok_gudang ?? 0) : (selectedMutasiBarang.stok_toko ?? 0)}
-              value={mutasiForm.jumlah} 
-              onChange={e => setMutasiForm({ ...mutasiForm, jumlah: Math.max(1, Number(e.target.value)) })} 
+              value={mutasiForm.jumlah ?? ''} 
+              onChange={e => setMutasiForm({ ...mutasiForm, jumlah: e.target.value === '' ? '' as any : Math.max(1, Number(e.target.value)) })} 
               required 
             />
 
@@ -1097,8 +1097,8 @@ export function DataBarang() {
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <Input label="Nama Barang" value={formData.nama_barang || ''} onChange={e => setFormData({ ...formData, nama_barang: e.target.value })} required />
           <div className="grid grid-cols-2 gap-3">
-            <InputRupiah label="Harga Modal" value={formData.harga_modal || ''} onChange={val => setFormData({ ...formData, harga_modal: Number(val) })} required />
-            <InputRupiah label="Harga Jual" value={formData.harga_jual || ''} onChange={val => setFormData({ ...formData, harga_jual: Number(val) })} required />
+            <InputRupiah label="Harga Modal" value={formData.harga_modal ?? ''} onChange={val => setFormData({ ...formData, harga_modal: val === '' ? '' as any : Number(val) })} required />
+            <InputRupiah label="Harga Jual" value={formData.harga_jual ?? ''} onChange={val => setFormData({ ...formData, harga_jual: val === '' ? '' as any : Number(val) })} required />
           </div>
 
           <div className="grid grid-cols-3 gap-2 p-3 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700">
@@ -1107,8 +1107,8 @@ export function DataBarang() {
               <input
                 type="number" min="0"
                 className="w-full px-2.5 py-1.5 border rounded-xl text-xs bg-white dark:bg-zinc-900 font-bold"
-                value={formData.stok_toko ?? 0}
-                onChange={e => setFormData({ ...formData, stok_toko: Number(e.target.value) })}
+                value={formData.stok_toko ?? ''}
+                onChange={e => setFormData({ ...formData, stok_toko: e.target.value === '' ? '' as any : Number(e.target.value) })}
               />
             </div>
             <div>
@@ -1116,8 +1116,8 @@ export function DataBarang() {
               <input
                 type="number" min="0"
                 className="w-full px-2.5 py-1.5 border rounded-xl text-xs bg-white dark:bg-zinc-900 font-bold"
-                value={formData.stok_gudang ?? 0}
-                onChange={e => setFormData({ ...formData, stok_gudang: Number(e.target.value) })}
+                value={formData.stok_gudang ?? ''}
+                onChange={e => setFormData({ ...formData, stok_gudang: e.target.value === '' ? '' as any : Number(e.target.value) })}
               />
             </div>
             <div>
@@ -1125,8 +1125,8 @@ export function DataBarang() {
               <input
                 type="number" min="1"
                 className="w-full px-2.5 py-1.5 border rounded-xl text-xs bg-white dark:bg-zinc-900 font-bold"
-                value={formData.pkm ?? 4}
-                onChange={e => setFormData({ ...formData, pkm: Number(e.target.value) })}
+                value={formData.pkm ?? ''}
+                onChange={e => setFormData({ ...formData, pkm: e.target.value === '' ? '' as any : Number(e.target.value) })}
               />
             </div>
           </div>
@@ -1170,14 +1170,15 @@ export function DataBarang() {
             <Input 
               label="Jumlah Tambah (Pcs)" 
               type="number" min="1" 
-              value={restockData.jumlah_tambah} 
-              onChange={e => setRestockData({ ...restockData, jumlah_tambah: Number(e.target.value) })} 
+              placeholder="0"
+              value={restockData.jumlah_tambah ?? ''} 
+              onChange={e => setRestockData({ ...restockData, jumlah_tambah: e.target.value === '' ? '' as any : Number(e.target.value) })} 
               required 
             />
             <InputRupiah 
               label="Harga Beli Satuan" 
-              value={restockData.harga_beli_satuan} 
-              onChange={val => setRestockData({ ...restockData, harga_beli_satuan: Number(val) })} 
+              value={restockData.harga_beli_satuan ?? ''} 
+              onChange={val => setRestockData({ ...restockData, harga_beli_satuan: val === '' ? '' as any : Number(val) })} 
               required 
             />
           </div>

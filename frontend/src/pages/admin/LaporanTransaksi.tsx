@@ -1719,8 +1719,8 @@ export function LaporanTransaksi() {
             <div>
               <InputRupiah
                 label="Jumlah Pengeluaran (Rp)"
-                value={expenseForm.nominal}
-                onChange={val => setExpenseForm({ ...expenseForm, nominal: Number(val) })}
+                value={expenseForm.nominal ?? ''}
+                onChange={val => setExpenseForm({ ...expenseForm, nominal: val === '' ? '' as any : Number(val) })}
                 required
               />
             </div>

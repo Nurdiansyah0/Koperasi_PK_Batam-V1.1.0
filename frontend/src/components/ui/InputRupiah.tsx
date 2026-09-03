@@ -10,7 +10,7 @@ interface InputRupiahProps extends Omit<InputHTMLAttributes<HTMLInputElement>, '
 
 export function InputRupiah({ label, error, className, value, onChange, ...props }: InputRupiahProps) {
   // Format the display value (add dots)
-  const displayValue = value
+  const displayValue = value !== undefined && value !== null && value !== ''
     ? value.toString().replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')
     : ''
 
