@@ -125,6 +125,7 @@ EOF"
     rm -f  "$TMPDIR/server.log"
     find "$TMPDIR/storage" -name "*.log" -delete
     find "$TMPDIR/storage/framework" -name "*.php" -not -name ".gitignore" -delete 2>/dev/null || true
+    rm -f "$TMPDIR/bootstrap/cache/"*.php
 
     tar -czf /tmp/koperasi_backend.tar.gz -C "$TMPDIR" .
     rm -rf "$TMPDIR"

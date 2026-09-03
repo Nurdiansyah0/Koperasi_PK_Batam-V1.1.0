@@ -1,5 +1,3 @@
-import { precacheAndRoute } from "workbox-precaching";
-precacheAndRoute(self.__WB_MANIFEST);
 
 self.addEventListener('push', function (event) {
   if (!event.data) return;

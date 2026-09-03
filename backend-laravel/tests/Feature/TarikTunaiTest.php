@@ -426,6 +426,42 @@ class TarikTunaiTest extends TestCase
         $this->assertEquals(100000, $a2->saldo);
     }
 
+    /** @test */
+    public function test_konversi_shu_clears_kasir_cache()
+    {
+        [$admin, $token] = $this->authenticateAs('admin');
+        [$userAnggota] = $this->authenticateAs('anggota');
+        
+        $anggota = Anggota::create([
+            'user_id' => $userAnggota->user_id,
+            'nama_lengkap' => 'Cache Test Anggota',
+            'shu' => 50000,
+            'saldo' => 10000,
+            'hutang' => 0
+        ]);
+
+        // Mock the Kasir Cache being set
+        \Illuminate\Support\Facades\Cache::put('kasir_all_anggota_slim', 'STALE_CACHE_DATA', 120);
+        $this->assertEquals('STALE_CACHE_DATA', \Illuminate\Support\Facades\Cache::get('kasir_all_anggota_slim'));
+
+        // Admin does a Konversi SHU
+        $convertRes = $this->actingAs($admin, 'sanctum')
+            ->postJson('/laravel/api/admin/konversi-shu', [
+                'mode' => 'individual',
+                'anggota_id' => $anggota->anggota_id,
+                'nominal' => 10000,
+            ]);
+
+        $convertRes->assertStatus(200);
+        
+        // Assert cache is cleared
+        $this->assertFalse(\Illuminate\Support\Facades\Cache::has('kasir_all_anggota_slim'));
+        
+        $anggota->refresh();
+        $this->assertEquals(40000, $anggota->shu);
+        $this->assertEquals(20000, $anggota->saldo);
+    }
+
     public function test_buat_transaksi_kasir_with_tarik_tunai_and_auto_purchase_deduction()
     {
         [$kasir, $token] = $this->authenticateAs('kasir');
