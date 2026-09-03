@@ -447,12 +447,16 @@ export function DataAnggota() {
                 <span className="text-slate-500 font-medium">Rp</span>
               </div>
               <input 
-                type="number" 
+                type="text" 
                 required 
-                max={selectedAnggota?.shu || 0}
-                min={1}
-                value={jumlahSHU || ''} 
-                onChange={e => setJumlahSHU(Number(e.target.value))} 
+                value={jumlahSHU ? new Intl.NumberFormat('id-ID').format(jumlahSHU) : ''} 
+                onChange={e => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  let num = Number(val);
+                  const maxSHU = selectedAnggota?.shu || 0;
+                  if (num > maxSHU) num = maxSHU;
+                  setJumlahSHU(num);
+                }} 
                 placeholder="0"
                 className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-slate-900 dark:text-white font-medium"
               />
