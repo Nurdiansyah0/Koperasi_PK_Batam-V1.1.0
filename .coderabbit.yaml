@@ -1,0 +1,70 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: "en-US"
+early_access: false
+
+reviews:
+  profile: "assertive"
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "main"
+
+  path_filters:
+    - "!**/*.lock"
+    - "!**/vendor/**"
+    - "!backend-laravel/vendor/**"
+    - "!backend-laravel/storage/**"
+    - "!backend-laravel/bootstrap/cache/**"
+    - "!public_html/assets/**"
+    - "!frontend/node_modules/**"
+    - "!**/*.sql"
+    - "!**/*.pdf"
+
+  path_instructions:
+    - path: "backend-laravel/app/Models/**/*.php"
+      instructions: |
+        - Periksa properti $fillable atau $guarded untuk perlindungan mass assignment.
+        - Pastikan relasi Eloquent terdefinisi dengan return type yang eksplisit.
+        - Gunakan typed properties PHP 8.2 (misalnya: protected string $table).
+        - Pastikan tidak ada query langsung di dalam model; gunakan scope atau relasi.
+
+    - path: "backend-laravel/app/Http/Controllers/**/*.php"
+      instructions: |
+        - Controller harus tipis (thin controller): delegasikan logika ke Service atau Model.
+        - Gunakan FormRequest untuk validasi, bukan validate() langsung di controller.
+        - Pastikan semua response menggunakan format JSON yang konsisten.
+        - Periksa apakah ada potensi N+1 query (gunakan eager loading).
+
+    - path: "backend-laravel/app/Services/**/*.php"
+      instructions: |
+        - Service class harus memiliki single responsibility.
+        - Gunakan dependency injection, bukan facade langsung di constructor.
+        - Pastikan semua method memiliki return type declaration.
+        - Tangani exceptions dengan custom exception classes jika diperlukan.
+
+    - path: "backend-laravel/tests/**/*.php"
+      instructions: |
+        - Pastikan setiap test memiliki nama yang deskriptif dan jelas.
+        - Gunakan PHPUnit attributes (#[Test]) bukan docblock @test (PHPUnit 11+).
+        - Hindari duplikasi setup — gunakan setUp() atau helper method.
+        - Pastikan test mencakup happy path DAN edge cases / failure scenarios.
+        - Periksa apakah assertion cukup spesifik (jangan hanya assertStatus(200)).
+
+    - path: "backend-laravel/database/migrations/**/*.php"
+      instructions: |
+        - Pastikan setiap kolom memiliki tipe data yang tepat.
+        - Tambahkan index pada kolom foreign key dan kolom yang sering di-query.
+        - Pastikan ada metode down() yang benar untuk rollback.
+
+    - path: "backend-laravel/**/*.php"
+      instructions: |
+        - Ikuti PSR-12 coding standards.
+        - Gunakan Laravel 12 best practices.
+        - Hindari nested ternary — gunakan match expression atau if/else.
+        - Pastikan semua method public memiliki return type declaration.
+        - Cek potensi keamanan: SQL injection, XSS, IDOR, unauthorized access.
+
+chat:
+  auto_reply: true
