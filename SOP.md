@@ -180,14 +180,18 @@ Untuk menjaga likuiditas kas toko dan memastikan keadilan pembagian SHU tahunan 
      - Status transaksi diubah menjadi `batal` dan status tiket penarikan menjadi `rejected`.
 
 ### F. Kebijakan Belanja Khusus Anggota & Struktur Plafon Kredit (Member-Only & Credit Allowance)
-1. **Belanja 100% Khusus Anggota Koperasi (Member-Only):**
+1. **Belanja 100% Khusus Anggota Koperasi (Member-Only) & Batas Tampilan Stok:**
    * Seluruh transaksi kasir toko (Tunai, QRIS, Transfer, Saldo E-Wallet, maupun Hutang) **wajib dikaitkan dengan Anggota Koperasi resmi terdaftar**.
    * Opsi pembeli non-anggota/umum telah dihapus permanen dari sistem POS demi akurasi pencatatan SHU dan integritas tata kelola koperasi.
-2. **Struktur Agunan & Allowance Fasilitas Kredit:**
-   * **Simpanan Pokok (Agunan Dasar):** **Rp 300.000** (Modal setoran awal wajib anggota sebagai agunan resmi fasilitas kasbon).
-   * **Allowance Koperasi:** **+ Rp 100.000** (Plafon ekstra yang diberikan koperasi secara otomatis bagi anggota aktif dengan riwayat pembayaran lancar).
-   * **Total Plafon Kredit Maksimal:** **Rp 400.000** ($\text{Simpanan Pokok } 300.000 + \text{Allowance } 100.000$).
-   * **Sisa Pagu Kredit Tersedia:** $\max(0, \text{Total Plafon} - \text{Hutang Berjalan})$. Kasir dan sistem POS secara otomatis menolak transaksi kasbon baru jika tagihan melebihi sisa pagu kredit.
+   * **Aturan Etalase Belanja App:** Katalog belanja di aplikasi Anggota (fitur Pre-Order/Cart) **HANYA menampilkan barang yang stok fisiknya masih tersedia di rak display toko (`stok_toko > 0`)**, mencegah anggota memesan barang yang belum sempat ditata oleh kasir.
+2. **Struktur Agunan & Allowance Fasilitas Kredit (Dual-Limit Engine):**
+   * **Plafon Kasir POS (Dinamis Berbasis Agunan):**
+     - **Simpanan Pokok:** Agunan dasar (misal Rp 300.000).
+     - **Allowance Koperasi:** Tambahan pagu **+ Rp 100.000** bagi anggota.
+     - Sisa limit pada kasir dihitung otomatis: `(Simpanan Pokok + Allowance 100.000) - Hutang Berjalan`.
+   * **Plafon Checkout App Anggota (Limit Hard-Cap):** 
+     - Transaksi kasbon yang diproses langsung oleh anggota via *smartphone* dibatasi mutlak maksimal tagihan berjalan **Rp 600.000**.
+   * Kasir dan sistem POS secara otomatis menolak transaksi kasbon baru jika tagihan melebihi sisa pagu kredit masing-masing otorisasi.
 
 ---
 
@@ -349,7 +353,7 @@ flowchart LR
 2. **Jadwal Pelaksanaan:** Dilakukan minimal **1 kali setiap awal bulan** atau pasca evaluasi mingguan oleh Admin/Pengurus Koperasi.
 3. **Prosedur:**
    * Buka menu `/admin/pkm`, pilih basis penjualan 30 hari (atau 7 hari).
-   * Klik tombol **`[ ⚡ Sync PKM 4H ]`**.
+   * Klik tombol **`[ ⚡ Hitung Batas Rak Toko ]`**.
    * Sistem otomatis menghitung:
      $$\text{ADS} = \frac{\text{Total Penjualan}}{\text{Hari Evaluasi}}, \quad \text{PKM} = \max(1, \lceil \text{ADS} \times 4 \rceil)$$
    * Nilai batas PKM seluruh produk di database langsung ter-update, sehingga audit serah terima shift kasir dan lembar kerja picking display toko selalu proporsional dan akurat.
