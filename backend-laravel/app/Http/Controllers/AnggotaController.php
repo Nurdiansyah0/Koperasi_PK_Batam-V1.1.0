@@ -307,7 +307,7 @@ class AnggotaController extends Controller
                     'keuntungan' => $keuntungan,
                 ];
 
-                $barang->stok -= $item['jumlah'];
+                $barang->stok_toko -= $item['jumlah'];
                 $barang->save();
             }
 
