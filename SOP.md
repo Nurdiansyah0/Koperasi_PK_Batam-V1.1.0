@@ -180,10 +180,10 @@ Untuk menjaga likuiditas kas toko dan memastikan keadilan pembagian SHU tahunan 
      - Status transaksi diubah menjadi `batal` dan status tiket penarikan menjadi `rejected`.
 
 ### F. Kebijakan Belanja Khusus Anggota & Struktur Plafon Kredit (Member-Only & Credit Allowance)
-1. **Belanja 100% Khusus Anggota Koperasi (Member-Only) & Batas Tampilan Stok:**
+1. **Belanja 100% Khusus Anggota Koperasi (Member-Only) & Strict Limit Stok Etalase:**
    * Seluruh transaksi kasir toko (Tunai, QRIS, Transfer, Saldo E-Wallet, maupun Hutang) **wajib dikaitkan dengan Anggota Koperasi resmi terdaftar**.
    * Opsi pembeli non-anggota/umum telah dihapus permanen dari sistem POS demi akurasi pencatatan SHU dan integritas tata kelola koperasi.
-   * **Aturan Etalase Belanja App:** Katalog belanja di aplikasi Anggota (fitur Pre-Order/Cart) **HANYA menampilkan barang yang stok fisiknya masih tersedia di rak display toko (`stok_toko > 0`)**, mencegah anggota memesan barang yang belum sempat ditata oleh kasir.
+   * **Aturan Transaksi Kasir POS & App Anggota:** Layar POS Kasir dan Katalog Belanja Anggota **HANYA menampilkan dan mengizinkan penjualan barang yang stoknya tersedia di rak etalase (`stok_toko > 0`)**. Walaupun stok di gudang melimpah, sistem akan memblokir penjualan jika stok rak habis, memaksa kasir untuk memindahkan fisik barang dari gudang ke etalase secara sistem terlebih dahulu.
 2. **Struktur Agunan & Allowance Fasilitas Kredit (Dual-Limit Engine):**
    * **Plafon Kasir POS (Dinamis Berbasis Agunan):**
      - **Simpanan Pokok:** Agunan dasar (misal Rp 300.000).
@@ -200,8 +200,9 @@ Untuk menjaga likuiditas kas toko dan memastikan keadilan pembagian SHU tahunan 
 ### ✅ YANG WAJIB DILAKUKAN (DO'S):
 1. **Wajib hadir 5 menit sebelum pergantian shift** untuk melakukan hitung bersama di meja kasir.
 2. **Wajib menginput hitungan fisik riil** tanpa menebak-nebak atau memperkirakan angka.
-3. **Wajib menjaga kerapian etalase rokok** sesuai urutan agar proses hitung berlangsung cepat (< 1 menit).
-4. **Wajib memeriksa uang palsu** saat menerima pembayaran tunai dari pembeli.
+3. **Wajib mencatat "Refill / Mutasi Rak" di sistem terlebih dahulu** apabila mengambil barang dari gudang cadangan untuk dijual, karena mesin POS akan menolak *scan barcode* jika stok etalase tercatat kosong.
+4. **Wajib menjaga kerapian etalase rokok** sesuai urutan agar proses hitung berlangsung cepat (< 1 menit).
+5. **Wajib memeriksa uang palsu** saat menerima pembayaran tunai dari pembeli.
 
 ### ❌ YANG DILARANG KERAS (DON'TS):
 1. **Dilarang melakukan serah terima secara sepihak** tanpa kehadiran kasir penerima di meja kasir.
@@ -241,9 +242,9 @@ Untuk menjunjung tinggi prinsip dasar jati diri koperasi *"Dari Anggota, Oleh An
 Untuk menjaga akurasi pembukuan, mencegah kerugian susut (*shrinkage/waste*), dan memastikan kelancaran operasional harian kasir, pengelolaan persediaan barang diatur sebagai berikut:
 
 ### A. Model Inventori 2-Tier (Display Toko vs Cadangan Gudang)
-1. **Pemisahan Fisik & Sistem:**
-   * **🏪 Stok Display Toko (`stok_toko`):** Persediaan barang yang dipajang di rak/etalase kasir. Kuantitas dibatasi maksimal sebesar **Penetapan Kuantitas Maksimum (PKM 4 Hari)**. Stok ini menjadi objek audit saat serah terima shift kasir.
-   * **📦 Stok Cadangan Gudang (`stok_gudang`):** Persediaan kartonan/bulk yang disimpan di gudang tertutup di bawah wewenang Admin/Staf Gudang. Kasir tidak dibebani menghitung stok gudang saat pergantian shift.
+1. **Pemisahan Fisik & Sistem (Strict Isolation):**
+   * **🏪 Stok Display Toko (`stok_toko`):** Persediaan barang yang dipajang di rak/etalase kasir. **Hanya stok inilah yang 100% berhak dijual oleh Kasir POS maupun dipesan oleh Anggota**. Kuantitas dibatasi maksimal sebesar **Penetapan Kuantitas Maksimum (PKM 4 Hari)**. Stok ini menjadi objek audit saat serah terima shift kasir.
+   * **📦 Stok Cadangan Gudang (`stok_gudang`):** Persediaan kartonan/bulk yang disimpan di gudang tertutup. Kasir **TIDAK BISA** menjual stok ini secara langsung di aplikasi POS. Jika etalase habis, staf wajib mengeksekusi sistem pemindahan stok ke etalase (Refill) terlebih dahulu sebelum melayani pembeli.
 2. **Keseimbangan Finansial Persediaan:**
    $$\mathbf{\text{Total Persediaan}} = \mathbf{\text{Stok Display Toko}} + \mathbf{\text{Stok Cadangan Gudang}}$$
    Nilai aset persediaan koperasi dihitung dari $\text{Total Stok} \times \text{Harga Modal}$.
