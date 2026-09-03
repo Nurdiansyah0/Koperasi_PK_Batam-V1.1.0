@@ -126,7 +126,21 @@ class GetCashierDashboardQuery
                 return $h['uang_fisik'] ?? 0;
             });
 
-        return (float) ($cashInTrx + $cashInSerah - $cashOutSerah);
+        $cashOutSetor = \App\Models\SetoranKasir::where('kasir_id', $kasirId)
+            ->where('status', 'approved')
+            ->sum('nominal');
+
+        $cashDebtRepay = DB::table('pembayaran_hutang')
+            ->where('kasir_id', $kasirId)
+            ->where('status', 'approved')
+            ->where('metode_pembayaran', 'cash')
+            ->sum('nominal');
+
+        $cashWithdrawals = DB::table('tarik_tunai')
+            ->where('kasir_id', $kasirId)
+            ->sum('nominal');
+
+        return (float) ($cashInTrx + $cashDebtRepay + $cashInSerah - $cashWithdrawals - $cashOutSerah - $cashOutSetor);
     }
 
     private function parseHasilOpname($raw, $barangs = null)
