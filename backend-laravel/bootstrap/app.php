@@ -23,14 +23,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => CheckRole::class,
             'api_key' => ApiKeyMiddleware::class,
         ]);
+        
+        $middleware->redirectGuestsTo(fn () => abort(response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401)));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, \Illuminate\Http\Request $request) {
-            if ($request->is('laravel/api/*')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthenticated.'
-                ], 401);
-            }
-        });
+        //
     })->create();
