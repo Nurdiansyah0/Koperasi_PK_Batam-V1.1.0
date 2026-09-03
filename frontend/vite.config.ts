@@ -11,6 +11,9 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       devOptions: {
         enabled: false,
       },
@@ -30,30 +33,6 @@ export default defineConfig({
             sizes: '192x192 512x512',
             type: 'image/svg+xml',
             purpose: 'any maskable',
-          },
-        ],
-      },
-      workbox: {
-        navigateFallback: '/index.html',
-        navigateFallbackAllowlist: [/^(?!\/(api|laravel)).*$/],
-        cleanupOutdatedCaches: true,
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: ({ request, url }) =>
-              request.method === 'GET' &&
-              (url.pathname.includes('/barang') || url.pathname.includes('/paket-belanja')),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'catalog-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 5,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
           },
         ],
       },

@@ -22,7 +22,7 @@ export function OrderNotificationModal() {
       setPermissionState('unsupported')
     }
 
-    if (!token || !user || !['kasir', 'admin'].includes(user.role)) {
+    if (!token || !user || user.role !== 'kasir') {
       return
     }
 
