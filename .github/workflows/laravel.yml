@@ -38,14 +38,14 @@ jobs:
           mkdir -p database
           touch database/database.sqlite
 
+      - name: Run Migrations
+        run: php artisan migrate --force
+
       - name: Execute tests (Unit and Feature tests) via PHPUnit/Pest
         env:
-          DB_CONNECTION: sqlite
-          DB_DATABASE: database/database.sqlite
           # Nightwatch — disable data ingestion in CI to avoid polluting production metrics
           NIGHTWATCH_ENABLED: false
           NIGHTWATCH_REQUEST_SAMPLE_RATE: 0
           NIGHTWATCH_COMMAND_SAMPLE_RATE: 0
           NIGHTWATCH_EXCEPTION_SAMPLE_RATE: 0
         run: php artisan test
-
