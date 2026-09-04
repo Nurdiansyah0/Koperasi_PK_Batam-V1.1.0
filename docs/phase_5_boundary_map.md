@@ -6,10 +6,10 @@
 | :--- | :--- | :--- |
 | **Identity** | `users`, `jabatan_anggota` | Authentication, Role Assignment, Access Mandates |
 | **Members** | `anggota` | Member Profile, E-Wallet Balances (`saldo`), Debt (`hutang`), member-level SHU |
-| **Inventory** | `barang`, `barang_history`, `pkm_barang`, `restock_history` | Stock Levels, Pricing, Write-Offs, Re-stocking, PKM Analysis |
-| **POS** | `transaksi`, `transaksi_detail`, `pesanan_anggota` | Checkout (Cash/Debt/E-Wallet), Order Processing, Void/Reject |
+| **Inventory** | `barang`, `riwayat_restock` | Stock Levels, Pricing, Write-Offs, Re-stocking, PKM Analysis |
+| **POS** | `transaksi`, `transaksi_detail` (Pending orders are just `transaksi` rows) | Checkout (Cash/Debt/E-Wallet), Order Processing, Void/Reject |
 | **Cash Mgmt** | `tarik_tunai`, `setoran_kasir`, `serah_terima_kasir`, `pembayaran_hutang` | Physical Cash Operations, Shift Handovers, Admin Deposits, Withdrawals, Reconciliation |
-| **Finance** | `konversi_shu`, `shu_distribusi`, `pengeluaran` | Global SHU Declaration & Calculation, Ledger Conversions, Operational Expenses |
+| **Finance** | `konversi_shu`, `shu_distribusi`, `pengeluaran_operasional` | Global SHU Declaration & Calculation, Ledger Conversions, Operational Expenses |
 | **Reporting** | N/A (Read Models / Queries) | Aggregated Read Models (Cashier Dashboard, Admin Stats) |
 
 ---
