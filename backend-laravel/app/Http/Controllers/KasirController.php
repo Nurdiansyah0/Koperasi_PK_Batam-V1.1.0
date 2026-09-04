@@ -28,53 +28,7 @@ class KasirController extends Controller
         return $request->user()->user_id;
     }
 
-    private function calculateSaldoKasKasir(int $kasirId): float
-    {
-        $cashInTrx = Transaksi::where('kasir_id', $kasirId)
-            ->where('status', 'selesai')
-            ->whereIn('metode_pembayaran', ['cash', 'tunai'])
-            ->sum('total_harga');
-
-        $cashInSerah = SerahTerimaKasir::where('kasir_to', $kasirId)
-            ->where('status', 'approved')
-            ->pluck('hasil_opname')
-            ->sum(function ($h) {
-                if (is_string($h)) {
-                    $h = json_decode($h, true);
-                }
-
-                return $h['uang_fisik'] ?? 0;
-            });
-
-        $cashOutSerah = SerahTerimaKasir::where('kasir_from', $kasirId)
-            ->where('status', 'approved')
-            ->pluck('hasil_opname')
-            ->sum(function ($h) {
-                if (is_string($h)) {
-                    $h = json_decode($h, true);
-                }
-
-                return $h['uang_fisik'] ?? 0;
-            });
-
-        $cashOutSetor = SetoranKasir::where('kasir_id', $kasirId)
-            ->where('status', 'approved')
-            ->sum('nominal');
-
-        $cashDebtRepay = DB::table('pembayaran_hutang')
-            ->where('kasir_id', $kasirId)
-            ->where('status', 'approved')
-            ->where('metode_pembayaran', 'cash')
-            ->sum('nominal');
-
-        $cashWithdrawals = DB::table('tarik_tunai')
-            ->where('kasir_id', $kasirId)
-            ->sum('nominal');
-
-        return (float) ($cashInTrx + $cashDebtRepay + $cashInSerah - $cashWithdrawals - $cashOutSerah - $cashOutSetor);
-    }
-
-    public function getDashboard(Request $request, \App\Actions\Kasir\GetCashierDashboardQuery $query)
+        public function getDashboard(Request $request, \App\Actions\Kasir\GetCashierDashboardQuery $query)
     {
         $kasirId = $this->checkKasir($request);
         $data = $query->execute($kasirId);
@@ -1000,154 +954,55 @@ class KasirController extends Controller
         return $decoded;
     }
 
-    public function getSerahTerimaDraft(Request $request)
+    public function getSerahTerimaDraft(Request $request, \App\Actions\CashManagement\CalculateSerahTerimaDraftAction $action)
     {
         $kasirId = $this->checkKasir($request);
-        $kasirUserIds = JabatanAnggota::where('role', 'kasir')->where('status', 'aktif')->pluck('user_id');
-        $kasirList = User::where(function ($q) use ($kasirUserIds) {
-            $q->whereIn('user_id', $kasirUserIds)->orWhere('role', 'kasir');
-        })
-            ->where('user_id', '!=', $kasirId)
-            ->with('anggota')
-            ->get()
-            ->unique('user_id')
-            ->map(function ($u) {
-                return [
-                    'user_id' => $u->user_id,
-                    'username' => $u->username,
-                    'nama_lengkap' => $u->anggota ? $u->anggota->nama_lengkap : $u->username,
-                ];
-            })
-            ->values();
-
-        // Load all active items in the store for cycle count
-        $allItems = Barang::orderBy('nama_barang', 'asc')->get();
-
-        $rokokKeywords = ['rokok', 'sampoerna', 'surya', 'marlboro', 'gudang garam', 'magnum', 'djarum', 'camel', 'esse', 'filter', 'kretek', 'mild', 'samsu'];
-
-        foreach ($allItems as $item) {
-            $nameLower = strtolower($item->nama_barang);
-            $isRokok = false;
-            foreach ($rokokKeywords as $kw) {
-                if (str_contains($nameLower, $kw)) {
-                    $isRokok = true;
-                    break;
-                }
-            }
-
-            $pkmValue = (int) ($item->pkm ?: 1);
-            if ($isRokok) {
-                $item->risk_badge = 'Rokok';
-                $item->audit_reason = "PKM Toko: {$pkmValue} pcs (Risiko Rokok)";
-            } elseif ($item->stok < $pkmValue) {
-                $item->risk_badge = 'Perlu Restock';
-                $item->audit_reason = "PKM Toko: {$pkmValue} pcs (Stok < PKM)";
-            } else {
-                $item->risk_badge = 'Display Toko';
-                $item->audit_reason = "PKM Toko 4 Hari: {$pkmValue} pcs";
-            }
-        }
-
-        // Calculate theoretical drawer cash in system
-        $saldoKasSistem = $this->calculateSaldoKasKasir($kasirId);
+        
+        $data = $action->execute($kasirId);
 
         return response()->json([
             'success' => true,
-            'data' => [
-                'kasir_list' => $kasirList,
-                'saldo_kas_sistem' => (float) $saldoKasSistem,
-                'cycle_count_items' => $allItems,
-            ],
+            'data' => $data,
         ]);
     }
-
-    public function createSerahTerima(Request $request)
+    public function createSerahTerima(Request $request, \App\Actions\CashManagement\CreateSerahTerimaAction $action)
     {
         $kasirId = $this->checkKasir($request);
-        $request->validate([
-            'kasir_to' => 'required|integer',
-            'hasil_opname' => 'nullable',
-        ]);
+        
+        // We capture all to pass implicit payloads
+        $allData = $request->all();
 
-        if ($kasirId == $request->kasir_to) {
-            return response()->json(['success' => false, 'message' => 'Tidak bisa serah terima ke diri sendiri'], 400);
-        }
-
-        $hasilOpname = $request->hasil_opname;
-        if (empty($hasilOpname) && ($request->has('items') || $request->has('uang_fisik'))) {
-            $hasilOpname = [
-                'uang_fisik' => (float) ($request->uang_fisik ?? 0),
-                'catatan' => $request->catatan ?? '',
-                'items' => $request->items ?? [],
-            ];
-        }
-
-        $st = SerahTerimaKasir::create([
-            'kasir_from' => $kasirId,
-            'kasir_to' => $request->kasir_to,
-            'hasil_opname' => is_string($hasilOpname) ? json_decode($hasilOpname, true) : $hasilOpname,
-            'status' => 'pending',
-            'created_at' => Carbon::now(),
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Serah terima berhasil dibuat',
-            'data' => [
-                'serah_id' => $st->serah_id,
-                'serah_terima_id' => $st->serah_id,
-            ],
-        ]);
-    }
-
-    public function approveSerahTerima(Request $request)
-    {
-        $kasirId = $this->checkKasir($request);
-
-        DB::beginTransaction();
         try {
-            $st = SerahTerimaKasir::where('serah_id', $request->serah_id)
-                ->where('kasir_to', $kasirId)
-                ->lockForUpdate()
-                ->first();
+            $data = $action->execute($allData, $kasirId);
 
-            if (! $st || $st->status !== 'pending') {
-                DB::rollBack();
+            return response()->json([
+                'success' => true,
+                'message' => 'Serah terima berhasil dibuat',
+                'data' => $data,
+            ]);
+        } catch (\Exception $e) {
+            $status = $e->getCode() == 400 ? 400 : 500;
+            return response()->json(['success' => false, 'message' => $e->getMessage()], $status);
+        }
+    }
+    public function approveSerahTerima(Request $request, \App\Actions\CashManagement\ApproveSerahTerimaAction $action)
+    {
+        $kasirId = $this->checkKasir($request);
 
-                return response()->json(['success' => false, 'message' => 'Data tidak valid atau sudah diproses'], 400);
-            }
-
-            $st->status = 'approved';
-            $st->save();
-
-            // Auto-sync physical inventory stock to reflect verified count
-            $opname = $this->parseHasilOpname($st->hasil_opname);
-            if (isset($opname['items']) && is_array($opname['items'])) {
-                foreach ($opname['items'] as $item) {
-                    if (isset($item['barang_id']) && (isset($item['stok_aktual']) || isset($item['stok_input']))) {
-                        $targetStock = isset($item['stok_input']) ? (int) $item['stok_input'] : (int) $item['stok_aktual'];
-                        $barang = Barang::where('barang_id', $item['barang_id'])->lockForUpdate()->first();
-                        if ($barang) {
-                            $barang->stok = max(0, $targetStock);
-                            $barang->save();
-                        }
-                    }
-                }
-            }
-
-            DB::commit();
+        try {
+            $action->execute((int)$request->serah_id, $kasirId);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Shift operasional disetujui dan stok fisik berhasil disinkronkan ke sistem',
             ]);
         } catch (\Exception $e) {
-            DB::rollBack();
-
+            if ($e->getCode() == 400) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+            }
             return response()->json(['success' => false, 'message' => 'Gagal menyetujui shift: '.$e->getMessage()], 500);
         }
     }
-
     public function rejectSerahTerima(Request $request)
     {
         $kasirId = $this->checkKasir($request);
