@@ -1,22 +1,22 @@
-# KOPERASI PK — PHASE 5 BOUNDARY MAP
+# KOPERASI PK — PHASE 5 BOUNDARY MAP (REVISED)
 
 ## 1. Module Ownership Matrix (VERIFIED)
 
 | Domain | Authoritative Persistence (Tables) | Core Business Capabilities |
 | :--- | :--- | :--- |
 | **Identity** | `users`, `jabatan_anggota` | Authentication, Role Assignment, Access Mandates |
-| **Members** | `anggota` | Member Profile, E-Wallet Balances (`saldo`), Debt (`hutang`), SHU allocation |
+| **Members** | `anggota` | Member Profile, E-Wallet Balances (`saldo`), Debt (`hutang`), member-level SHU |
 | **Inventory** | `barang`, `barang_history`, `pkm_barang`, `restock_history` | Stock Levels, Pricing, Write-Offs, Re-stocking, PKM Analysis |
 | **POS** | `transaksi`, `transaksi_detail`, `pesanan_anggota` | Checkout (Cash/Debt/E-Wallet), Order Processing, Void/Reject |
-| **Cash Mgmt** | `tarik_tunai`, `setoran_kasir`, `serah_terima_kasir`, `pembayaran_hutang` | Drawer Balances, Shift Handovers, Admin Deposits, Debt Repayment, Withdrawals |
-| **Finance** | `konversi_shu`, `shu_distribusi`, `pengeluaran` | Global SHU Declaration, Ledger Conversions, Operational Expenses |
+| **Cash Mgmt** | `tarik_tunai`, `setoran_kasir`, `serah_terima_kasir`, `pembayaran_hutang` | Physical Cash Operations, Shift Handovers, Admin Deposits, Withdrawals, Reconciliation |
+| **Finance** | `konversi_shu`, `shu_distribusi`, `pengeluaran` | Global SHU Declaration & Calculation, Ledger Conversions, Operational Expenses |
 | **Reporting** | N/A (Read Models / Queries) | Aggregated Read Models (Cashier Dashboard, Admin Stats) |
 
 ---
 
 ## 2. Cross-Module Write Violations (VERIFIED & RISK)
 
-Current monolithic controllers perform direct cross-module mutations rather than relying on domain-specific Actions.
+Current monolithic controllers perform direct cross-module mutations. In future extraction phases, these cross-module writes must be replaced by **explicit synchronous Action invocations** to the owning module.
 
 * **POS → Inventory [VIOLATION]**: `KasirController::buatTransaksiKasir` manually loops through items, checks stock, and decrements `stok_toko` directly.
 * **POS → Members [VIOLATION]**: `KasirController::buatTransaksiKasir` mutates `anggota->saldo`, `anggota->hutang`, and `anggota->shu` inline.
@@ -25,77 +25,73 @@ Current monolithic controllers perform direct cross-module mutations rather than
 
 ---
 
-## 3. Dependency Direction (INFERRED)
+## 3. Dependency Direction & Cross-Module Reads (INFERRED)
 
-To decouple the monolith safely in Phases 6-8, dependencies should flow logically:
+To decouple the monolith safely, dependencies should flow logically via synchronous calls. Cross-module reads may remain where justified.
 * **POS** depends on **Inventory** (to deduct stock).
 * **POS** depends on **Members** (to verify and mutate e-wallet/debt limits).
 * **Cash Management** depends on **Members** (for SHU balance checks during Tarik Tunai).
-* **Cash Management** depends on **POS** (for calculating real-time drawer balances, though primarily a read dependency).
-* **Identity** stands alone.
-* **Reporting** depends on all modules.
-
-**Circular Dependency Risk:** POS Checkout natively creates Tarik Tunai tickets (Cash Mgmt), while Tarik Tunai approval checks limits (Members). The inline `Tarik Tunai` checkout flow tightly couples POS, Cash Mgmt, and Members.
+* **Cash Management** depends on **POS** (for calculating real-time drawer balances).
 
 ---
 
 ## 4. Transaction Boundaries (VERIFIED)
 
-Current operations utilize broad, single-controller database transactions:
-* **POS Checkout:** Spans `Transaksi`, `TransaksiDetail`, `Barang`, `Anggota`, and `TarikTunai`.
-* **SHU Conversion:** Spans `KonversiShu` and `Anggota`.
-* **Member Registration:** Spans `User`, `Anggota`, and `JabatanAnggota` (Refactored in Phase 4).
-
-*Rule for Phases 6-8:* These broad DB transactions MUST be preserved at the Use Case layer to prevent partial data writes, even when operations cross conceptual boundaries.
+Current operations utilize broad, single-controller database transactions (e.g., POS Checkout spans `Transaksi`, `Barang`, `Anggota`, `TarikTunai`).
+*Rule for extractions:* These broad DB transactions MUST be preserved at the Use Case layer to guarantee deterministic consistency, even when synchronous calls span modules.
 
 ---
 
 ## 5. Concurrency & Lock Map (RISK)
 
 **POS Iterative Inventory Locking (Major Risk):**
-In `buatTransaksiKasir`, the system calls `Barang::lockForUpdate()->find()` sequentially within a loop determined by the client's payload (`$request->items`).
-* *Risk:* If two cashiers checkout overlapping items in different orders simultaneously, a database deadlock will occur.
-* *Future mitigation (Not Phase 5):* The incoming items array must be sorted by `barang_id` before querying, or a bulk `lockForUpdate` should be applied.
+In `buatTransaksiKasir`, the system calls `Barang::lockForUpdate()->find()` sequentially within a loop determined by the client's payload.
+* *Risk:* Database deadlocks if concurrent transactions process overlapping items in different orders.
+* *Constraint:* Locking behavior will NOT be changed in Phase 5.
 
 ---
 
 ## 6. Authorization Contexts (VERIFIED)
 
 * **Identity context:** Verified via Sanctum token.
-* **Role context:** Primary `$user->role`.
-* **Shift/Mandate context:** `JabatanAnggota` status (Active shift required for POS and Cash Mgmt mutations).
-* *Note:* Phase 9 will centralize this; until then, `checkKasir()` and `checkAdmin()` must remain in HTTP controllers.
+* **Shift/Mandate context:** `JabatanAnggota` status (Active shift required for POS and Cash Mgmt).
+* *Note:* Phase 9 will centralize this; until then, `checkKasir()` and `checkAdmin()` remain in HTTP controllers.
 
 ---
 
-## 7. Audit Responsibility Map (INFERRED & RISK)
+## 7. Audit Responsibility Map & Ledger Decision (RESOLVED)
 
 **Missing Ledgers (Audit Vulnerability from Phase 2):**
-* Changes to `Anggota` (`saldo`, `hutang`, `shu`) lack a dedicated immutable ledger.
-* `TarikTunai` and `PembayaranHutang` act as pseudo-ledgers, but direct balance edits (like voiding an order) silently alter balances without an explicit ledger trail.
-* *Decision:* Phase 5 carries this finding forward, but no schema changes will be introduced yet.
+Changes to `Anggota` (`saldo`, `hutang`, `shu`) lack a dedicated immutable ledger. Direct balance edits silently alter state.
+
+**Architectural Decision (HUMAN APPROVED):**
+* **Do NOT introduce an `AnggotaLedger` in Phase 7.**
+* The current observable behavior must be strictly preserved without adding schema changes or silently modifying financial semantics.
+* The missing ledger remains a documented audit vulnerability. Any future `AnggotaLedger` requires the explicit Phase 14B schema process.
 
 ---
 
-## 8. Candidate Use Cases for Phases 6-8 (VERIFIED)
+## 8. Architectural Decisions for Extractions (RESOLVED)
 
-Based on the boundary mapping, the following Use Cases (Actions) are primed for extraction:
-
-**Phase 6 (Inventory & Core Domain Extractions):**
-* `DeductInventoryStockAction`
-* `RestoreInventoryStockAction`
-
-**Phase 7 (Member Financial Extractions):**
-* `ProcessMemberPaymentAction` (handles E-Wallet/Debt variations)
-* `RefundMemberPaymentAction`
-
-**Phase 8 (POS Checkout Core):**
-* `ProcessPosCheckoutAction` (Orchestrates POS, invokes Phase 6 Inventory Actions and Phase 7 Member Actions within a unified DB transaction).
+**Tarik Tunai Orchestration (HUMAN APPROVED):**
+* The application remains a modular monolith.
+* POS and Cash Management interactions MUST use **explicit synchronous Action invocation** where transactional consistency requires it.
+* **Do NOT** introduce event-driven choreography. Financial state mutations require deterministic consistency without the complexity of asynchronous events.
 
 ---
 
-## 9. Unresolved Decisions (REQUIRES HUMAN DECISION)
+## 9. Candidate Use Cases for Extractions (VERIFIED ALIGNMENT)
 
-Before implementing Phase 8 (POS Checkout), the following must be decided:
-1. **Tarik Tunai Inline Orchestration:** Should POS Checkout directly invoke `CreateTarikTunaiAction` (strong coupling), or should it emit an internal domain event `PosCheckoutCompleted` that Cash Mgmt listens to?
-2. **Ledger Implementation:** Should we introduce an `AnggotaLedger` table in Phase 7 to fix the audit trail vulnerability before extracting the financial actions, or maintain the vulnerability to strictly preserve current behavior?
+### Phase 6 (Low/Medium-Risk Extractions)
+Phase 6 will target established operations outside the volatile POS core:
+* **Inventory:** `RestockBarang`
+* **Cash Management:** `TarikTunai`, `SerahTerima`
+* **Members:** (Where applicable for profile management outside financial ledgers)
+
+### Phase 7 (Finance & SHU)
+Phase 7 targets global calculation vs member state. Candidate use cases requiring strict semantic verification before implementation:
+* Differentiating **Members-owned** member balances (`saldo`, `hutang`) from **Finance-owned** global SHU calculation and distribution.
+* Differentiating **Cash Management-owned** physical cash payouts from **POS-owned** sales/payment orchestrations.
+
+### Phase 8 (High-Risk POS Orchestration)
+* Synchronous orchestration of POS checkout invoking the domain Actions defined in Phase 6 and 7 within a unified database transaction.
