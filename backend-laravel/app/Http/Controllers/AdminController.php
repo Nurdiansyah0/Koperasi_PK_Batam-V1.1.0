@@ -638,52 +638,21 @@ class AdminController extends Controller
         return response()->json(['success' => true, 'data' => $anggota]);
     }
 
-    public function tambahUser(Request $request)
+    public function tambahUser(Request $request, \App\Actions\Anggota\CreateMemberAction $action)
     {
         $adminId = $this->checkAdmin($request);
-        $request->validate([
+        $validated = $request->validate([
             'username' => 'required|unique:users',
             'password' => 'required',
             'role' => 'required|in:admin,kasir,pengurus,anggota',
             'nama_lengkap' => 'nullable|string',
         ]);
 
-        DB::beginTransaction();
         try {
-            $user = User::create([
-                'username' => $request->username,
-                'password_hash' => Hash::make($request->password),
-                'role' => $request->role,
-            ]);
-
-            // Every user is registered as an official anggota
-            Anggota::create([
-                'user_id' => $user->user_id,
-                'nama_lengkap' => $request->nama_lengkap ?: $request->username,
-                'email' => strtolower($request->username).'@koperasi.local',
-                'saldo' => 0,
-                'hutang' => 0,
-                'shu' => 0,
-            ]);
-
-            // If given a staff/management role, record in jabatan_anggota
-            if (in_array($request->role, ['admin', 'kasir', 'pengurus'])) {
-                JabatanAnggota::create([
-                    'user_id' => $user->user_id,
-                    'role' => $request->role,
-                    'status' => 'aktif',
-                    'ditugaskan_oleh' => $adminId,
-                    'catatan' => 'Penugasan awal saat registrasi akun',
-                    'assigned_at' => now(),
-                ]);
-            }
-
-            DB::commit();
+            $action->execute($validated, $adminId);
 
             return response()->json(['success' => true, 'message' => 'User & anggota berhasil ditambahkan']);
         } catch (\Exception $e) {
-            DB::rollBack();
-
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
