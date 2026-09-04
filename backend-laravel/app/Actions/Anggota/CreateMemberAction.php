@@ -31,7 +31,7 @@ class CreateMemberAction
             // Every user is registered as an official anggota
             Anggota::create([
                 'user_id' => $user->user_id,
-                'nama_lengkap' => !empty($data['nama_lengkap']) ? $data['nama_lengkap'] : $data['username'],
+                'nama_lengkap' => $data['nama_lengkap'] ?? $data['username'],
                 'email' => strtolower($data['username']) . '@koperasi.local',
                 'saldo' => 0,
                 'hutang' => 0,
