@@ -205,10 +205,10 @@ class AdminController extends Controller
         return response()->json(['success' => true, 'message' => 'Barang berhasil dihapus']);
     }
 
-    public function restockBarang(Request $request)
+    public function restockBarang(Request $request, \App\Actions\Inventory\RestockBarangAction $action)
     {
         $adminId = $this->checkAdmin($request);
-        $request->validate([
+        $validated = $request->validate([
             'barang_id' => 'required|integer|exists:barang,barang_id',
             'jumlah_tambah' => 'required|integer|min:1',
             'harga_beli_satuan' => 'required|numeric|min:0',
@@ -218,60 +218,11 @@ class AdminController extends Controller
             'catatan' => 'nullable|string',
         ]);
 
-        DB::beginTransaction();
         try {
-            $barang = Barang::where('barang_id', $request->barang_id)->lockForUpdate()->first();
-            if (! $barang) {
-                throw new \Exception('Barang tidak ditemukan');
-            }
-
-            $totalBiaya = $request->jumlah_tambah * $request->harga_beli_satuan;
-            $alokasi = $request->input('alokasi', 'gudang');
-            $jumlahTambah = (int) $request->jumlah_tambah;
-            $tglExpired = $request->tanggal_kadaluarsa ?: null;
-
-            RiwayatRestock::create([
-                'barang_id' => $barang->barang_id,
-                'admin_id' => $adminId,
-                'jumlah_tambah' => $jumlahTambah,
-                'harga_beli_satuan' => $request->harga_beli_satuan,
-                'total_biaya' => $totalBiaya,
-                'sumber_dana' => $request->sumber_dana,
-                'tanggal_kadaluarsa' => $tglExpired,
-                'catatan' => $request->catatan ? ($request->catatan." [Alokasi: {$alokasi}]") : "Alokasi: {$alokasi}",
-            ]);
-
-            // 2-Tier allocation & Expiry Sync
-            if ($alokasi === 'toko') {
-                $barang->stok_toko += $jumlahTambah;
-                if ($tglExpired) {
-                    $barang->tgl_kadaluarsa_toko = $tglExpired;
-                }
-            } elseif ($alokasi === 'auto') {
-                $pkm = (int) ($barang->pkm ?: 1);
-                $neededForDisplay = max(0, $pkm - ((int) $barang->stok_toko));
-                $fillToko = min($jumlahTambah, $neededForDisplay);
-                $barang->stok_toko += $fillToko;
-                $barang->stok_gudang += ($jumlahTambah - $fillToko);
-                if ($tglExpired) {
-                    if ($fillToko > 0 && ! $barang->tgl_kadaluarsa_toko) {
-                        $barang->tgl_kadaluarsa_toko = $tglExpired;
-                    }
-                    $barang->tgl_kadaluarsa_gudang = $tglExpired;
-                }
-            } else {
-                // Default to warehouse stock
-                $barang->stok_gudang += $jumlahTambah;
-                if ($tglExpired) {
-                    $barang->tgl_kadaluarsa_gudang = $tglExpired;
-                }
-            }
-
-            $barang->stok = $barang->stok_toko + $barang->stok_gudang;
-            $barang->harga_modal = $request->harga_beli_satuan;
-            $barang->save();
-
-            DB::commit();
+            $result = $action->execute($validated, $adminId);
+            $barang = $result['barang'];
+            $alokasi = $result['alokasi'];
+            $jumlahTambah = $result['jumlah_tambah'];
 
             return response()->json([
                 'success' => true,
@@ -286,12 +237,9 @@ class AdminController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            DB::rollBack();
-
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
-
     public function bulkRestock(Request $request)
     {
         $adminId = $this->checkAdmin($request);
