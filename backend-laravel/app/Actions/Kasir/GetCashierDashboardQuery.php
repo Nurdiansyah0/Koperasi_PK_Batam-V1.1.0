@@ -137,9 +137,10 @@ class GetCashierDashboardQuery
             ->sum('nominal');
 
         $cashWithdrawals = DB::table('tarik_tunai')
-            ->where('kasir_id', $kasirId)
-            ->where('status', 'completed')
-            ->sum('nominal');
+            ->leftJoin('transaksi', 'tarik_tunai.transaksi_id', '=', 'transaksi.transaksi_id')
+            ->where('tarik_tunai.kasir_id', $kasirId)
+            ->where('tarik_tunai.status', 'completed')
+            ->sum(DB::raw('CASE WHEN (tarik_tunai.nominal - COALESCE(transaksi.total_harga, 0)) > 0 THEN tarik_tunai.nominal - COALESCE(transaksi.total_harga, 0) ELSE 0 END'));
 
         return (float) ($cashInTrx + $cashDebtRepay + $cashInSerah - $cashWithdrawals - $cashOutSerah - $cashOutSetor);
     }
