@@ -28,7 +28,7 @@ class RestockBarangAction
             }
 
             $jumlahTambah = (int) $data['jumlah_tambah'];
-            $hargaBeliSatuan = (float) $data['harga_beli_satuan'];
+            $hargaBeliSatuan = $data['harga_beli_satuan']; // Kept as string/numeric for decimal precision
             $totalBiaya = $jumlahTambah * $hargaBeliSatuan;
             $alokasi = $data['alokasi'] ?? 'gudang';
             $tglExpired = $data['tanggal_kadaluarsa'] ?? null;
