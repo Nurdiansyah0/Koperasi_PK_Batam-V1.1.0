@@ -47,7 +47,6 @@ class ApproveSerahTerimaAction
             DB::commit();
         } catch (Exception $e) {
             DB::rollBack();
-            // Re-throw with custom code mapping or just rethrow
             throw $e;
         }
     }
