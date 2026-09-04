@@ -20,6 +20,7 @@ Current monolithic controllers perform direct cross-module mutations. In future 
 
 * **POS → Inventory [VIOLATION]**: `KasirController::buatTransaksiKasir` manually loops through items, checks stock, and decrements `stok_toko` directly.
 * **POS → Members [VIOLATION]**: `KasirController::buatTransaksiKasir` mutates `anggota->saldo`, `anggota->hutang`, and `anggota->shu` inline.
+* **POS → Finance [VIOLATION]**: `KasirController::buatTransaksiKasir` directly inserts into `shu_distribusi` to calculate and record the checkout profit distribution.
 * **Cash Mgmt → Members [VIOLATION]**: `KasirController::prosesTarikTunai` manually decrements `anggota->shu` on approval.
 * **Finance → Members [VIOLATION]**: `AdminController::prosesKonversiShu` iterates through members and directly alters `saldo` and `hutang`.
 
@@ -37,7 +38,7 @@ To decouple the monolith safely, dependencies should flow logically via synchron
 
 ## 4. Transaction Boundaries (VERIFIED)
 
-Current operations utilize broad, single-controller database transactions (e.g., POS Checkout spans `Transaksi`, `Barang`, `Anggota`, `TarikTunai`).
+Current operations utilize broad, single-controller database transactions (e.g., POS Checkout spans `Transaksi`, `Barang`, `Anggota`, `TarikTunai`, and `shu_distribusi`).
 *Rule for extractions:* These broad DB transactions MUST be preserved at the Use Case layer to guarantee deterministic consistency, even when synchronous calls span modules.
 
 ---
