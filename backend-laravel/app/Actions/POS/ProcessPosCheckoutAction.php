@@ -2,6 +2,7 @@
 
 namespace App\Actions\POS;
 
+use App\Actions\Finance\RecordPosShuDistributionAction;
 use App\Actions\Inventory\DeductSaleStockAction;
 use App\Actions\Members\ApplyPosMemberBalanceChangesAction;
 use App\Models\Anggota;
@@ -16,10 +17,12 @@ class ProcessPosCheckoutAction
 {
     public function __construct(
         protected ?DeductSaleStockAction $deductSaleStockAction = null,
-        protected ?ApplyPosMemberBalanceChangesAction $applyPosMemberBalanceChangesAction = null
+        protected ?ApplyPosMemberBalanceChangesAction $applyPosMemberBalanceChangesAction = null,
+        protected ?RecordPosShuDistributionAction $recordPosShuDistributionAction = null
     ) {
         $this->deductSaleStockAction = $deductSaleStockAction ?? app(DeductSaleStockAction::class);
         $this->applyPosMemberBalanceChangesAction = $applyPosMemberBalanceChangesAction ?? app(ApplyPosMemberBalanceChangesAction::class);
+        $this->recordPosShuDistributionAction = $recordPosShuDistributionAction ?? app(RecordPosShuDistributionAction::class);
     }
 
     /**
@@ -185,15 +188,13 @@ class ProcessPosCheckoutAction
 
                 $this->applyPosMemberBalanceChangesAction->creditShu($anggota, $shu60);
 
-                // Record to shu_distribusi (Legacy Parity)
-                DB::table('shu_distribusi')->insert([
-                    'anggota_id' => $anggota_id,
-                    'tahun' => date('Y'),
-                    'shu_60_percent' => $shu60,
-                    'shu_10_percent' => $shu10,
-                    'shu_30_percent' => $shu30,
-                    'created_at' => now(),
-                ]);
+                // Record to shu_distribusi via Finance Action
+                $this->recordPosShuDistributionAction->execute(
+                    (int) $anggota_id,
+                    $shu60,
+                    $shu10,
+                    $shu30
+                );
             }
 
             DB::commit();
