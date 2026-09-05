@@ -651,17 +651,12 @@ class KasirController extends Controller
         return response()->json(['success' => true, 'data' => $paginator]);
     }
 
-    public function setorAdmin(Request $request)
+    public function setorAdmin(Request $request, \App\Actions\CashManagement\SubmitSetoranKasirAction $action)
     {
         $kasirId = $this->checkKasir($request);
         $request->validate(['nominal' => 'required|numeric|min:1']);
 
-        SetoranKasir::create([
-            'kasir_id' => $kasirId,
-            'nominal' => $request->nominal,
-            'status' => 'pending',
-            'created_at' => Carbon::now(),
-        ]);
+        $action->execute($kasirId, $request->nominal);
 
         return response()->json(['success' => true, 'message' => 'Setoran berhasil diajukan']);
     }
