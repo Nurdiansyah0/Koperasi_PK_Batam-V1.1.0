@@ -1634,7 +1634,7 @@ class AdminController extends Controller
         ]);
     }
 
-    public function prosesKonversiShu(Request $request)
+    public function prosesKonversiShu(Request $request, \App\Actions\Finance\ProsesKonversiShuAction $action)
     {
         $adminId = $this->checkAdmin($request);
         $request->validate([
@@ -1645,105 +1645,14 @@ class AdminController extends Controller
             'keterangan' => 'nullable|string',
         ]);
 
-        DB::beginTransaction();
         try {
-            $mode = $request->mode;
-
-            if ($mode === 'individual' || $mode === 'ke_saldo_belanja') {
-                $anggota = Anggota::lockForUpdate()->find($request->anggota_id);
-                if (! $anggota) {
-                    throw new \Exception('Data anggota tidak ditemukan.');
-                }
-
-                $nominal = (float) $request->nominal;
-                if ($nominal <= 0 || $nominal > $anggota->shu) {
-                    throw new \Exception('Nominal konversi tidak valid atau melebihi saldo SHU (Tersedia: Rp '.number_format($anggota->shu, 0, ',', '.').').');
-                }
-
-                $anggota->shu -= $nominal;
-                $anggota->saldo += $nominal;
-                $anggota->save();
-
-                KonversiShu::create([
-                    'anggota_id' => $anggota->anggota_id,
-                    'admin_id' => $adminId,
-                    'nominal' => $nominal,
-                    'tipe_konversi' => 'ke_saldo_belanja',
-                    'keterangan' => $request->keterangan ?: 'Konversi SHU ke Saldo Belanja E-Wallet',
-                ]);
-
-                $message = 'Berhasil memindahkan SHU sebesar Rp '.number_format($nominal, 0, ',', '.').' ke Saldo Belanja '.$anggota->nama_lengkap.'.';
-
-            } elseif ($mode === 'pelunasan_hutang') {
-                $anggota = Anggota::lockForUpdate()->find($request->anggota_id);
-                if (! $anggota) {
-                    throw new \Exception('Data anggota tidak ditemukan.');
-                }
-
-                if ($anggota->hutang <= 0) {
-                    throw new \Exception('Anggota tidak memiliki tunggakan hutang.');
-                }
-
-                $maxPotong = min($anggota->shu, $anggota->hutang);
-                $nominal = $request->nominal ? min((float) $request->nominal, $maxPotong) : $maxPotong;
-
-                if ($nominal <= 0) {
-                    throw new \Exception('Saldo SHU tidak mencukupi untuk memotong hutang.');
-                }
-
-                $anggota->shu -= $nominal;
-                $anggota->hutang -= $nominal;
-                $anggota->save();
-
-                KonversiShu::create([
-                    'anggota_id' => $anggota->anggota_id,
-                    'admin_id' => $adminId,
-                    'nominal' => $nominal,
-                    'tipe_konversi' => 'pelunasan_hutang',
-                    'keterangan' => $request->keterangan ?: 'Kompensasi Pelunasan Hutang dari Saldo SHU',
-                ]);
-
-                $message = 'Berhasil memotong SHU sebesar Rp '.number_format($nominal, 0, ',', '.').' untuk pelunasan hutang '.$anggota->nama_lengkap.'.';
-
-            } elseif ($mode === 'massal_ke_saldo') {
-                $persentase = (float) ($request->persentase ?: 100);
-                $ratio = $persentase / 100.0;
-                $totalConverted = 0;
-                $countMembers = 0;
-
-                $anggotas = Anggota::lockForUpdate()->where('shu', '>', 0)->get();
-                foreach ($anggotas as $a) {
-                    $nominalToConvert = round($a->shu * $ratio, 2);
-                    if ($nominalToConvert > 0) {
-                        $a->shu -= $nominalToConvert;
-                        $a->saldo += $nominalToConvert;
-                        $a->save();
-
-                        KonversiShu::create([
-                            'anggota_id' => $a->anggota_id,
-                            'admin_id' => $adminId,
-                            'nominal' => $nominalToConvert,
-                            'tipe_konversi' => 'distribusi_hari_raya',
-                            'keterangan' => $request->keterangan ?: "Distribusi Massal SHU ({$persentase}%) ke Saldo Belanja Hari Raya",
-                        ]);
-
-                        $totalConverted += $nominalToConvert;
-                        $countMembers++;
-                    }
-                }
-
-                $message = 'Distribusi massal berhasil! Rp '.number_format($totalConverted, 0, ',', '.')." dipindahkan ke saldo belanja {$countMembers} anggota.";
-            }
-
-            DB::commit();
+            $message = $action->execute($request->all(), $adminId);
 
             return response()->json([
                 'success' => true,
                 'message' => $message,
             ]);
         } catch (\Exception $e) {
-            DB::rollBack();
-
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
