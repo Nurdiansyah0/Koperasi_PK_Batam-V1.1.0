@@ -723,19 +723,16 @@ class AdminController extends Controller
         return response()->json(['success' => true, 'data' => $data]);
     }
 
-    public function approveSetoranKasir(Request $request)
+    public function approveSetoranKasir(Request $request, \App\Actions\CashManagement\ApproveSetoranKasirAction $action)
     {
         $adminId = $this->checkAdmin($request);
-        $setoran = SetoranKasir::find($request->setoran_id);
-        if ($setoran) {
-            $action = $request->input('action', 'approve');
-            $setoran->status = ($action === 'reject') ? 'rejected' : 'approved';
-            $setoran->approved_by = $adminId;
-            $setoran->save();
+        $actionType = $request->input('action', 'approve');
+        $setoran = $action->execute($request->setoran_id, $adminId, $actionType);
 
+        if ($setoran) {
             return response()->json([
                 'success' => true,
-                'message' => $action === 'reject' ? 'Setoran ditolak' : 'Setoran disetujui',
+                'message' => $actionType === 'reject' ? 'Setoran ditolak' : 'Setoran disetujui',
             ]);
         }
 
