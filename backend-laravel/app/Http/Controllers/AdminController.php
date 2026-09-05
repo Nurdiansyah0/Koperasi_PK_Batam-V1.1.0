@@ -1193,7 +1193,7 @@ class AdminController extends Controller
         ]);
     }
 
-    public function tambahPengeluaran(Request $request)
+    public function tambahPengeluaran(Request $request, \App\Actions\Finance\RecordPengeluaranOperasionalAction $action)
     {
         $adminId = $this->checkAdmin($request);
         $request->validate([
@@ -1204,14 +1204,7 @@ class AdminController extends Controller
             'keterangan' => 'nullable|string|max:1000',
         ]);
 
-        $item = PengeluaranOperasional::create([
-            'nama_pengeluaran' => $request->nama_pengeluaran,
-            'nominal' => (float) $request->nominal,
-            'kategori' => $request->kategori ?: 'Operasional',
-            'tanggal' => $request->tanggal ?: now()->toDateString(),
-            'keterangan' => $request->keterangan,
-            'created_by' => $adminId,
-        ]);
+        $item = $action->execute($request->all(), $adminId);
 
         return response()->json([
             'success' => true,
@@ -1220,13 +1213,11 @@ class AdminController extends Controller
         ]);
     }
 
-    public function hapusPengeluaran(Request $request, $id)
+    public function hapusPengeluaran(Request $request, $id, \App\Actions\Finance\DeletePengeluaranOperasionalAction $action)
     {
         $this->checkAdmin($request);
-        $item = PengeluaranOperasional::find($id);
-        if ($item) {
-            $item->delete();
-
+        $deleted = $action->execute($id);
+        if ($deleted) {
             return response()->json(['success' => true, 'message' => 'Catatan pengeluaran berhasil dihapus']);
         }
 
