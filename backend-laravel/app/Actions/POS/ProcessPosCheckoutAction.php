@@ -2,8 +2,8 @@
 
 namespace App\Actions\POS;
 
+use App\Actions\Inventory\DeductSaleStockAction;
 use App\Models\Anggota;
-use App\Models\Barang;
 use App\Models\TarikTunai;
 use App\Models\Transaksi;
 use App\Models\TransaksiDetail;
@@ -13,6 +13,12 @@ use Illuminate\Support\Facades\DB;
 
 class ProcessPosCheckoutAction
 {
+    public function __construct(
+        protected ?DeductSaleStockAction $deductSaleStockAction = null
+    ) {
+        $this->deductSaleStockAction = $deductSaleStockAction ?? app(DeductSaleStockAction::class);
+    }
+
     /**
      * Executes the POS checkout transaction workflow.
      *
@@ -26,10 +32,6 @@ class ProcessPosCheckoutAction
     {
         DB::beginTransaction();
         try {
-            $totalHarga = 0;
-            $totalKeuntungan = 0;
-            $transaksiItems = [];
-
             // Normalize cart lines: consolidate duplicate barang_id entries by summing quantities,
             // while preserving first-occurrence line ordering.
             $normalizedItems = [];
@@ -48,45 +50,12 @@ class ProcessPosCheckoutAction
             }
             $normalizedItems = array_values($normalizedItems);
 
-            // 1. Canonical Lock Hierarchy Step 1: Deterministic ascending Barang pre-locking
-            $uniqueBarangIds = array_column($normalizedItems, 'barang_id');
-            sort($uniqueBarangIds);
-
-            $lockedBarangs = [];
-            foreach ($uniqueBarangIds as $bId) {
-                $b = Barang::where('barang_id', $bId)->lockForUpdate()->first();
-                if (! $b) {
-                    throw new Exception('Stok etalase tidak mencukupi untuk barang ID: '.$bId);
-                }
-                $lockedBarangs[$bId] = $b;
-            }
-
-            // Process inventory items: server-authoritative pricing and consolidated quantities
-            foreach ($normalizedItems as $item) {
-                $barang = $lockedBarangs[$item['barang_id']] ?? null;
-                if (! $barang || $barang->stok_toko < $item['jumlah']) {
-                    throw new Exception('Stok etalase tidak mencukupi untuk barang ID: '.$item['barang_id']);
-                }
-
-                // Price Authority: Always use server catalog harga_jual; ignore any client-supplied harga_satuan
-                $harga_satuan = (float) $barang->harga_jual;
-                $subtotal = $harga_satuan * $item['jumlah'];
-                $keuntungan = ($harga_satuan - (float) $barang->harga_modal) * $item['jumlah'];
-
-                $totalHarga += $subtotal;
-                $totalKeuntungan += $keuntungan;
-
-                $transaksiItems[] = [
-                    'barang_id' => $barang->barang_id,
-                    'jumlah' => $item['jumlah'],
-                    'harga_satuan' => $harga_satuan,
-                    'subtotal' => $subtotal,
-                    'keuntungan' => $keuntungan,
-                ];
-
-                $barang->stok_toko -= $item['jumlah'];
-                $barang->save();
-            }
+            // 1. Canonical Lock Hierarchy Step 1: Deduct sale stock via Inventory Action
+            // Enforces deterministic ascending Barang pre-locking, stock validation, and stock deduction
+            $stockResult = $this->deductSaleStockAction->execute($normalizedItems);
+            $transaksiItems = $stockResult['items'];
+            $totalHarga = $stockResult['total_harga'];
+            $totalKeuntungan = $stockResult['total_keuntungan'];
 
             // 2. Canonical Lock Hierarchy Step 2: Validate and lock Member
             $anggota_id = ($data['anggota_id'] ?? null) ?: null;
@@ -224,8 +193,14 @@ class ProcessPosCheckoutAction
 
             // 8. Persist Transaksi Details
             foreach ($transaksiItems as $tItem) {
-                $tItem['transaksi_id'] = $transaksi->transaksi_id;
-                TransaksiDetail::create($tItem);
+                TransaksiDetail::create([
+                    'transaksi_id' => $transaksi->transaksi_id,
+                    'barang_id' => $tItem['barang_id'],
+                    'jumlah' => $tItem['jumlah'],
+                    'harga_satuan' => $tItem['harga_satuan'],
+                    'subtotal' => $tItem['subtotal'],
+                    'keuntungan' => $tItem['keuntungan'],
+                ]);
             }
 
             // 9. Calculate and Distribute SHU (60% Anggota, 10% & 30% Koperasi)
