@@ -218,19 +218,19 @@ class PosCheckoutCharacterizationTest extends TestCase
 
         $response->assertStatus(200);
 
-        // Characterize known behavior: subtotal uses client price
-        // subtotal = 12000 * 2 = 24000
-        // keuntungan = (12000 - 10000) * 2 = 4000
-        $this->assertEquals(24000, $response->json('total'));
-        $this->assertEquals(4000, $response->json('total_keuntungan'));
+        // Remediated Phase 8F behavior: client price is ignored; catalog harga_jual is enforced
+        // subtotal = 20000 * 2 = 40000
+        // keuntungan = (20000 - 10000) * 2 = 20000
+        $this->assertEquals(40000, $response->json('total'));
+        $this->assertEquals(20000, $response->json('total_keuntungan'));
 
         $transaksiId = $response->json('transaksi_id');
         $this->assertDatabaseHas('transaksi_detail', [
             'transaksi_id' => $transaksiId,
             'barang_id' => $barang->barang_id,
-            'harga_satuan' => 12000,
-            'subtotal' => 24000,
-            'keuntungan' => 4000,
+            'harga_satuan' => 20000,
+            'subtotal' => 40000,
+            'keuntungan' => 20000,
         ]);
     }
 
@@ -268,15 +268,24 @@ class PosCheckoutCharacterizationTest extends TestCase
         $response->assertStatus(200);
         $transaksiId = $response->json('transaksi_id');
 
-        // Characterize known behavior: stock is decremented for each entry (15 - 2 - 3 = 10)
+        // Remediated Phase 8F behavior: stock is decremented by consolidated total (15 - 5 = 10)
         $barang->refresh();
         $this->assertEquals(10, $barang->stok_toko);
 
-        // Two distinct detail records exist for the same transaction
+        // Remediated: Exactly one consolidated detail record exists with total quantity 5
         $detailCount = TransaksiDetail::where('transaksi_id', $transaksiId)
             ->where('barang_id', $barang->barang_id)
             ->count();
-        $this->assertEquals(2, $detailCount);
+        $this->assertEquals(1, $detailCount);
+
+        $this->assertDatabaseHas('transaksi_detail', [
+            'transaksi_id' => $transaksiId,
+            'barang_id' => $barang->barang_id,
+            'jumlah' => 5,
+            'harga_satuan' => 8000,
+            'subtotal' => 40000,
+            'keuntungan' => 15000,
+        ]);
     }
 
     public function test_checkout_with_tarik_tunai_persists_ticket_and_deducts_fund(): void
@@ -410,14 +419,21 @@ class PosCheckoutCharacterizationTest extends TestCase
         $this->assertStringContainsString('melebihi sisa limit hutang', $resFail->json('message'));
 
         // 2. Purchase within remaining limit (50.000 == 50.000)
+        $barangOk = Barang::create([
+            'nama_barang' => 'Barang Hutang Within Limit '.uniqid(),
+            'stok' => 20,
+            'stok_toko' => 20,
+            'harga_modal' => 10000,
+            'harga_jual' => 50000,
+        ]);
+
         $payloadOk = [
             'anggota_id' => $this->anggota->anggota_id,
             'metode_pembayaran' => 'hutang',
             'items' => [
                 [
-                    'barang_id' => $barang->barang_id,
+                    'barang_id' => $barangOk->barang_id,
                     'jumlah' => 1,
-                    'harga_satuan' => 50000,
                 ],
             ],
         ];

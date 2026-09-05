@@ -30,8 +30,26 @@ class ProcessPosCheckoutAction
             $totalKeuntungan = 0;
             $transaksiItems = [];
 
+            // Normalize cart lines: consolidate duplicate barang_id entries by summing quantities,
+            // while preserving first-occurrence line ordering.
+            $normalizedItems = [];
+            foreach ($data['items'] as $item) {
+                $bId = (int) $item['barang_id'];
+                $qty = (int) $item['jumlah'];
+
+                if (isset($normalizedItems[$bId])) {
+                    $normalizedItems[$bId]['jumlah'] += $qty;
+                } else {
+                    $normalizedItems[$bId] = [
+                        'barang_id' => $bId,
+                        'jumlah' => $qty,
+                    ];
+                }
+            }
+            $normalizedItems = array_values($normalizedItems);
+
             // 1. Canonical Lock Hierarchy Step 1: Deterministic ascending Barang pre-locking
-            $uniqueBarangIds = array_values(array_unique(array_column($data['items'], 'barang_id')));
+            $uniqueBarangIds = array_column($normalizedItems, 'barang_id');
             sort($uniqueBarangIds);
 
             $lockedBarangs = [];
@@ -43,16 +61,17 @@ class ProcessPosCheckoutAction
                 $lockedBarangs[$bId] = $b;
             }
 
-            // Process inventory items in original client payload order (Preserves legacy calculations & line ordering)
-            foreach ($data['items'] as $item) {
+            // Process inventory items: server-authoritative pricing and consolidated quantities
+            foreach ($normalizedItems as $item) {
                 $barang = $lockedBarangs[$item['barang_id']] ?? null;
                 if (! $barang || $barang->stok_toko < $item['jumlah']) {
                     throw new Exception('Stok etalase tidak mencukupi untuk barang ID: '.$item['barang_id']);
                 }
 
-                $harga_satuan = $item['harga_satuan'] ?? $barang->harga_jual;
+                // Price Authority: Always use server catalog harga_jual; ignore any client-supplied harga_satuan
+                $harga_satuan = (float) $barang->harga_jual;
                 $subtotal = $harga_satuan * $item['jumlah'];
-                $keuntungan = ($harga_satuan - $barang->harga_modal) * $item['jumlah'];
+                $keuntungan = ($harga_satuan - (float) $barang->harga_modal) * $item['jumlah'];
 
                 $totalHarga += $subtotal;
                 $totalKeuntungan += $keuntungan;
