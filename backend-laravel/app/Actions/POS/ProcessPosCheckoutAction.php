@@ -2,11 +2,11 @@
 
 namespace App\Actions\POS;
 
+use App\Actions\CashManagement\RecordPosIntegratedTarikTunaiAction;
 use App\Actions\Finance\RecordPosShuDistributionAction;
 use App\Actions\Inventory\DeductSaleStockAction;
 use App\Actions\Members\ApplyPosMemberBalanceChangesAction;
 use App\Models\Anggota;
-use App\Models\TarikTunai;
 use App\Models\Transaksi;
 use App\Models\TransaksiDetail;
 use Carbon\Carbon;
@@ -18,11 +18,13 @@ class ProcessPosCheckoutAction
     public function __construct(
         protected ?DeductSaleStockAction $deductSaleStockAction = null,
         protected ?ApplyPosMemberBalanceChangesAction $applyPosMemberBalanceChangesAction = null,
-        protected ?RecordPosShuDistributionAction $recordPosShuDistributionAction = null
+        protected ?RecordPosShuDistributionAction $recordPosShuDistributionAction = null,
+        protected ?RecordPosIntegratedTarikTunaiAction $recordPosIntegratedTarikTunaiAction = null
     ) {
         $this->deductSaleStockAction = $deductSaleStockAction ?? app(DeductSaleStockAction::class);
         $this->applyPosMemberBalanceChangesAction = $applyPosMemberBalanceChangesAction ?? app(ApplyPosMemberBalanceChangesAction::class);
         $this->recordPosShuDistributionAction = $recordPosShuDistributionAction ?? app(RecordPosShuDistributionAction::class);
+        $this->recordPosIntegratedTarikTunaiAction = $recordPosIntegratedTarikTunaiAction ?? app(RecordPosIntegratedTarikTunaiAction::class);
     }
 
     /**
@@ -102,6 +104,12 @@ class ProcessPosCheckoutAction
                     throw new Exception('Nominal tarik tunai (Rp '.number_format($nominalTarik, 0, ',', '.').') melebihi batas kuota proporsional Rp '.number_format($maxPlafon, 0, ',', '.').' (Maks. 2x belanja saat ini, Plafon Rp 100.000).');
                 }
 
+                // Purchase coverage check (Mandatory Invariant: nominal_tarikan >= total_belanja)
+                if ($nominalTarik < $totalHarga) {
+                    $kurang = $totalHarga - $nominalTarik;
+                    throw new Exception('Nominal penarikan tunai (Rp '.number_format($nominalTarik, 0, ',', '.').') tidak mencukupi untuk menutup total belanja (Rp '.number_format($totalHarga, 0, ',', '.').'). Kurang Rp '.number_format($kurang, 0, ',', '.').'.');
+                }
+
                 $sumberTarik = ($data['tarik_tunai_sumber'] ?? null) ?: 'shu';
                 $available = ($sumberTarik === 'shu' ? (float) $anggota->shu : (float) $anggota->saldo);
                 if ($nominalTarik > $available) {
@@ -121,22 +129,18 @@ class ProcessPosCheckoutAction
                 // Deduct total nominal from member balance via Members Action
                 $this->applyPosMemberBalanceChangesAction->deductTarikTunai($anggota, $nominalTarik, $sumberTarik);
 
-                // Net cash handover calculation
-                $uangBersihDiserahkan = max(0, $nominalTarik - $totalHarga);
+                // Net cash handover calculation (invariant ensures nominalTarik >= totalHarga)
+                $uangBersihDiserahkan = $nominalTarik - $totalHarga;
 
-                $kodePenarikan = 'TRK-'.date('ymd').'-'.rand(1000, 9999);
-                $tarik = TarikTunai::create([
-                    'kode_penarikan' => $kodePenarikan,
-                    'kasir_id' => $kasirId,
-                    'anggota_id' => $anggota->anggota_id,
-                    'nominal' => $nominalTarik,
-                    'status' => 'completed',
-                    'sumber_dana' => $sumberTarik,
-                    'persetujuan_shu' => true,
-                    'approved_at' => Carbon::now(),
-                    'keterangan' => 'Tarik Tunai saat Belanja (Potong Belanja Rp '.number_format($totalHarga, 0, ',', '.').', Kas Diserahkan Rp '.number_format($uangBersihDiserahkan, 0, ',', '.').')',
-                    'created_at' => Carbon::now(),
-                ]);
+                // Persist TarikTunai ticket via Cash Management Action
+                $tarik = $this->recordPosIntegratedTarikTunaiAction->execute(
+                    (int) $anggota->anggota_id,
+                    $kasirId,
+                    $nominalTarik,
+                    $totalHarga,
+                    $uangBersihDiserahkan,
+                    $sumberTarik
+                );
 
                 $tarikTunaiData = [
                     'tarik_id' => $tarik->tarik_id,
@@ -164,8 +168,7 @@ class ProcessPosCheckoutAction
             ]);
 
             if ($tarikTunaiData && isset($tarik)) {
-                $tarik->transaksi_id = $transaksi->transaksi_id;
-                $tarik->save();
+                $this->recordPosIntegratedTarikTunaiAction->linkTransaction($tarik, $transaksi->transaksi_id);
             }
 
             // 8. Persist Transaksi Details
