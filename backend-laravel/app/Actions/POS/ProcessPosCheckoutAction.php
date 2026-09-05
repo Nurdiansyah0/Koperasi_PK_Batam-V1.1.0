@@ -3,6 +3,7 @@
 namespace App\Actions\POS;
 
 use App\Actions\Inventory\DeductSaleStockAction;
+use App\Actions\Members\ApplyPosMemberBalanceChangesAction;
 use App\Models\Anggota;
 use App\Models\TarikTunai;
 use App\Models\Transaksi;
@@ -14,9 +15,11 @@ use Illuminate\Support\Facades\DB;
 class ProcessPosCheckoutAction
 {
     public function __construct(
-        protected ?DeductSaleStockAction $deductSaleStockAction = null
+        protected ?DeductSaleStockAction $deductSaleStockAction = null,
+        protected ?ApplyPosMemberBalanceChangesAction $applyPosMemberBalanceChangesAction = null
     ) {
         $this->deductSaleStockAction = $deductSaleStockAction ?? app(DeductSaleStockAction::class);
+        $this->applyPosMemberBalanceChangesAction = $applyPosMemberBalanceChangesAction ?? app(ApplyPosMemberBalanceChangesAction::class);
     }
 
     /**
@@ -69,38 +72,14 @@ class ProcessPosCheckoutAction
 
             $metodePembayaran = $data['metode_pembayaran'] ?? 'cash';
 
-            // 3. Payment Mode: E-Wallet
-            if ($metodePembayaran === 'ewallet') {
-                if ($anggota->hutang > 0) {
-                    throw new Exception('Gagal: Anggota ini masih memiliki tunggakan hutang. Harap lunasi terlebih dahulu.');
-                }
-                if ($anggota->saldo < $totalHarga) {
-                    throw new Exception('Gagal: Saldo tidak mencukupi. Saldo tersedia: Rp '.number_format($anggota->saldo, 0, ',', '.'));
-                }
-                $anggota->saldo -= $totalHarga;
-                $anggota->save();
-            }
+            // 3. Payment Mode Execution via Members Action
+            $this->applyPosMemberBalanceChangesAction->execute($anggota, $metodePembayaran, $totalHarga);
 
-            // 4. Payment Mode: Hutang
-            if ($metodePembayaran === 'hutang') {
-                $sisa_limit = (float) $anggota->sisa_limit_hutang;
-                if ($totalHarga > $sisa_limit) {
-                    throw new Exception('Gagal: Total belanja Rp '.number_format($totalHarga, 0, ',', '.').' melebihi sisa limit hutang Rp '.number_format($sisa_limit, 0, ',', '.'));
-                }
-                $anggota->hutang += $totalHarga;
-                $anggota->save();
-            }
-
-            // 5. Integrated Tarik Tunai during checkout
+            // 4. Integrated Tarik Tunai during checkout
             $tarikTunaiData = null;
             if (! empty($data['sertakan_tarik_tunai']) && (float) ($data['tarik_tunai_nominal'] ?? 0) > 0) {
                 if (! $anggota_id) {
                     throw new Exception('Tarik tunai saat belanja wajib memilih data anggota.');
-                }
-
-                $anggota = Anggota::lockForUpdate()->find($anggota_id);
-                if (! $anggota) {
-                    throw new Exception('Anggota tidak ditemukan');
                 }
 
                 // Debt check
@@ -136,13 +115,8 @@ class ProcessPosCheckoutAction
                     $anggota->persetujuan_shu_version = 'v1.0';
                 }
 
-                // Deduct total nominal from member balance
-                if ($sumberTarik === 'shu') {
-                    $anggota->shu -= $nominalTarik;
-                } else {
-                    $anggota->saldo -= $nominalTarik;
-                }
-                $anggota->save();
+                // Deduct total nominal from member balance via Members Action
+                $this->applyPosMemberBalanceChangesAction->deductTarikTunai($anggota, $nominalTarik, $sumberTarik);
 
                 // Net cash handover calculation
                 $uangBersihDiserahkan = max(0, $nominalTarik - $totalHarga);
@@ -205,25 +179,21 @@ class ProcessPosCheckoutAction
 
             // 9. Calculate and Distribute SHU (60% Anggota, 10% & 30% Koperasi)
             if ($anggota_id && $totalKeuntungan > 0) {
-                $anggota = Anggota::find($anggota_id);
-                if ($anggota) {
-                    $shu60 = $totalKeuntungan * 0.60;
-                    $shu10 = $totalKeuntungan * 0.10;
-                    $shu30 = $totalKeuntungan * 0.30;
+                $shu60 = $totalKeuntungan * 0.60;
+                $shu10 = $totalKeuntungan * 0.10;
+                $shu30 = $totalKeuntungan * 0.30;
 
-                    $anggota->shu += $shu60;
-                    $anggota->save();
+                $this->applyPosMemberBalanceChangesAction->creditShu($anggota, $shu60);
 
-                    // Record to shu_distribusi (Legacy Parity)
-                    DB::table('shu_distribusi')->insert([
-                        'anggota_id' => $anggota_id,
-                        'tahun' => date('Y'),
-                        'shu_60_percent' => $shu60,
-                        'shu_10_percent' => $shu10,
-                        'shu_30_percent' => $shu30,
-                        'created_at' => now(),
-                    ]);
-                }
+                // Record to shu_distribusi (Legacy Parity)
+                DB::table('shu_distribusi')->insert([
+                    'anggota_id' => $anggota_id,
+                    'tahun' => date('Y'),
+                    'shu_60_percent' => $shu60,
+                    'shu_10_percent' => $shu10,
+                    'shu_30_percent' => $shu30,
+                    'created_at' => now(),
+                ]);
             }
 
             DB::commit();
