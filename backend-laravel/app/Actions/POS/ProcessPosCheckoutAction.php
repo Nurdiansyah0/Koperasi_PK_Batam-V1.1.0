@@ -30,9 +30,22 @@ class ProcessPosCheckoutAction
             $totalKeuntungan = 0;
             $transaksiItems = [];
 
-            // 1. Process inventory items in client payload order (Legacy behavior preserved)
+            // 1. Canonical Lock Hierarchy Step 1: Deterministic ascending Barang pre-locking
+            $uniqueBarangIds = array_values(array_unique(array_column($data['items'], 'barang_id')));
+            sort($uniqueBarangIds);
+
+            $lockedBarangs = [];
+            foreach ($uniqueBarangIds as $bId) {
+                $b = Barang::where('barang_id', $bId)->lockForUpdate()->first();
+                if (! $b) {
+                    throw new Exception('Stok etalase tidak mencukupi untuk barang ID: '.$bId);
+                }
+                $lockedBarangs[$bId] = $b;
+            }
+
+            // Process inventory items in original client payload order (Preserves legacy calculations & line ordering)
             foreach ($data['items'] as $item) {
-                $barang = Barang::where('barang_id', $item['barang_id'])->lockForUpdate()->first();
+                $barang = $lockedBarangs[$item['barang_id']] ?? null;
                 if (! $barang || $barang->stok_toko < $item['jumlah']) {
                     throw new Exception('Stok etalase tidak mencukupi untuk barang ID: '.$item['barang_id']);
                 }
@@ -56,7 +69,7 @@ class ProcessPosCheckoutAction
                 $barang->save();
             }
 
-            // 2. Validate and lock Member
+            // 2. Canonical Lock Hierarchy Step 2: Validate and lock Member
             $anggota_id = ($data['anggota_id'] ?? null) ?: null;
             if (! $anggota_id) {
                 throw new Exception('Transaksi belanja wajib memilih Anggota Koperasi (semua transaksi khusus anggota).');

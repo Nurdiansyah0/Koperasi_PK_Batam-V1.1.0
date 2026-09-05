@@ -280,14 +280,25 @@ class AnggotaController extends Controller
 
         DB::beginTransaction();
         try {
-            // LOCK THE ANGGOTA ROW TO PREVENT DOUBLE CHECKOUT RACE CONDITIONS
-            $anggota = Anggota::where('anggota_id', $anggotaId)->lockForUpdate()->first();
+            // 1. Canonical Lock Hierarchy Step 1: Deterministic ascending Barang pre-locking
+            $uniqueBarangIds = array_values(array_unique(array_column($items, 'barang_id')));
+            sort($uniqueBarangIds);
+
+            $lockedBarangs = [];
+            foreach ($uniqueBarangIds as $bId) {
+                $b = Barang::where('barang_id', $bId)->lockForUpdate()->first();
+                if (! $b) {
+                    throw new \Exception('Stok etalase tidak mencukupi untuk barang ID: '.$bId);
+                }
+                $lockedBarangs[$bId] = $b;
+            }
+
             $totalHarga = 0;
             $totalKeuntungan = 0;
             $transaksiItems = [];
 
             foreach ($items as $item) {
-                $barang = Barang::where('barang_id', $item['barang_id'])->lockForUpdate()->first();
+                $barang = $lockedBarangs[$item['barang_id']] ?? null;
 
                 if (! $barang || $barang->stok_toko < $item['jumlah']) {
                     throw new \Exception('Stok etalase tidak mencukupi untuk barang ID: '.$item['barang_id']);
@@ -309,6 +320,12 @@ class AnggotaController extends Controller
 
                 $barang->stok_toko -= $item['jumlah'];
                 $barang->save();
+            }
+
+            // 2. Canonical Lock Hierarchy Step 2: Lock the Anggota row
+            $anggota = Anggota::where('anggota_id', $anggotaId)->lockForUpdate()->first();
+            if (! $anggota) {
+                throw new \Exception('Data Anggota tidak ditemukan.');
             }
 
             $tarikTunaiData = null;
