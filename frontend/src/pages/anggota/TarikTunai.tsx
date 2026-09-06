@@ -85,7 +85,7 @@ export const TarikTunaiAnggota: React.FC = () => {
       return
     }
     if (Number(nominal) > maxAllowedWithdrawal) {
-      toast.error(`Nominal melebihi kuota proporsional maksimal (${formatRupiah(maxAllowedWithdrawal)})`)
+      toast.error(`Nominal melebihi batas maksimal penarikan (${formatRupiah(maxAllowedWithdrawal)})`)
       return
     }
     if (!hasMasterConsent && !persetujuanShu) {
@@ -131,7 +131,7 @@ export const TarikTunaiAnggota: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white p-6 rounded-3xl shadow-lg relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
@@ -141,7 +141,7 @@ export const TarikTunaiAnggota: React.FC = () => {
               <div className="p-2 bg-white/20 backdrop-blur-md rounded-xl">
                 <Banknote className="w-5 h-5 text-emerald-100" />
               </div>
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-200">Layanan Anggota</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-200">Fasilitas Keanggotaan</span>
             </div>
             <h1 className="text-2xl font-black tracking-tight text-white">Tarik Tunai & Saldo SHU</h1>
             <p className="text-emerald-100 text-xs sm:text-sm mt-1 max-w-xl">
@@ -151,7 +151,7 @@ export const TarikTunaiAnggota: React.FC = () => {
 
           <div className="flex items-center gap-2 bg-black/20 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 text-xs shrink-0">
             <ShoppingBag className="w-4 h-4 text-emerald-300 shrink-0" />
-            <span>Syarat Belanja: <strong className="text-emerald-200">Min. Rp 25.000</strong></span>
+            <span>Syarat Belanja: <strong className="text-emerald-200">&gt; Rp 25.000</strong></span>
           </div>
         </div>
       </div>
@@ -212,17 +212,17 @@ export const TarikTunaiAnggota: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* 1. Status Hutang */}
             <div className={`p-4 rounded-2xl border ${
-              !eligibility?.has_debt ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200' : 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-200'
+              !eligibility?.has_debt ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200' : 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200'
             }`}>
               <div className="flex items-center justify-between text-xs mb-1">
                 <span className="font-bold text-slate-600 dark:text-slate-400">1. Status Hutang</span>
-                {!eligibility?.has_debt ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertTriangle className="w-4 h-4 text-rose-600" />}
+                {!eligibility?.has_debt ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertTriangle className="w-4 h-4 text-amber-600" />}
               </div>
-              <div className={`text-base font-black ${!eligibility?.has_debt ? 'text-emerald-600' : 'text-rose-600'}`}>
+              <div className={`text-base font-black ${!eligibility?.has_debt ? 'text-emerald-600' : 'text-amber-600'}`}>
                 {!eligibility?.has_debt ? 'Bebas Hutang (Rp 0)' : `Ada Hutang ${formatRupiah(eligibility?.hutang || 0)}`}
               </div>
               <div className="text-[10px] text-slate-400 mt-0.5">
-                {!eligibility?.has_debt ? 'Lolos verifikasi pinjaman' : 'Wajib lunas sebelum tarik kas'}
+                {!eligibility?.has_debt ? 'SHU utuh tanpa potongan hutang' : 'Hutang diperhitungkan mengurangi hak SHU'}
               </div>
             </div>
 
@@ -238,21 +238,21 @@ export const TarikTunaiAnggota: React.FC = () => {
                 {formatRupiah(eligibility?.total_belanja_hari_ini || 0)}
               </div>
               <div className="text-[10px] text-slate-400 mt-0.5">
-                {eligibility?.has_qualifying_purchase ? 'Syarat Min. Rp 25.000 Terpenuhi' : 'Wajib belanja min. Rp 25.000'}
+                {eligibility?.has_qualifying_purchase ? 'Syarat > Rp 25.000 Terpenuhi' : 'Wajib belanja > Rp 25.000'}
               </div>
             </div>
 
-            {/* 3. Kuota Proporsional Maksimal */}
+            {/* 3. Kuota Maksimal */}
             <div className="p-4 rounded-2xl border bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-bold text-slate-600 dark:text-slate-400">3. Kuota Maksimal Harian</span>
+                <span className="font-bold text-slate-600 dark:text-slate-400">3. Kuota Maksimal Tarik SHU</span>
                 <Coins className="w-4 h-4 text-blue-600" />
               </div>
               <div className="text-base font-black text-blue-600">
                 {formatRupiah(maxQuota)}
               </div>
               <div className="text-[10px] text-slate-400 mt-0.5">
-                Maks. 2x Belanja (Plafon Rp 100.000)
+                50% dari (SHU - Hutang), Maks. Rp 100.000
               </div>
             </div>
           </div>
@@ -263,8 +263,8 @@ export const TarikTunaiAnggota: React.FC = () => {
                 <AlertTriangle className="w-4 h-4" /> Alasan Pengajuan Belum Dapat Diproses:
               </div>
               <ul className="list-disc list-inside text-[11px] space-y-0.5 ml-1">
-                {eligibility.ineligible_reasons.map((r: string, idx: number) => (
-                  <li key={idx}>{r}</li>
+                {eligibility.ineligible_reasons.map((reason: string, idx: number) => (
+                  <li key={idx}>{reason}</li>
                 ))}
               </ul>
             </div>
@@ -273,7 +273,7 @@ export const TarikTunaiAnggota: React.FC = () => {
           {!isEligible && (
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
               <div className="text-xs text-slate-700 dark:text-zinc-300">
-                <span className="font-bold">💡 Ingin Tarik Tunai Sekarang?</span> Belanja produk toko koperasi minimal Rp 25.000 atau langsung checkout belanjaan disertai tarik tunai.
+                <span className="font-bold">💡 Ingin Tarik Tunai Sekarang?</span> Belanja produk toko koperasi lebih dari Rp 25.000 atau langsung checkout belanjaan disertai tarik tunai.
               </div>
               <Button
                 type="button"

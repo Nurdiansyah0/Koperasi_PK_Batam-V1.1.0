@@ -474,6 +474,14 @@ export interface KelayakanTarikTunai {
   nama_lengkap: string
   saldo_ewallet: number
   saldo_shu: number
+  hutang?: number
+  eligible_shu?: number
+  raw_withdrawal_limit?: number
+  final_withdrawal_limit?: number
+  max_kuota_tarik_tunai?: number
+  max_shu_withdrawal?: number
+  is_eligible?: boolean
+  ineligible_reasons?: string[]
   transaksi_valid_hari_ini: {
     transaksi_id: number
     total_harga: number

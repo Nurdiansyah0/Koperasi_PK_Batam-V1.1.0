@@ -29,7 +29,8 @@ import {
   CheckCircle2,
   ShieldAlert,
   X,
-  Copy
+  Copy,
+  Info
 } from 'lucide-react'
 
 interface CartItem extends Barang {
@@ -194,16 +195,34 @@ export function BelanjaPage() {
 
   const total = cart.reduce((sum, item) => sum + ((item.harga ?? item.harga_jual ?? 0) * item.qty), 0)
 
+  const tarikTunaiEligibility = useMemo(() => {
+    if (!memberData) {
+      return { eligibleShu: 0, maxLimit: 0, maxShuLimit: 0 }
+    }
+    const shu = memberData.saldo_shu ?? 0
+    const hutang = memberData.hutang ?? 0
+    const eligibleShu = Math.max(0, shu - hutang)
+    const rawLimit = 0.5 * eligibleShu
+    const flooredShuLimit = Math.floor(rawLimit / 1000) * 1000
+    const maxShuLimit = Math.min(100000, flooredShuLimit)
+
+    const maxLimit = tarikTunaiSumber === 'shu'
+      ? maxShuLimit
+      : Math.min(100000, memberData.saldo_ewallet ?? 0)
+
+    return {
+      eligibleShu,
+      maxLimit,
+      maxShuLimit,
+    }
+  }, [memberData, tarikTunaiSumber])
+
   const handleCheckout = async () => {
     if (cart.length === 0) { toast.error('Keranjang belanja kosong'); return }
 
     if (sertakanTarikTunai) {
-      if ((memberData?.hutang ?? 0) > 0) {
-        toast.error(`Pengajuan gagal: Anda masih memiliki hutang berjalan (${formatRupiah(memberData?.hutang ?? 0)}). Wajib melunasi hutang terlebih dahulu.`)
-        return
-      }
-      if (total < 25000) {
-        toast.error(`Syarat tarik tunai saat belanja: Total pesanan belanja minimal Rp 25.000 (Pesanan saat ini: ${formatRupiah(total)})`)
+      if (total <= 25000) {
+        toast.error(`Syarat tarik tunai saat belanja: Total pesanan belanja harus lebih dari Rp 25.000 (Pesanan saat ini: ${formatRupiah(total)})`)
         return
       }
       const nominalTarik = Number(tarikTunaiNominal) || 0
@@ -211,15 +230,31 @@ export function BelanjaPage() {
         toast.error(`Nominal penarikan minimal harus sebesar nilai belanja (${formatRupiah(total)}) agar belanja dapat dipotong otomatis!`)
         return
       }
-      const maxPlafon = Math.min(100000, total * 2)
-      if (nominalTarik > maxPlafon) {
-        toast.error(`Nominal tarik tunai melebihi batas kuota proporsional (${formatRupiah(maxPlafon)})`)
-        return
-      }
-      const available = tarikTunaiSumber === 'shu' ? (memberData?.saldo_shu ?? 0) : (memberData?.saldo_ewallet ?? 0)
-      if (nominalTarik > available) {
-        toast.error(`Saldo ${tarikTunaiSumber.toUpperCase()} Anda tidak mencukupi (${formatRupiah(available)})`)
-        return
+      if (tarikTunaiSumber === 'shu') {
+        const eligibleShu = Math.max(0, (memberData?.saldo_shu ?? 0) - (memberData?.hutang ?? 0))
+        const maxPlafon = Math.min(100000, Math.floor((0.5 * eligibleShu) / 1000) * 1000)
+        if (maxPlafon <= 0) {
+          toast.error('Kuota penarikan SHU tidak mencukupi (SHU bersih setelah dipotong hutang tidak mencukupi).')
+          return
+        }
+        if (nominalTarik > maxPlafon) {
+          toast.error(`Nominal tarik tunai melebihi batas maksimal penarikan SHU (${formatRupiah(maxPlafon)})`)
+          return
+        }
+        if (nominalTarik > (memberData?.saldo_shu ?? 0)) {
+          toast.error(`Saldo SHU Anda tidak mencukupi (${formatRupiah(memberData?.saldo_shu ?? 0)})`)
+          return
+        }
+      } else {
+        const maxPlafon = 100000
+        if (nominalTarik > maxPlafon) {
+          toast.error(`Nominal tarik tunai melebihi batas maksimal (${formatRupiah(maxPlafon)})`)
+          return
+        }
+        if (nominalTarik > (memberData?.saldo_ewallet ?? 0)) {
+          toast.error(`Saldo E-Wallet Anda tidak mencukupi (${formatRupiah(memberData?.saldo_ewallet ?? 0)})`)
+          return
+        }
       }
     }
 
@@ -530,7 +565,7 @@ export function BelanjaPage() {
                     onChange={(e) => {
                       setSertakanTarikTunai(e.target.checked)
                       if (e.target.checked && !tarikTunaiNominal) {
-                        setTarikTunaiNominal(Math.min(100000, Math.max(50000, total * 2)))
+                        setTarikTunaiNominal(tarikTunaiEligibility.maxLimit >= 50000 ? 50000 : (tarikTunaiEligibility.maxLimit > 0 ? tarikTunaiEligibility.maxLimit : ''))
                       }
                     }}
                     className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
@@ -550,18 +585,26 @@ export function BelanjaPage() {
               {sertakanTarikTunai && (
                 <div className="mt-3 space-y-3 pt-2.5 border-t border-emerald-200/50 dark:border-emerald-800/50">
                   {/* Validations */}
-                  {total < 25000 ? (
+                  {total <= 25000 ? (
                     <div className="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 rounded-xl text-[11px] text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
                       <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <span>Minimal belanja <strong>Rp 25.000</strong> (Belanja saat ini: {formatRupiah(total)})</span>
+                      <span>Syarat penarikan tunai: Total pesanan belanja harus <strong>lebih dari Rp 25.000</strong> (Pesanan saat ini: {formatRupiah(total)})</span>
                     </div>
-                  ) : (memberData?.hutang ?? 0) > 0 ? (
+                  ) : tarikTunaiSumber === 'shu' && tarikTunaiEligibility.maxShuLimit <= 0 ? (
                     <div className="p-2 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 rounded-xl text-[11px] text-rose-800 dark:text-rose-300 flex items-center gap-1.5">
                       <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                      <span>Anda memiliki hutang <strong>{formatRupiah(memberData?.hutang ?? 0)}</strong>. Wajib lunas dahulu.</span>
+                      <span>Kuota SHU tidak mencukupi (SHU: {formatRupiah(memberData?.saldo_shu ?? 0)}, Hutang: {formatRupiah(memberData?.hutang ?? 0)}). SHU bersih setelah potong hutang harus mencukupi.</span>
                     </div>
                   ) : (
                     <>
+                      {/* Info pemotongan hutang jika ada */}
+                      {tarikTunaiSumber === 'shu' && (memberData?.hutang ?? 0) > 0 && (
+                        <div className="p-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 rounded-xl text-[11px] text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+                          <Info className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                          <span>SHU Bersih: <strong>{formatRupiah(tarikTunaiEligibility.eligibleShu)}</strong> (setelah dikurangi hutang {formatRupiah(memberData?.hutang ?? 0)})</span>
+                        </div>
+                      )}
+
                       {/* Sumber Dana & Nominal */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-xs">
@@ -594,13 +637,14 @@ export function BelanjaPage() {
                           <div className="flex justify-between items-center text-xs">
                             <span className="font-bold text-slate-700 dark:text-zinc-300">Nominal Penarikan:</span>
                             <span className="text-[10px] text-slate-400">
-                              Plafon: {formatRupiah(Math.min(100000, total * 2))}
+                              Plafon: {formatRupiah(tarikTunaiEligibility.maxLimit)} (Kelipatan Rp 1.000)
                             </span>
                           </div>
                           <input
                             type="number"
                             min={total}
-                            max={Math.min(100000, total * 2, (tarikTunaiSumber === 'shu' ? (memberData?.saldo_shu ?? 0) : (memberData?.saldo_ewallet ?? 0)))}
+                            max={tarikTunaiEligibility.maxLimit}
+                            step={1000}
                             placeholder="0"
                             value={tarikTunaiNominal}
                             onChange={(e) => setTarikTunaiNominal(e.target.value === '' ? '' : Number(e.target.value))}
@@ -613,7 +657,7 @@ export function BelanjaPage() {
                               <button
                                 key={amt}
                                 type="button"
-                                disabled={amt > Math.min(100000, total * 2, (tarikTunaiSumber === 'shu' ? (memberData?.saldo_shu ?? 0) : (memberData?.saldo_ewallet ?? 0)))}
+                                disabled={amt > tarikTunaiEligibility.maxLimit}
                                 onClick={() => setTarikTunaiNominal(amt)}
                                 className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-white dark:bg-zinc-800 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 disabled:opacity-40"
                               >
@@ -693,16 +737,22 @@ export function BelanjaPage() {
               disabled={
                 cart.length === 0 ||
                 (sertakanTarikTunai && (
-                  (memberData?.hutang ?? 0) > 0 ||
-                  total < 25000 ||
+                  total <= 25000 ||
                   !tarikTunaiNominal ||
                   Number(tarikTunaiNominal) < total ||
-                  Number(tarikTunaiNominal) > Math.min(100000, total * 2, (tarikTunaiSumber === 'shu' ? (memberData?.saldo_shu ?? 0) : (memberData?.saldo_ewallet ?? 0)))
+                  Number(tarikTunaiNominal) > tarikTunaiEligibility.maxLimit ||
+                  (tarikTunaiSumber === 'shu' && tarikTunaiEligibility.maxShuLimit <= 0)
                 ))
               }
             >
               {sertakanTarikTunai
-                ? `Pesan & Ambil Kas ${formatRupiah(Math.max(0, (Number(tarikTunaiNominal) || 0) - total))}`
+                ? (total <= 25000
+                    ? 'Belanja Min. > Rp 25.000 Untuk Tarik Tunai'
+                    : Number(tarikTunaiNominal) < total
+                    ? `Nominal Tarik Min. ${formatRupiah(total)}`
+                    : Number(tarikTunaiNominal) > tarikTunaiEligibility.maxLimit
+                    ? 'Nominal Melebihi Batas'
+                    : `Pesan & Ambil Kas ${formatRupiah(Math.max(0, (Number(tarikTunaiNominal) || 0) - total))}`)
                 : 'Proses Pembayaran'}
             </Button>
           </div>

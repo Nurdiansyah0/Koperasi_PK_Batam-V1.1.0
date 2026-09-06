@@ -138,8 +138,11 @@ export const TarikTunai: React.FC = () => {
 
   const quickAmounts = [25000, 50000, 75000, 100000]
 
+  const maxQuota = eligibility?.max_kuota_tarik_tunai ?? 100000
   const maxAvailable = selectedAnggota 
-    ? (sumberDana === 'shu' ? Number(selectedAnggota.shu || 0) : Number(selectedAnggota.saldo || 0))
+    ? (sumberDana === 'shu' 
+        ? Math.min(Number(selectedAnggota.shu || 0), maxQuota) 
+        : Math.min(Number(selectedAnggota.saldo || 0), 100000))
     : 0
 
   const handleProcessWithdrawal = async (e: React.FormEvent) => {
@@ -153,11 +156,11 @@ export const TarikTunai: React.FC = () => {
       return
     }
     if (Number(nominal) > maxAvailable) {
-      toast.error(`Nominal melebihi saldo ${sumberDana.toUpperCase()} yang tersedia (${formatRupiah(maxAvailable)})`)
+      toast.error(`Nominal melebihi batas maksimal penarikan (${formatRupiah(maxAvailable)})`)
       return
     }
     if (!eligibility?.has_qualifying_purchase) {
-      toast.error('Penarikan tunai wajib disertai transaksi belanja toko minimal Rp 25.000 hari ini.')
+      toast.error('Penarikan tunai wajib disertai transaksi belanja toko lebih dari Rp 25.000 hari ini.')
       return
     }
     if (!persetujuanShu) {
@@ -178,15 +181,17 @@ export const TarikTunai: React.FC = () => {
 
       if (res.success) {
         toast.success(res.message || 'Tarik tunai berhasil!')
-        setReceiptData(res.data)
-        fetchAnggota()
-        fetchHistory()
-        setSelectedAnggota(null)
-        setEligibility(null)
+        if (res.data) {
+          setReceiptData(res.data)
+        }
         setNominal('')
         setPersetujuanShu(false)
+        setSelectedAnggota(null)
+        setEligibility(null)
+        fetchAntrean()
+        fetchHistory()
       } else {
-        toast.error(res.message || 'Gagal memproses penarikan tunai')
+        toast.error(res.message || 'Gagal memproses tarik tunai')
       }
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Terjadi kesalahan saat memproses penarikan')
@@ -196,7 +201,7 @@ export const TarikTunai: React.FC = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white p-6 rounded-3xl shadow-lg relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
@@ -210,13 +215,13 @@ export const TarikTunai: React.FC = () => {
             </div>
             <h1 className="text-2xl font-black tracking-tight text-white">Pencairan Tarik Tunai & SHU</h1>
             <p className="text-emerald-100 text-xs sm:text-sm mt-1 max-w-xl">
-              Proses pencairan dana anggota yang telah terverifikasi otomatis oleh sistem (Bebas Hutang & Belanja Min. Rp 25.000).
+              Proses pencairan dana anggota yang telah terverifikasi otomatis oleh sistem (Belanja &gt; Rp 25.000 &amp; SHU mencukupi).
             </p>
           </div>
 
           <div className="flex items-center gap-2 bg-black/20 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 text-xs shrink-0">
             <ShoppingBag className="w-4 h-4 text-emerald-300 shrink-0" />
-            <span>Plafon Tarik: <strong className="text-emerald-200">Maks. 2x Belanja</strong></span>
+            <span>Plafon Tarik: <strong className="text-emerald-200">50% (SHU - Hutang), Maks. 100rb</strong></span>
           </div>
         </div>
       </div>
@@ -478,7 +483,7 @@ export const TarikTunai: React.FC = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-bold text-xs text-slate-900 dark:text-white">
-                                Syarat Kontribusi Belanja Koperasi (Min. Rp 25.000)
+                                Syarat Kontribusi Belanja Koperasi (&gt; Rp 25.000)
                               </span>
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                                 eligibility?.has_qualifying_purchase ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200'
@@ -496,7 +501,7 @@ export const TarikTunai: React.FC = () => {
                               </div>
                             ) : (
                               <div className="text-xs text-rose-700 dark:text-rose-300 mt-1">
-                                Anggota belum memiliki transaksi belanja produk toko minimal <strong>Rp 25.000</strong> hari ini.
+                                Anggota belum memiliki transaksi belanja produk toko lebih dari <strong>Rp 25.000</strong> hari ini.
                               </div>
                             )}
                           </div>

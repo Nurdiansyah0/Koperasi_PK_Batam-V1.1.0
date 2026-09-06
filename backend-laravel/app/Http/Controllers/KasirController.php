@@ -2,6 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\CashManagement\ApproveSerahTerimaAction;
+use App\Actions\CashManagement\CalculateSerahTerimaDraftAction;
+use App\Actions\CashManagement\CreateSerahTerimaAction;
+use App\Actions\CashManagement\ProsesTarikTunaiAction;
+use App\Actions\CashManagement\SubmitSetoranKasirAction;
+use App\Actions\CashManagement\TarikTunaiAction;
+use App\Actions\Kasir\GetCashierDashboardQuery;
+use App\Actions\Members\CalculateShuWithdrawalEligibilityAction;
 use App\Actions\POS\ProcessPosCheckoutAction;
 use App\Models\Anggota;
 use App\Models\Barang;
@@ -11,7 +19,6 @@ use App\Models\SerahTerimaKasir;
 use App\Models\SetoranKasir;
 use App\Models\TarikTunai;
 use App\Models\Transaksi;
-use App\Models\TransaksiDetail;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -29,7 +36,7 @@ class KasirController extends Controller
         return $request->user()->user_id;
     }
 
-        public function getDashboard(Request $request, \App\Actions\Kasir\GetCashierDashboardQuery $query)
+    public function getDashboard(Request $request, GetCashierDashboardQuery $query)
     {
         $kasirId = $this->checkKasir($request);
         $data = $query->execute($kasirId);
@@ -463,7 +470,7 @@ class KasirController extends Controller
         return response()->json(['success' => true, 'data' => $paginator]);
     }
 
-    public function setorAdmin(Request $request, \App\Actions\CashManagement\SubmitSetoranKasirAction $action)
+    public function setorAdmin(Request $request, SubmitSetoranKasirAction $action)
     {
         $kasirId = $this->checkKasir($request);
         $request->validate(['nominal' => 'required|numeric|min:1']);
@@ -491,13 +498,17 @@ class KasirController extends Controller
             return response()->json(['success' => false, 'message' => 'Anggota tidak ditemukan'], 404);
         }
 
-        // Check recent completed transactions today with min Rp 25.000
+        // Check recent completed transactions today with strictly > Rp 25.000
         $todayTransactions = Transaksi::where('anggota_id', $anggota_id)
             ->where('status', 'selesai')
             ->where('created_at', '>=', Carbon::today())
-            ->where('total_harga', '>=', 25000)
+            ->where('total_harga', '>', 25000)
             ->orderBy('created_at', 'desc')
             ->get(['transaksi_id', 'total_harga', 'metode_pembayaran', 'created_at']);
+
+        $hasQualifyingPurchase = $todayTransactions->isNotEmpty();
+        $qualifyingBelanja = $hasQualifyingPurchase ? (float) $todayTransactions->max('total_harga') : 0.0;
+        $eligibility = app(CalculateShuWithdrawalEligibilityAction::class)->execute($anggota, $qualifyingBelanja);
 
         return response()->json([
             'success' => true,
@@ -506,9 +517,18 @@ class KasirController extends Controller
                 'nama_lengkap' => $anggota->nama_lengkap,
                 'saldo_ewallet' => (float) $anggota->saldo,
                 'saldo_shu' => (float) $anggota->shu,
+                'hutang' => (float) $anggota->hutang,
                 'transaksi_valid_hari_ini' => $todayTransactions,
-                'has_qualifying_purchase' => $todayTransactions->isNotEmpty(),
+                'has_qualifying_purchase' => $hasQualifyingPurchase,
                 'min_belanja_required' => 25000,
+                'eligible_shu' => (float) $eligibility['eligible_shu'],
+                'raw_withdrawal_limit' => (float) $eligibility['raw_withdrawal_limit'],
+                'pre_round_limit' => (float) $eligibility['pre_round_limit'],
+                'final_withdrawal_limit' => (float) $eligibility['final_withdrawal_limit'],
+                'max_kuota_tarik_tunai' => (float) $eligibility['final_withdrawal_limit'],
+                'max_shu_withdrawal' => (float) $eligibility['final_withdrawal_limit'],
+                'is_eligible' => $eligibility['is_eligible'],
+                'ineligible_reasons' => $eligibility['ineligible_reasons'],
             ],
         ]);
     }
@@ -539,7 +559,7 @@ class KasirController extends Controller
         return response()->json(['success' => true, 'data' => $pending]);
     }
 
-    public function prosesTarikTunai(Request $request, \App\Actions\CashManagement\ProsesTarikTunaiAction $action)
+    public function prosesTarikTunai(Request $request, ProsesTarikTunaiAction $action)
     {
         $kasirId = $this->checkKasir($request);
         $validated = $request->validate([
@@ -561,16 +581,17 @@ class KasirController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $result['message'],
-                'data' => $result['data']
+                'data' => $result['data'],
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 400);
         }
     }
-    public function tarikTunai(Request $request, \App\Actions\CashManagement\TarikTunaiAction $action)
+
+    public function tarikTunai(Request $request, TarikTunaiAction $action)
     {
         $kasirId = $this->checkKasir($request);
         $validated = $request->validate([
@@ -588,17 +609,19 @@ class KasirController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Tarik tunai sebesar Rp '.number_format($validated['nominal'], 0, ',', '.').' berhasil diproses.',
-                'data' => $result
+                'data' => $result,
             ]);
         } catch (\Exception $e) {
             // Specifically handling 422 for the consent check as in original
             $status = $e->getCode() === 422 ? 422 : 400;
+
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], $status);
         }
     }
+
     public function getRiwayatTarikTunaiKasir(Request $request)
     {
         $kasirId = $this->checkKasir($request);
@@ -761,10 +784,10 @@ class KasirController extends Controller
         return $decoded;
     }
 
-    public function getSerahTerimaDraft(Request $request, \App\Actions\CashManagement\CalculateSerahTerimaDraftAction $action)
+    public function getSerahTerimaDraft(Request $request, CalculateSerahTerimaDraftAction $action)
     {
         $kasirId = $this->checkKasir($request);
-        
+
         $data = $action->execute($kasirId);
 
         return response()->json([
@@ -772,10 +795,11 @@ class KasirController extends Controller
             'data' => $data,
         ]);
     }
-    public function createSerahTerima(Request $request, \App\Actions\CashManagement\CreateSerahTerimaAction $action)
+
+    public function createSerahTerima(Request $request, CreateSerahTerimaAction $action)
     {
         $kasirId = $this->checkKasir($request);
-        
+
         // We capture all to pass implicit payloads
         $allData = $request->all();
 
@@ -789,15 +813,17 @@ class KasirController extends Controller
             ]);
         } catch (\Exception $e) {
             $status = $e->getCode() == 400 ? 400 : 500;
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], $status);
         }
     }
-    public function approveSerahTerima(Request $request, \App\Actions\CashManagement\ApproveSerahTerimaAction $action)
+
+    public function approveSerahTerima(Request $request, ApproveSerahTerimaAction $action)
     {
         $kasirId = $this->checkKasir($request);
 
         try {
-            $action->execute((int)$request->serah_id, $kasirId);
+            $action->execute((int) $request->serah_id, $kasirId);
 
             return response()->json([
                 'success' => true,
@@ -807,9 +833,11 @@ class KasirController extends Controller
             if ($e->getCode() == 400) {
                 return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
             }
+
             return response()->json(['success' => false, 'message' => 'Gagal menyetujui shift: '.$e->getMessage()], 500);
         }
     }
+
     public function rejectSerahTerima(Request $request)
     {
         $kasirId = $this->checkKasir($request);
@@ -1051,15 +1079,18 @@ class KasirController extends Controller
             'data' => $testEvent,
         ]);
     }
+
     public function storePushSubscription(Request $request)
     {
         $user = $request->user();
-        if (!$user) return response()->json(['success' => false], 401);
-        
+        if (! $user) {
+            return response()->json(['success' => false], 401);
+        }
+
         $request->validate([
             'endpoint' => 'required',
             'keys.auth' => 'required',
-            'keys.p256dh' => 'required'
+            'keys.p256dh' => 'required',
         ]);
 
         $user->updatePushSubscription(
@@ -1074,8 +1105,10 @@ class KasirController extends Controller
     public function deletePushSubscription(Request $request)
     {
         $user = $request->user();
-        if (!$user) return response()->json(['success' => false], 401);
-        
+        if (! $user) {
+            return response()->json(['success' => false], 401);
+        }
+
         $request->validate(['endpoint' => 'required']);
         $user->deletePushSubscription($request->endpoint);
 

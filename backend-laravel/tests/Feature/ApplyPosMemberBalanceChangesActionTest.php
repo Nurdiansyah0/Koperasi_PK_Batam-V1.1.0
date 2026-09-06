@@ -219,7 +219,7 @@ class ApplyPosMemberBalanceChangesActionTest extends TestCase
             ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
 
         $response->assertStatus(400);
-        $this->assertStringContainsString('melebihi batas kuota proporsional', $response->json('message'));
+        $this->assertStringContainsString('melebihi batas maksimal penarikan SHU', $response->json('message'));
 
         // Assert that the member saldo was NOT decremented because the entire checkout transaction rolled back
         $this->anggota->refresh();

@@ -2,15 +2,22 @@
 
 namespace App\Actions\CashManagement;
 
+use App\Actions\Members\CalculateShuWithdrawalEligibilityAction;
 use App\Models\Anggota;
 use App\Models\TarikTunai;
 use App\Models\Transaksi;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Support\Facades\DB;
 
 class TarikTunaiAction
 {
+    public function __construct(
+        protected ?CalculateShuWithdrawalEligibilityAction $calculateShuWithdrawalEligibilityAction = null
+    ) {
+        $this->calculateShuWithdrawalEligibilityAction = $calculateShuWithdrawalEligibilityAction ?? app(CalculateShuWithdrawalEligibilityAction::class);
+    }
+
     /**
      * Executes the direct tarik tunai process by kasir.
      */
@@ -34,53 +41,51 @@ class TarikTunaiAction
                 $anggota->save();
             }
 
-            if ((float) $anggota->hutang > 0) {
-                throw new Exception('Penarikan tunai ditolak: Anggota masih memiliki tagihan hutang berjalan sebesar Rp '.number_format($anggota->hutang, 0, ',', '.').'. Wajib melunasi hutang terlebih dahulu.');
-            }
-
             $transaksiId = $data['transaksi_id'] ?? null;
             if ($transaksiId) {
                 $trx = Transaksi::where('transaksi_id', $transaksiId)
                     ->where('anggota_id', $anggota->anggota_id)
                     ->where('status', 'selesai')
                     ->first();
-                if (! $trx || $trx->total_harga < 25000) {
-                    throw new Exception('Transaksi belanja yang ditautkan tidak memenuhi syarat minimal Rp 25.000 (Nilai: Rp '.number_format($trx ? $trx->total_harga : 0, 0, ',', '.').')');
+                if (! $trx || $trx->total_harga <= 25000) {
+                    throw new Exception('Transaksi belanja yang ditautkan tidak memenuhi syarat minimal lebih dari Rp 25.000 (Nilai: Rp '.number_format($trx ? $trx->total_harga : 0, 0, ',', '.').')');
                 }
+                $qualifyingBelanja = (float) $trx->total_harga;
             } else {
                 $validTrx = Transaksi::where('anggota_id', $anggota->anggota_id)
                     ->where('status', 'selesai')
                     ->where('created_at', '>=', Carbon::today())
-                    ->where('total_harga', '>=', 25000)
+                    ->where('total_harga', '>', 25000)
                     ->orderBy('created_at', 'desc')
                     ->first();
 
                 if (! $validTrx) {
-                    throw new Exception('Syarat penarikan tunai belum terpenuhi: Wajib disertai transaksi belanja produk koperasi minimal Rp 25.000 hari ini.');
+                    throw new Exception('Syarat penarikan tunai belum terpenuhi: Wajib disertai transaksi belanja produk koperasi lebih dari Rp 25.000 hari ini.');
                 }
                 $transaksiId = $validTrx->transaksi_id;
+                $qualifyingBelanja = (float) $validTrx->total_harga;
             }
-
-            $totalBelanjaHariIni = (float) Transaksi::where('anggota_id', $anggota->anggota_id)
-                ->where('status', 'selesai')
-                ->where('created_at', '>=', Carbon::today())
-                ->where('total_harga', '>=', 25000)
-                ->sum('total_harga');
-
-            $maxPlafon = min(100000, $totalBelanjaHariIni * 2);
 
             $nominal = (float) $data['nominal'];
-            if ($nominal > $maxPlafon) {
-                throw new Exception('Nominal penarikan (Rp '.number_format($nominal, 0, ',', '.').') melebihi kuota proporsional maksimal Rp '.number_format($maxPlafon, 0, ',', '.').' (Maks. 2x Belanja Toko, Plafon Rp 100.000/hari).');
-            }
-
             $sumber = $data['sumber_dana'];
+
             if ($sumber === 'shu') {
+                $eligibility = $this->calculateShuWithdrawalEligibilityAction->execute($anggota, $qualifyingBelanja);
+                if (! $eligibility['purchase_qualified']) {
+                    throw new Exception('Syarat penarikan tunai belum terpenuhi: Total belanja harus lebih dari Rp 25.000.');
+                }
+                if ($nominal > $eligibility['final_withdrawal_limit']) {
+                    throw new Exception('Nominal penarikan (Rp '.number_format($nominal, 0, ',', '.').') melebihi batas maksimal penarikan SHU Rp '.number_format($eligibility['final_withdrawal_limit'], 0, ',', '.').'.');
+                }
                 if ($anggota->shu < $nominal) {
                     throw new Exception('Saldo SHU tidak mencukupi. Saldo SHU saat ini: Rp '.number_format($anggota->shu, 0, ',', '.'));
                 }
                 $anggota->shu -= $nominal;
             } else {
+                $maxPlafon = 100000.0;
+                if ($nominal > $maxPlafon) {
+                    throw new Exception('Nominal penarikan (Rp '.number_format($nominal, 0, ',', '.').') melebihi batas maksimal Rp '.number_format($maxPlafon, 0, ',', '.').'.');
+                }
                 if ($anggota->saldo < $nominal) {
                     throw new Exception('Saldo E-Wallet tidak mencukupi. Saldo saat ini: Rp '.number_format($anggota->saldo, 0, ',', '.'));
                 }

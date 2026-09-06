@@ -8,6 +8,7 @@ use App\Models\TarikTunai;
 use App\Models\Transaksi;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -114,7 +115,7 @@ class TarikTunaiTest extends TestCase
         $res = $this->withHeader('Authorization', "Bearer $token")
             ->postJson('/laravel/api/kasir/tarik-tunai', [
                 'anggota_id' => $anggota->anggota_id,
-                'nominal' => 50000,
+                'nominal' => 40000,
                 'sumber_dana' => 'shu',
                 'persetujuan_shu' => true,
                 'transaksi_id' => $trx->transaksi_id,
@@ -124,11 +125,11 @@ class TarikTunaiTest extends TestCase
         $res->assertJson(['success' => true]);
 
         $anggota->refresh();
-        $this->assertEquals(30000, $anggota->shu); // 80.000 - 50.000 = 30.000
+        $this->assertEquals(40000, $anggota->shu); // 80.000 - 40.000 = 40.000
 
         $this->assertDatabaseHas('tarik_tunai', [
             'anggota_id' => $anggota->anggota_id,
-            'nominal' => 50000,
+            'nominal' => 40000,
             'sumber_dana' => 'shu',
             'transaksi_id' => $trx->transaksi_id,
             'persetujuan_shu' => 1,
@@ -145,7 +146,7 @@ class TarikTunaiTest extends TestCase
             'nama_lengkap' => 'Anggota Berhutang',
             'saldo' => 100000,
             'shu' => 80000,
-            'hutang' => 45000, // Still has unpaid debt
+            'hutang' => 45000, // Debt nets against SHU: 80k - 45k = 35k eligible SHU -> limit 17.000
         ]);
 
         $trx = Transaksi::create([
@@ -157,6 +158,7 @@ class TarikTunaiTest extends TestCase
             'status' => 'selesai',
         ]);
 
+        // Attempting to withdraw 20.000 (> 17.000 limit) fails
         $res = $this->withHeader('Authorization', "Bearer $token")
             ->postJson('/laravel/api/kasir/tarik-tunai', [
                 'anggota_id' => $anggota->anggota_id,
@@ -167,7 +169,21 @@ class TarikTunaiTest extends TestCase
             ]);
 
         $res->assertStatus(400);
-        $this->assertStringContainsString('hutang', strtolower($res->json('message')));
+        $this->assertStringContainsString('melebihi batas maksimal penarikan shu', strtolower($res->json('message')));
+
+        // Withdrawing within the netted limit (17.000) succeeds despite having outstanding debt!
+        $validRes = $this->withHeader('Authorization', "Bearer $token")
+            ->postJson('/laravel/api/kasir/tarik-tunai', [
+                'anggota_id' => $anggota->anggota_id,
+                'nominal' => 17000,
+                'sumber_dana' => 'shu',
+                'persetujuan_shu' => true,
+                'transaksi_id' => $trx->transaksi_id,
+            ]);
+
+        $validRes->assertStatus(200);
+        $anggota->refresh();
+        $this->assertEquals(63000, (float) $anggota->shu);
     }
 
     public function test_tarik_tunai_fails_if_exceeds_proportional_limit()
@@ -183,7 +199,44 @@ class TarikTunaiTest extends TestCase
             'hutang' => 0,
         ]);
 
-        // Purchase of 25.000 -> Max withdrawal is 2x = 50.000
+        // Purchase of 30.000 (> 25.000) -> Max withdrawal is capped at 100.000
+        $trx = Transaksi::create([
+            'anggota_id' => $anggota->anggota_id,
+            'kasir_id' => $kasir->user_id,
+            'total_harga' => 30000,
+            'total_keuntungan' => 5000,
+            'metode_pembayaran' => 'cash',
+            'status' => 'selesai',
+        ]);
+
+        // Attempting to withdraw 120.000 (> 100.000 cap)
+        $res = $this->withHeader('Authorization', "Bearer $token")
+            ->postJson('/laravel/api/kasir/tarik-tunai', [
+                'anggota_id' => $anggota->anggota_id,
+                'nominal' => 120000,
+                'sumber_dana' => 'shu',
+                'persetujuan_shu' => true,
+                'transaksi_id' => $trx->transaksi_id,
+            ]);
+
+        $res->assertStatus(400);
+        $this->assertStringContainsString('melebihi batas maksimal penarikan shu', strtolower($res->json('message')));
+    }
+
+    public function test_tarik_tunai_fails_if_purchase_not_strictly_greater_than_25000()
+    {
+        [$kasir, $token] = $this->authenticateAs('kasir');
+        [$userAnggota] = $this->authenticateAs('anggota');
+
+        $anggota = Anggota::create([
+            'user_id' => $userAnggota->user_id,
+            'nama_lengkap' => 'Anggota Belanja Pas',
+            'saldo' => 100000,
+            'shu' => 100000,
+            'hutang' => 0,
+        ]);
+
+        // Purchase of exactly 25.000 (NOT strictly > 25.000)
         $trx = Transaksi::create([
             'anggota_id' => $anggota->anggota_id,
             'kasir_id' => $kasir->user_id,
@@ -193,18 +246,17 @@ class TarikTunaiTest extends TestCase
             'status' => 'selesai',
         ]);
 
-        // Attempting to withdraw 100.000 (> 2x 25.000 = 50.000)
         $res = $this->withHeader('Authorization', "Bearer $token")
             ->postJson('/laravel/api/kasir/tarik-tunai', [
                 'anggota_id' => $anggota->anggota_id,
-                'nominal' => 100000,
+                'nominal' => 20000,
                 'sumber_dana' => 'shu',
                 'persetujuan_shu' => true,
                 'transaksi_id' => $trx->transaksi_id,
             ]);
 
         $res->assertStatus(400);
-        $this->assertStringContainsString('kuota proporsional', strtolower($res->json('message')));
+        $this->assertStringContainsString('lebih dari rp 25.000', strtolower($res->json('message')));
     }
 
     public function test_anggota_can_pre_verify_and_submit_ticket_and_kasir_approve()
@@ -236,7 +288,7 @@ class TarikTunaiTest extends TestCase
 
         $eligibilityRes->assertStatus(200);
         $this->assertTrue($eligibilityRes->json('data.is_eligible'));
-        $this->assertEquals(60000, $eligibilityRes->json('data.max_kuota_tarik_tunai')); // 2x 30.000 = 60.000
+        $this->assertEquals(40000, $eligibilityRes->json('data.max_kuota_tarik_tunai')); // 50% of 80.000 SHU = 40.000
 
         // 3. Member submits ticket for 40.000
         $submitRes = $this->actingAs($userAnggota, 'sanctum')
@@ -431,18 +483,18 @@ class TarikTunaiTest extends TestCase
     {
         [$admin, $token] = $this->authenticateAs('admin');
         [$userAnggota] = $this->authenticateAs('anggota');
-        
+
         $anggota = Anggota::create([
             'user_id' => $userAnggota->user_id,
             'nama_lengkap' => 'Cache Test Anggota',
             'shu' => 50000,
             'saldo' => 10000,
-            'hutang' => 0
+            'hutang' => 0,
         ]);
 
         // Mock the Kasir Cache being set
-        \Illuminate\Support\Facades\Cache::put('kasir_all_anggota_slim', 'STALE_CACHE_DATA', 120);
-        $this->assertEquals('STALE_CACHE_DATA', \Illuminate\Support\Facades\Cache::get('kasir_all_anggota_slim'));
+        Cache::put('kasir_all_anggota_slim', 'STALE_CACHE_DATA', 120);
+        $this->assertEquals('STALE_CACHE_DATA', Cache::get('kasir_all_anggota_slim'));
 
         // Admin does a Konversi SHU
         $convertRes = $this->actingAs($admin, 'sanctum')
@@ -453,10 +505,10 @@ class TarikTunaiTest extends TestCase
             ]);
 
         $convertRes->assertStatus(200);
-        
+
         // Assert cache is cleared
-        $this->assertFalse(\Illuminate\Support\Facades\Cache::has('kasir_all_anggota_slim'));
-        
+        $this->assertFalse(Cache::has('kasir_all_anggota_slim'));
+
         $anggota->refresh();
         $this->assertEquals(40000, $anggota->shu);
         $this->assertEquals(20000, $anggota->saldo);
@@ -471,7 +523,7 @@ class TarikTunaiTest extends TestCase
             'user_id' => $userAnggota->user_id,
             'nama_lengkap' => 'Anggota Tarik Saat Belanja',
             'saldo' => 20000,
-            'shu' => 150000,
+            'shu' => 200000,
             'hutang' => 0,
             'persetujuan_shu_master_at' => now(),
         ]);
@@ -489,7 +541,7 @@ class TarikTunaiTest extends TestCase
             $b1->update(['stok' => 50, 'harga_modal' => 35000, 'harga_jual' => 50000]);
         }
 
-        // Member buys 1 item (Rp 50.000) and withdraws Rp 100.000 from SHU (2x Belanja = 100k)
+        // Member buys 1 item (Rp 50.000) and withdraws Rp 100.000 from SHU (50% of 200k = 100k)
         $res = $this->withHeader('Authorization', "Bearer $token")
             ->postJson('/laravel/api/kasir/buat-transaksi', [
                 'anggota_id' => $anggota->anggota_id,
@@ -508,8 +560,8 @@ class TarikTunaiTest extends TestCase
         $res->assertJsonPath('tarik_tunai.uang_bersih_diserahkan', 50000); // 100k - 50k = 50k
 
         $anggota->refresh();
-        // 150k - 100k + 60% of (50k - 35k = 15k profit) = 50k + 9k = 59k
-        $this->assertEquals(59000, $anggota->shu);
+        // 200k - 100k + 60% of (50k - 35k = 15k profit) = 100k + 9k = 109k
+        $this->assertEquals(109000, $anggota->shu);
     }
 
     public function test_anggota_simpan_transaksi_with_tarik_tunai_and_auto_purchase_deduction()
@@ -620,7 +672,7 @@ class TarikTunaiTest extends TestCase
             'persetujuan_shu_master_at' => now(),
         ]);
 
-        // Member attempts to withdraw despite having debt
+        // Member attempts to withdraw without making a qualifying purchase
         $res = $this->actingAs($userAnggota, 'sanctum')
             ->postJson('/laravel/api/anggota/ajukan-tarik-tunai', [
                 'nominal' => 50000,
@@ -637,7 +689,7 @@ class TarikTunaiTest extends TestCase
 
         $this->assertNotNull($rejectedLog);
         $this->assertEquals(50000, $rejectedLog->nominal);
-        $this->assertStringContainsString('hutang', $rejectedLog->alasan_tolak);
+        $this->assertStringContainsString('Syarat belum terpenuhi', $rejectedLog->alasan_tolak);
 
         // Verify that the member's history endpoint returns this rejected log with reason
         $histRes = $this->actingAs($userAnggota, 'sanctum')
@@ -645,6 +697,6 @@ class TarikTunaiTest extends TestCase
 
         $histRes->assertStatus(200);
         $this->assertEquals('rejected', $histRes->json('data.0.status'));
-        $this->assertStringContainsString('hutang', $histRes->json('data.0.alasan_tolak'));
+        $this->assertStringContainsString('Syarat belum terpenuhi', $histRes->json('data.0.alasan_tolak'));
     }
 }

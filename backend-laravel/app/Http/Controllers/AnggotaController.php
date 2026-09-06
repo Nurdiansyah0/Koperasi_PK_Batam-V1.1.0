@@ -2,17 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Members\CalculateShuWithdrawalEligibilityAction;
 use App\Models\Anggota;
 use App\Models\Barang;
 use App\Models\PembayaranHutang;
 use App\Models\TarikTunai;
 use App\Models\Transaksi;
 use App\Models\TransaksiDetail;
+use App\Models\User;
+use App\Notifications\PesananBaruNotification;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 
 class AnggotaController extends Controller
 {
@@ -330,27 +334,30 @@ class AnggotaController extends Controller
 
             $tarikTunaiData = null;
             if (! empty($request->sertakan_tarik_tunai) && (float) $request->tarik_tunai_nominal > 0) {
-                // 1. Debt check
-                if ((float) $anggota->hutang > 0) {
-                    throw new \Exception('Pengajuan gagal: Anda masih memiliki tagihan hutang berjalan sebesar Rp '.number_format($anggota->hutang, 0, ',', '.').'. Wajib melunasi hutang terlebih dahulu.');
+                // Minimum purchase check (strictly > Rp 25.000)
+                if ($totalHarga <= 25000) {
+                    throw new \Exception('Syarat tarik tunai saat belanja: Total pesanan belanja harus lebih dari Rp 25.000 (Pesanan saat ini: Rp '.number_format($totalHarga, 0, ',', '.').').');
                 }
 
-                // 2. Minimum purchase check (>= 25.000)
-                if ($totalHarga < 25000) {
-                    throw new \Exception('Syarat tarik tunai saat belanja: Total pesanan belanja minimal Rp 25.000 (Pesanan saat ini: Rp '.number_format($totalHarga, 0, ',', '.').').');
-                }
-
-                // 3. Proportional limit check (Maks 2x Belanja, Plafon Rp 100.000)
-                $maxPlafon = min(100000, $totalHarga * 2);
                 $nominalTarik = (float) $request->tarik_tunai_nominal;
-                if ($nominalTarik > $maxPlafon) {
-                    throw new \Exception('Nominal tarik tunai (Rp '.number_format($nominalTarik, 0, ',', '.').') melebihi batas kuota proporsional Rp '.number_format($maxPlafon, 0, ',', '.').' (Maks. 2x nilai belanja, Plafon Rp 100.000).');
-                }
-
                 $sumberTarik = $request->tarik_tunai_sumber ?: 'shu';
-                $available = ($sumberTarik === 'shu' ? (float) $anggota->shu : (float) $anggota->saldo);
-                if ($nominalTarik > $available) {
-                    throw new \Exception("Saldo {$sumberTarik} Anda tidak mencukupi (Tersedia: Rp ".number_format($available, 0, ',', '.').').');
+
+                if ($sumberTarik === 'shu') {
+                    $eligibility = app(CalculateShuWithdrawalEligibilityAction::class)->execute($anggota, $totalHarga);
+                    if ($nominalTarik > $eligibility['final_withdrawal_limit']) {
+                        throw new \Exception('Nominal tarik tunai (Rp '.number_format($nominalTarik, 0, ',', '.').') melebihi batas maksimal penarikan SHU Rp '.number_format($eligibility['final_withdrawal_limit'], 0, ',', '.').'.');
+                    }
+                    if ($nominalTarik > (float) $anggota->shu) {
+                        throw new \Exception('Saldo SHU Anda tidak mencukupi (Tersedia: Rp '.number_format((float) $anggota->shu, 0, ',', '.').').');
+                    }
+                } else {
+                    $maxPlafon = 100000.0;
+                    if ($nominalTarik > $maxPlafon) {
+                        throw new \Exception('Nominal tarik tunai (Rp '.number_format($nominalTarik, 0, ',', '.').') melebihi batas maksimal Rp '.number_format($maxPlafon, 0, ',', '.').'.');
+                    }
+                    if ($nominalTarik > (float) $anggota->saldo) {
+                        throw new \Exception('Saldo E-Wallet Anda tidak mencukupi (Tersedia: Rp '.number_format((float) $anggota->saldo, 0, ',', '.').').');
+                    }
                 }
 
                 // Master consent check
@@ -474,8 +481,8 @@ class AnggotaController extends Controller
 
                 // Dispatch Web Push Notification
                 try {
-                    $kasirs = \App\Models\User::where('role', 'kasir')->get();
-                    \Illuminate\Support\Facades\Notification::send($kasirs, new \App\Notifications\PesananBaruNotification($orderEvent));
+                    $kasirs = User::where('role', 'kasir')->get();
+                    Notification::send($kasirs, new PesananBaruNotification($orderEvent));
                 } catch (\Throwable $ex) {
                     // Non-blocking
                 }
@@ -642,40 +649,31 @@ class AnggotaController extends Controller
         $anggotaId = $this->getAnggotaId($request);
         $anggota = Anggota::findOrFail($anggotaId);
 
-        // 1. Debt check
-        $hasDebt = (float) $anggota->hutang > 0;
-
-        // 2. Today's completed transactions >= 25k
+        // Today's completed transactions strictly > 25k
         $todayPurchases = Transaksi::where('anggota_id', $anggotaId)
             ->where('status', 'selesai')
             ->where('created_at', '>=', Carbon::today())
-            ->where('total_harga', '>=', 25000)
+            ->where('total_harga', '>', 25000)
             ->orderBy('created_at', 'desc')
             ->get(['transaksi_id', 'total_harga', 'metode_pembayaran', 'created_at']);
 
         $totalBelanjaHariIni = (float) $todayPurchases->sum('total_harga');
         $hasQualifyingPurchase = $todayPurchases->isNotEmpty();
+        $qualifyingBelanja = $hasQualifyingPurchase ? (float) $todayPurchases->max('total_harga') : 0.0;
 
-        // 3. Proportional limit: max 2x today's purchase, capped at Rp 100.000 / day
-        $maxKuotaProportional = min(100000, $totalBelanjaHariIni * 2);
-
-        $ineligibleReasons = [];
-        if ($hasDebt) {
-            $ineligibleReasons[] = 'Anda memiliki saldo hutang berjalan sebesar Rp '.number_format($anggota->hutang, 0, ',', '.').'. Wajib melunasi hutang terlebih dahulu.';
-        }
-        if (! $hasQualifyingPurchase) {
-            $ineligibleReasons[] = 'Belum memiliki transaksi belanja produk toko minimal Rp 25.000 hari ini.';
-        }
-        if ($anggota->shu <= 0 && $anggota->saldo <= 0) {
-            $ineligibleReasons[] = 'Saldo SHU dan E-Wallet Anda saat ini Rp 0.';
-        }
-
-        $isEligible = empty($ineligibleReasons);
+        $eligibility = app(CalculateShuWithdrawalEligibilityAction::class)->execute($anggota, $qualifyingBelanja);
 
         // Check any ongoing pending withdrawal
         $pendingWithdrawal = TarikTunai::where('anggota_id', $anggotaId)
             ->where('status', 'pending')
             ->first();
+
+        $ineligibleReasons = $eligibility['ineligible_reasons'];
+        if ($pendingWithdrawal) {
+            $ineligibleReasons[] = "Anda memiliki tiket penarikan aktif #{$pendingWithdrawal->kode_penarikan} yang belum diproses kasir.";
+        }
+
+        $isEligible = $eligibility['is_eligible'] && ! $pendingWithdrawal;
 
         return response()->json([
             'success' => true,
@@ -685,13 +683,18 @@ class AnggotaController extends Controller
                 'saldo_shu' => (float) $anggota->shu,
                 'saldo_ewallet' => (float) $anggota->saldo,
                 'hutang' => (float) $anggota->hutang,
-                'has_debt' => $hasDebt,
+                'has_debt' => (float) $anggota->hutang > 0,
                 'has_master_consent' => ! is_null($anggota->persetujuan_shu_master_at),
                 'master_consent_at' => $anggota->persetujuan_shu_master_at,
                 'total_belanja_hari_ini' => $totalBelanjaHariIni,
                 'has_qualifying_purchase' => $hasQualifyingPurchase,
                 'transaksi_valid_hari_ini' => $todayPurchases,
-                'max_kuota_tarik_tunai' => (float) $maxKuotaProportional,
+                'eligible_shu' => (float) $eligibility['eligible_shu'],
+                'raw_withdrawal_limit' => (float) $eligibility['raw_withdrawal_limit'],
+                'pre_round_limit' => (float) $eligibility['pre_round_limit'],
+                'final_withdrawal_limit' => (float) $eligibility['final_withdrawal_limit'],
+                'max_kuota_tarik_tunai' => (float) $eligibility['final_withdrawal_limit'],
+                'max_shu_withdrawal' => (float) $eligibility['final_withdrawal_limit'],
                 'is_eligible' => $isEligible,
                 'ineligible_reasons' => $ineligibleReasons,
                 'pending_ticket' => $pendingWithdrawal ? [
@@ -737,11 +740,6 @@ class AnggotaController extends Controller
                 $anggota->save();
             }
 
-            // 1. Debt check
-            if ((float) $anggota->hutang > 0) {
-                throw new \Exception('Pengajuan gagal: Anda masih memiliki hutang belum lunas sebesar Rp '.number_format($anggota->hutang, 0, ',', '.').'. Harap lunasi hutang terlebih dahulu.');
-            }
-
             // Check if there's already an active pending ticket
             $existingPending = TarikTunai::where('anggota_id', $anggotaId)
                 ->where('status', 'pending')
@@ -750,50 +748,51 @@ class AnggotaController extends Controller
                 throw new \Exception("Anda sudah memiliki tiket penarikan aktif dengan kode #{$existingPending->kode_penarikan} yang belum diproses kasir.");
             }
 
-            // 2. Qualifying purchase check
+            // Qualifying purchase check (strictly > Rp 25.000)
             $transaksiId = $request->transaksi_id;
             if ($transaksiId) {
                 $trx = Transaksi::where('transaksi_id', $transaksiId)
                     ->where('anggota_id', $anggotaId)
                     ->where('status', 'selesai')
                     ->first();
-                if (! $trx || $trx->total_harga < 25000) {
-                    throw new \Exception('Transaksi belanja penyerta tidak memenuhi syarat minimal Rp 25.000.');
+                if (! $trx || $trx->total_harga <= 25000) {
+                    throw new \Exception('Transaksi belanja penyerta tidak memenuhi syarat minimal lebih dari Rp 25.000.');
                 }
+                $qualifyingBelanja = (float) $trx->total_harga;
             } else {
                 $validTrx = Transaksi::where('anggota_id', $anggotaId)
                     ->where('status', 'selesai')
                     ->where('created_at', '>=', Carbon::today())
-                    ->where('total_harga', '>=', 25000)
+                    ->where('total_harga', '>', 25000)
                     ->orderBy('created_at', 'desc')
                     ->first();
                 if (! $validTrx) {
-                    throw new \Exception('Syarat belum terpenuhi: Wajib berbelanja produk koperasi minimal Rp 25.000 hari ini.');
+                    throw new \Exception('Syarat belum terpenuhi: Wajib berbelanja produk koperasi lebih dari Rp 25.000 hari ini.');
                 }
                 $transaksiId = $validTrx->transaksi_id;
+                $qualifyingBelanja = (float) $validTrx->total_harga;
             }
 
-            // 3. Proportional limit check (Maks 2x Belanja Hari Ini, Plafon Rp 100.000)
-            $totalBelanjaHariIni = (float) Transaksi::where('anggota_id', $anggotaId)
-                ->where('status', 'selesai')
-                ->where('created_at', '>=', Carbon::today())
-                ->where('total_harga', '>=', 25000)
-                ->sum('total_harga');
-
-            $maxPlafon = min(100000, $totalBelanjaHariIni * 2);
-
-            if ($request->nominal > $maxPlafon) {
-                throw new \Exception('Nominal penarikan (Rp '.number_format($request->nominal, 0, ',', '.').') melebihi batas kuota proporsional maksimal Rp '.number_format($maxPlafon, 0, ',', '.').' (Maks. 2x Belanja Toko, Plafon Rp 100.000/hari).');
-            }
-
-            // 4. Balance check
+            $nominal = (float) $request->nominal;
             $sumber = $request->sumber_dana;
+
             if ($sumber === 'shu') {
-                if ($anggota->shu < $request->nominal) {
+                $eligibility = app(CalculateShuWithdrawalEligibilityAction::class)->execute($anggota, $qualifyingBelanja);
+                if (! $eligibility['purchase_qualified']) {
+                    throw new \Exception('Syarat penarikan tunai belum terpenuhi: Total belanja harus lebih dari Rp 25.000.');
+                }
+                if ($nominal > $eligibility['final_withdrawal_limit']) {
+                    throw new \Exception('Nominal penarikan (Rp '.number_format($nominal, 0, ',', '.').') melebihi batas maksimal penarikan SHU Rp '.number_format($eligibility['final_withdrawal_limit'], 0, ',', '.').'.');
+                }
+                if ($anggota->shu < $nominal) {
                     throw new \Exception('Saldo SHU tidak mencukupi (Tersedia: Rp '.number_format($anggota->shu, 0, ',', '.').').');
                 }
             } else {
-                if ($anggota->saldo < $request->nominal) {
+                $maxPlafon = 100000.0;
+                if ($nominal > $maxPlafon) {
+                    throw new \Exception('Nominal penarikan (Rp '.number_format($nominal, 0, ',', '.').') melebihi batas maksimal Rp '.number_format($maxPlafon, 0, ',', '.').'.');
+                }
+                if ($anggota->saldo < $nominal) {
                     throw new \Exception('Saldo E-Wallet tidak mencukupi (Tersedia: Rp '.number_format($anggota->saldo, 0, ',', '.').').');
                 }
             }

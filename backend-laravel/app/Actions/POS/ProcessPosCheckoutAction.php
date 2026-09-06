@@ -6,6 +6,7 @@ use App\Actions\CashManagement\RecordPosIntegratedTarikTunaiAction;
 use App\Actions\Finance\RecordPosShuDistributionAction;
 use App\Actions\Inventory\DeductSaleStockAction;
 use App\Actions\Members\ApplyPosMemberBalanceChangesAction;
+use App\Actions\Members\CalculateShuWithdrawalEligibilityAction;
 use App\Models\Anggota;
 use App\Models\Transaksi;
 use App\Models\TransaksiDetail;
@@ -19,12 +20,14 @@ class ProcessPosCheckoutAction
         protected ?DeductSaleStockAction $deductSaleStockAction = null,
         protected ?ApplyPosMemberBalanceChangesAction $applyPosMemberBalanceChangesAction = null,
         protected ?RecordPosShuDistributionAction $recordPosShuDistributionAction = null,
-        protected ?RecordPosIntegratedTarikTunaiAction $recordPosIntegratedTarikTunaiAction = null
+        protected ?RecordPosIntegratedTarikTunaiAction $recordPosIntegratedTarikTunaiAction = null,
+        protected ?CalculateShuWithdrawalEligibilityAction $calculateShuWithdrawalEligibilityAction = null
     ) {
         $this->deductSaleStockAction = $deductSaleStockAction ?? app(DeductSaleStockAction::class);
         $this->applyPosMemberBalanceChangesAction = $applyPosMemberBalanceChangesAction ?? app(ApplyPosMemberBalanceChangesAction::class);
         $this->recordPosShuDistributionAction = $recordPosShuDistributionAction ?? app(RecordPosShuDistributionAction::class);
         $this->recordPosIntegratedTarikTunaiAction = $recordPosIntegratedTarikTunaiAction ?? app(RecordPosIntegratedTarikTunaiAction::class);
+        $this->calculateShuWithdrawalEligibilityAction = $calculateShuWithdrawalEligibilityAction ?? app(CalculateShuWithdrawalEligibilityAction::class);
     }
 
     /**
@@ -87,21 +90,12 @@ class ProcessPosCheckoutAction
                     throw new Exception('Tarik tunai saat belanja wajib memilih data anggota.');
                 }
 
-                // Debt check
-                if ((float) $anggota->hutang > 0) {
-                    throw new Exception('Gagal: Anggota memiliki tagihan hutang berjalan sebesar Rp '.number_format($anggota->hutang, 0, ',', '.').'. Wajib lunasi hutang terlebih dahulu.');
-                }
-
-                // Minimum purchase check (>= Rp 25.000)
-                if ($totalHarga < 25000) {
-                    throw new Exception('Syarat penarikan tunai: Total belanja saat ini minimal Rp 25.000 (Belanja saat ini: Rp '.number_format($totalHarga, 0, ',', '.').').');
-                }
-
-                // Proportional limit (Maks 2x Belanja, Plafon Rp 100.000)
-                $maxPlafon = min(100000, $totalHarga * 2);
                 $nominalTarik = (float) $data['tarik_tunai_nominal'];
-                if ($nominalTarik > $maxPlafon) {
-                    throw new Exception('Nominal tarik tunai (Rp '.number_format($nominalTarik, 0, ',', '.').') melebihi batas kuota proporsional Rp '.number_format($maxPlafon, 0, ',', '.').' (Maks. 2x belanja saat ini, Plafon Rp 100.000).');
+                $sumberTarik = ($data['tarik_tunai_sumber'] ?? null) ?: 'shu';
+
+                // Minimum purchase check (strictly > Rp 25.000)
+                if ($totalHarga <= 25000) {
+                    throw new Exception('Syarat penarikan tunai: Total belanja saat ini harus lebih dari Rp 25.000 (Belanja saat ini: Rp '.number_format($totalHarga, 0, ',', '.').').');
                 }
 
                 // Purchase coverage check (Mandatory Invariant: nominal_tarikan >= total_belanja)
@@ -110,10 +104,23 @@ class ProcessPosCheckoutAction
                     throw new Exception('Nominal penarikan tunai (Rp '.number_format($nominalTarik, 0, ',', '.').') tidak mencukupi untuk menutup total belanja (Rp '.number_format($totalHarga, 0, ',', '.').'). Kurang Rp '.number_format($kurang, 0, ',', '.').'.');
                 }
 
-                $sumberTarik = ($data['tarik_tunai_sumber'] ?? null) ?: 'shu';
-                $available = ($sumberTarik === 'shu' ? (float) $anggota->shu : (float) $anggota->saldo);
-                if ($nominalTarik > $available) {
-                    throw new Exception("Saldo {$sumberTarik} tidak mencukupi (Tersedia: Rp ".number_format($available, 0, ',', '.').').');
+                if ($sumberTarik === 'shu') {
+                    // Authoritative Members eligibility calculation
+                    $eligibility = $this->calculateShuWithdrawalEligibilityAction->execute($anggota, $totalHarga);
+                    if ($nominalTarik > $eligibility['final_withdrawal_limit']) {
+                        throw new Exception('Nominal tarik tunai (Rp '.number_format($nominalTarik, 0, ',', '.').') melebihi batas maksimal penarikan SHU Rp '.number_format($eligibility['final_withdrawal_limit'], 0, ',', '.').'.');
+                    }
+                    if ($nominalTarik > (float) $anggota->shu) {
+                        throw new Exception('Saldo shu tidak mencukupi (Tersedia: Rp '.number_format((float) $anggota->shu, 0, ',', '.').').');
+                    }
+                } else {
+                    $maxPlafon = 100000.0;
+                    if ($nominalTarik > $maxPlafon) {
+                        throw new Exception('Nominal tarik tunai (Rp '.number_format($nominalTarik, 0, ',', '.').') melebihi batas maksimal Rp '.number_format($maxPlafon, 0, ',', '.').'.');
+                    }
+                    if ($nominalTarik > (float) $anggota->saldo) {
+                        throw new Exception('Saldo saldo tidak mencukupi (Tersedia: Rp '.number_format((float) $anggota->saldo, 0, ',', '.').').');
+                    }
                 }
 
                 // Master consent check
