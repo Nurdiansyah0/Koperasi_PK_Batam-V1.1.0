@@ -74,7 +74,7 @@ const BuatSerahTerimaPage = () => {
     // Construct rich item payload with financial calculation
     const itemsPayload = cycleItems.map(item => {
       const aktual = parseInt(stokFisik[item.barang_id] || '0', 10)
-      const input = item.stok
+      const input = item.stok_toko || 0
       const selisih = aktual - input
       const hargaJual = Number(item.harga_jual || item.harga || 0)
       const selisihNominal = selisih * hargaJual

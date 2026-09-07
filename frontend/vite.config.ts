@@ -82,13 +82,13 @@ export default defineConfig({
     host: '0.0.0.0', // Exposes network IP so mobile phones can connect over Wi-Fi
     port: 5173,
     proxy: {
-      // All /laravel and /api traffic goes to the Laravel backend (port 8001)
+      // All /laravel and /api traffic goes to the Laravel backend (port 8000)
       '/laravel': {
-        target: 'http://127.0.0.1:8001',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
       '/api': {
-        target: 'http://127.0.0.1:8001',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
     },

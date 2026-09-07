@@ -208,7 +208,7 @@ class RealtimeOrderManager {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
 
     try {
-      const reg = await navigator.serviceWorker.register('/sw.js')
+      const reg = await navigator.serviceWorker.register(import.meta.env.DEV ? '/push-sw.js' : '/sw.js')
       await navigator.serviceWorker.ready
 
       const subscription = await reg.pushManager.subscribe({
