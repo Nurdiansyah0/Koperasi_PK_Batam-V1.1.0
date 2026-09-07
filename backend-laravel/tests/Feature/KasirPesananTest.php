@@ -74,8 +74,9 @@ class KasirPesananTest extends TestCase
             'keuntungan' => 10000,
         ]);
 
-        // Deduct stock immediately (simulating the Anggota order flow)
-        $this->barang->stok -= 2;
+        // Deduct stock immediately from stok_toko (simulating the Anggota order flow)
+        $this->barang->stok_toko -= 2;
+        $this->barang->stok = $this->barang->stok_toko + $this->barang->stok_gudang;
         $this->barang->save();
 
         if ($metode === 'hutang') {
@@ -136,14 +137,14 @@ class KasirPesananTest extends TestCase
 
     public function test_kasir_can_reject_bulk_pesanan_and_restore_stock_and_hutang()
     {
-        $stokAwal = $this->barang->stok;
+        $stokTokoAwal = $this->barang->stok_toko;
         $hutangAwal = $this->anggota->hutang;
 
         $trx1 = $this->createPendingTransaksi('hutang');
         $trx2 = $this->createPendingTransaksi('hutang');
 
         // Assert stock and hutang were affected by pending creation
-        $this->assertEquals($stokAwal - 4, $this->barang->fresh()->stok);
+        $this->assertEquals($stokTokoAwal - 4, $this->barang->fresh()->stok_toko);
         $this->assertEquals($hutangAwal + 60000, $this->anggota->fresh()->hutang);
 
         // Kasir rejects BOTH
@@ -165,8 +166,8 @@ class KasirPesananTest extends TestCase
             'kasir_id' => $this->kasir->user_id,
         ]);
 
-        // Assert stock is restored back to $stokAwal
-        $this->assertEquals($stokAwal, $this->barang->fresh()->stok);
+        // Assert stock is restored back to $stokTokoAwal
+        $this->assertEquals($stokTokoAwal, $this->barang->fresh()->stok_toko);
 
         // Assert hutang is restored back to $hutangAwal
         $this->assertEquals($hutangAwal, $this->anggota->fresh()->hutang);

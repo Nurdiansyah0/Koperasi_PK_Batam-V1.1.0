@@ -150,8 +150,10 @@ class AdminSopAuditTest extends TestCase
 
         $b1->refresh();
         $b2->refresh();
-        $this->assertEquals(99, $b1->stok);
-        $this->assertEquals(88, $b2->stok);
+        $this->assertEquals(99, $b1->stok_toko);
+        $this->assertEquals(88, $b2->stok_toko);
+        $this->assertEquals(99 + $b1->stok_gudang, $b1->stok);
+        $this->assertEquals(88 + $b2->stok_gudang, $b2->stok);
     }
 
     /** @test */

@@ -188,8 +188,9 @@ class KasirSopAuditTest extends TestCase
 
     public function test_pesanan_anggota_listing_and_tolak_refund_stock_and_limit()
     {
-        $initialStock = $this->barang->stok;
-        $this->barang->stok = $initialStock - 2;
+        $initialStokToko = $this->barang->stok_toko;
+        $this->barang->stok_toko = $initialStokToko - 2;
+        $this->barang->stok = $this->barang->stok_toko + $this->barang->stok_gudang;
         $this->barang->save();
 
         $this->anggota->hutang = 100000;
@@ -223,10 +224,10 @@ class KasirSopAuditTest extends TestCase
         $resReject->assertStatus(200)->assertJson(['success' => true]);
 
         $this->barang->refresh();
-        $this->assertEquals($initialStock, $this->barang->stok);
+        $this->assertEquals($initialStokToko, $this->barang->stok_toko);
 
         $this->anggota->refresh();
-        $this->assertEquals(50000, $this->anggota->hutang);
+        $this->assertEquals(50000, $this->anggota->hutang); // 100k - 50k
     }
 
     /* -------------------------------------------------------------------------- */
@@ -360,6 +361,9 @@ class KasirSopAuditTest extends TestCase
 
     public function test_serah_terima_draft_and_daftar_kasir()
     {
+        // Clear globally seeded pending transactions so they don't block the draft creation
+        \App\Models\Transaksi::where('status', 'pending')->delete();
+
         $res1 = $this->withHeader('Authorization', "Bearer {$this->token}")
             ->getJson('/laravel/api/kasir/daftar-kasir');
         $res1->assertStatus(200)->assertJson(['success' => true]);
@@ -390,7 +394,7 @@ class KasirSopAuditTest extends TestCase
 
     public function test_serah_terima_flow_create_and_approve_syncs_inventory()
     {
-        $initialStock = $this->barang->stok;
+        $initialStokToko = $this->barang->stok_toko;
 
         // 1. Create pending handover from kasir1 to kasir2
         $serah = SerahTerimaKasir::create([
@@ -403,8 +407,8 @@ class KasirSopAuditTest extends TestCase
                     [
                         'barang_id' => $this->barang->barang_id,
                         'nama_barang' => $this->barang->nama_barang,
-                        'stok_input' => $initialStock + 2, // Surplus 2 pcs
-                        'stok_aktual' => $initialStock,
+                        'stok_input' => $initialStokToko, // System count
+                        'stok_aktual' => $initialStokToko + 2, // Physical count: Surplus 2 pcs
                         'harga_jual' => $this->barang->harga_jual,
                     ],
                 ],
@@ -421,9 +425,10 @@ class KasirSopAuditTest extends TestCase
             ]);
         $resApprove->assertStatus(200)->assertJson(['success' => true]);
 
-        // Inventory is synced to physical input count (SOP 5.D.1)
+        // Inventory is synced to physical input count (stok_toko) (SOP 5.D.1)
         $this->barang->refresh();
-        $this->assertEquals($initialStock + 2, $this->barang->stok);
+        $this->assertEquals($initialStokToko + 2, $this->barang->stok_toko);
+        $this->assertEquals($this->barang->stok_toko + $this->barang->stok_gudang, $this->barang->stok);
     }
 
     public function test_serah_terima_flow_reject_requires_reason_and_keeps_stock()

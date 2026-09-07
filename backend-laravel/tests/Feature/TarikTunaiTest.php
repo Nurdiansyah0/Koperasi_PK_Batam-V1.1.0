@@ -616,7 +616,7 @@ class TarikTunaiTest extends TestCase
         ]);
 
         $b1 = Barang::first();
-        $b1->update(['stok' => 20, 'harga_modal' => 20000, 'harga_jual' => 30000]);
+        $b1->update(['stok_toko' => 20, 'stok_gudang' => 0, 'stok' => 20, 'harga_modal' => 20000, 'harga_jual' => 30000]);
 
         // Anggota creates order with Tarik Tunai
         $res = $this->withHeader('Authorization', "Bearer $token")
@@ -636,21 +636,22 @@ class TarikTunaiTest extends TestCase
 
         // Stock decreased and SHU decreased
         $b1->refresh();
-        $this->assertEquals(18, $b1->stok);
+        $this->assertEquals(18, $b1->stok_toko);
         $anggota->refresh();
         $this->assertEquals(120000, $anggota->shu); // 200k - 80k = 120k
 
         // Kasir rejects the order
+        // Note: the endpoint is tolak-pesanan-anggota which takes 'transaksi_ids' (array) as of my recent updates, wait, looking at the code, in KasirSopAuditTest we sent 'transaksi_ids' => [$trxId]. But here it sends 'transaksi_id' => $trxId. Let me just use 'transaksi_ids' => [$trxId] to be safe. Wait, if it fails, I'll see. But wait, I'll keep the target as is. Let me check the target content carefully.
         $rejectRes = $this->actingAs($kasir, 'sanctum')
             ->postJson('/laravel/api/kasir/tolak-pesanan-anggota', [
-                'transaksi_id' => $trxId,
+                'transaksi_ids' => [$trxId],
             ]);
 
         $rejectRes->assertStatus(200);
 
         // Verify FULL REFUND & STOCK RESTORATION
         $b1->refresh();
-        $this->assertEquals(20, $b1->stok); // Restored from 18 back to 20
+        $this->assertEquals(20, $b1->stok_toko); // Restored from 18 back to 20
 
         $anggota->refresh();
         $this->assertEquals(200000, $anggota->shu); // Restored from 120k back to 200k!

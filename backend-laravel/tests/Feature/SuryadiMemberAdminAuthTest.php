@@ -13,6 +13,29 @@ class SuryadiMemberAdminAuthTest extends TestCase
 {
     use DatabaseTransactions;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        
+        $suryadi = User::whereRaw('LOWER(username) = ?', ['suryadi'])->first();
+        if ($suryadi) {
+            $hasMandate = JabatanAnggota::where('user_id', $suryadi->user_id)
+                ->where('role', 'admin')
+                ->where('status', 'aktif')
+                ->exists();
+                
+            if (!$hasMandate) {
+                JabatanAnggota::create([
+                    'user_id' => $suryadi->user_id,
+                    'role' => 'admin',
+                    'status' => 'aktif',
+                    'ditugaskan_oleh' => 1,
+                    'catatan' => 'Mandat admin test',
+                ]);
+            }
+        }
+    }
+
     public function test_admin_can_login_with_primary_admin_credentials()
     {
         $admin = User::where('user_id', 1)->first();

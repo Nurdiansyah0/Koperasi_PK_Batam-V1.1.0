@@ -51,9 +51,8 @@ class AdminOpnameTest extends TestCase
         $response->assertStatus(200)->assertJson(['success' => true]);
 
         // Verify stock was updated in DB
-        $this->assertDatabaseHas('barang', [
-            'barang_id' => $barang->barang_id,
-            'stok' => $newStock,
-        ]);
+        $barang->refresh();
+        $this->assertEquals($newStock, $barang->stok_toko);
+        $this->assertEquals($newStock + $barang->stok_gudang, $barang->stok);
     }
 }
