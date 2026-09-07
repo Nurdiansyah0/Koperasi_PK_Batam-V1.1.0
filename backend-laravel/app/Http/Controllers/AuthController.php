@@ -116,11 +116,11 @@ class AuthController extends Controller
 
         // 1. Expected 2 digit depan hutang anggota
         $hutangInt = (int) $anggota->hutang;
-        $expectedHutang = $hutangInt > 0 ? substr((string) $hutangInt, 0, 2) : '00';
+        $expectedHutang = $hutangInt > 0 ? substr(str_pad((string) $hutangInt, 2, '0', STR_PAD_LEFT), 0, 2) : '00';
 
         // 2. Expected 3 digit belakang SHU anggota
         $shuInt = (int) $anggota->shu;
-        $expectedShu = $shuInt > 0 ? substr((string) $shuInt, -3) : '000';
+        $expectedShu = $shuInt > 0 ? substr(str_pad((string) $shuInt, 3, '0', STR_PAD_LEFT), -3) : '000';
 
         $inputHutang = trim((string) $request->digit_hutang);
         $inputShu = trim((string) $request->digit_shu);

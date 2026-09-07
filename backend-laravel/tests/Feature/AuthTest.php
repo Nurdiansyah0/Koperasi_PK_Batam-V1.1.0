@@ -174,6 +174,40 @@ class AuthTest extends TestCase
         $this->assertTrue(Hash::check('newpassword123', $user->password_hash));
     }
 
+    public function test_reset_password_with_valid_challenge_1_digit()
+    {
+        $user = User::create([
+            'username' => 'anggota_reset_1digit_'.rand(1000, 9999),
+            'password_hash' => Hash::make('oldpassword'),
+            'role' => 'anggota',
+        ]);
+
+        $anggota = Anggota::create([
+            'user_id' => $user->user_id,
+            'nama_lengkap' => 'Anggota Reset 1 Digit',
+            'no_identitas' => '8765432100',
+            'email' => 'reset1digit@example.com',
+            'saldo' => 500000,
+            'hutang' => 5, // 1 digit, should be padded to '05'
+            'shu' => 15,  // 2 digits, should be padded to '015'
+            'created_at' => now(),
+        ]);
+
+        // Success test using padded inputs exactly as the user will type
+        $response = $this->postJson('/laravel/api/reset-password', [
+            'username' => $user->username,
+            'digit_hutang' => '05',
+            'digit_shu' => '015',
+            'password_baru' => 'newpassword123',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson(['success' => true]);
+
+        $user->refresh();
+        $this->assertTrue(Hash::check('newpassword123', $user->password_hash));
+    }
+
     public function test_reset_password_fails_with_invalid_challenge()
     {
         $user = User::create([

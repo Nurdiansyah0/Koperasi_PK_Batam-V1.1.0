@@ -53,9 +53,9 @@ class CalculateSerahTerimaDraftAction
             if ($isRokok) {
                 $item->risk_badge = 'Rokok';
                 $item->audit_reason = "PKM Toko: {$pkmValue} pcs (Risiko Rokok)";
-            } elseif ($item->stok < $pkmValue) {
+            } elseif ($item->stok_toko < $pkmValue) {
                 $item->risk_badge = 'Perlu Restock';
-                $item->audit_reason = "PKM Toko: {$pkmValue} pcs (Stok < PKM)";
+                $item->audit_reason = "PKM Toko: {$pkmValue} pcs (Stok Toko < PKM)";
             } else {
                 $item->risk_badge = 'Display Toko';
                 $item->audit_reason = "PKM Toko 4 Hari: {$pkmValue} pcs";
@@ -74,9 +74,19 @@ class CalculateSerahTerimaDraftAction
 
     private function calculateSaldoKasKasir(int $kasirId): float
     {
+        $hasPendingCashOrders = Transaksi::where('status', 'pending')
+            ->whereIn('metode_pembayaran', ['cash', 'tunai'])
+            ->exists();
+            
+        if ($hasPendingCashOrders) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'pending_orders' => ['Harap selesaikan atau batalkan semua transaksi tunai yang masih berstatus pending sebelum serah terima.']
+            ]);
+        }
+
         $cashInTrx = Transaksi::where('kasir_id', $kasirId)
             ->where('status', 'selesai')
-            ->whereIn('metode_pembayaran', ['cash', 'tunai'])
+            ->whereIn('metode_pembayaran', ['cash', 'tunai', 'potong_tarik_tunai'])
             ->sum('total_harga');
 
         $cashInSerah = SerahTerimaKasir::where('kasir_to', $kasirId)

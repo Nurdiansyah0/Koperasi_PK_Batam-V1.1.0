@@ -117,9 +117,9 @@ class KasirController extends Controller
 
                 // 1. Restore Stock
                 foreach ($trx->details as $detail) {
-                    $barang = Barang::find($detail->barang_id);
+                    $barang = Barang::where('barang_id', $detail->barang_id)->lockForUpdate()->first();
                     if ($barang) {
-                        $barang->stok += $detail->jumlah;
+                        $barang->stok_toko += $detail->jumlah;
                         $barang->save();
                     }
                 }
@@ -393,7 +393,7 @@ class KasirController extends Controller
             }
 
             if ($request->action === 'approve') {
-                $anggota = Anggota::find($pembayaran->anggota_id);
+                $anggota = Anggota::where('anggota_id', $pembayaran->anggota_id)->lockForUpdate()->first();
                 $anggota->hutang -= $pembayaran->nominal;
                 if ($anggota->hutang < 0) {
                     $anggota->hutang = 0;

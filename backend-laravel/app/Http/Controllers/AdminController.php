@@ -742,16 +742,28 @@ class AdminController extends Controller
     public function topupSHU(Request $request)
     {
         $this->checkAdmin($request);
+        
         $user = User::where('username', $request->nama_anggota)->first();
         if (! $user || ! $user->anggota) {
             return response()->json(['success' => false, 'message' => 'Anggota tidak ditemukan'], 404);
         }
 
-        $anggota = $user->anggota;
-        $anggota->shu += $request->nominal;
-        $anggota->save();
-
-        return response()->json(['success' => true, 'message' => 'SHU berhasil ditopup']);
+        DB::beginTransaction();
+        try {
+            $anggota = Anggota::where('anggota_id', $user->anggota->anggota_id)->lockForUpdate()->first();
+            if (! $anggota) {
+                throw new \Exception('Data anggota gagal dikunci atau tidak ditemukan');
+            }
+            
+            $anggota->shu += $request->nominal;
+            $anggota->save();
+            
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'SHU berhasil ditopup']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Gagal topup SHU: ' . $e->getMessage()], 500);
+        }
     }
 
     public function submitOpnameMassal(Request $request)
@@ -764,9 +776,15 @@ class AdminController extends Controller
         DB::beginTransaction();
         try {
             foreach ($adjustments as $adj) {
-                $barang = Barang::find($adj['barang_id']);
+                $barang = Barang::where('barang_id', $adj['barang_id'])->lockForUpdate()->first();
                 if ($barang) {
-                    $barang->stok = $adj['stok_akhir'];
+                    $lokasi = $adj['lokasi'] ?? 'toko'; // Default to toko
+                    if ($lokasi === 'gudang') {
+                        $barang->stok_gudang = $adj['stok_akhir'];
+                    } else {
+                        $barang->stok_toko = $adj['stok_akhir'];
+                    }
+                    $barang->stok = ((int) $barang->stok_toko) + ((int) $barang->stok_gudang);
                     $barang->save();
                 }
             }

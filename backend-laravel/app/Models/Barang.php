@@ -95,11 +95,6 @@ class Barang extends Model
         static::saving(function ($model) {
             if ($model->isDirty(['stok_toko', 'stok_gudang'])) {
                 $model->stok = ((int) $model->stok_toko) + ((int) $model->stok_gudang);
-            } elseif ($model->isDirty('stok')) {
-                $pkm = (int) ($model->pkm ?: 1);
-                $stok = (int) $model->stok;
-                $model->stok_toko = min($stok, $pkm);
-                $model->stok_gudang = max(0, $stok - $model->stok_toko);
             }
         });
     }

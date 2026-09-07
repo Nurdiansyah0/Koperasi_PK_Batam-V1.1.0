@@ -34,10 +34,10 @@ class ApproveSerahTerimaAction
             if (isset($opname['items']) && is_array($opname['items'])) {
                 foreach ($opname['items'] as $item) {
                     if (isset($item['barang_id']) && (isset($item['stok_aktual']) || isset($item['stok_input']))) {
-                        $targetStock = isset($item['stok_input']) ? (int) $item['stok_input'] : (int) $item['stok_aktual'];
+                        $targetStock = isset($item['stok_aktual']) ? (int) $item['stok_aktual'] : (int) $item['stok_input'];
                         $barang = Barang::where('barang_id', $item['barang_id'])->lockForUpdate()->first();
                         if ($barang) {
-                            $barang->stok = max(0, $targetStock);
+                            $barang->stok_toko = max(0, $targetStock);
                             $barang->save();
                         }
                     }

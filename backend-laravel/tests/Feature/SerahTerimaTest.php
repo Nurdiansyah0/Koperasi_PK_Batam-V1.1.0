@@ -25,6 +25,9 @@ class SerahTerimaTest extends TestCase
         $this->kasir1 = User::where('role', 'kasir')->orderBy('user_id', 'asc')->firstOrFail();
         $this->kasir2 = User::where('role', 'kasir')->where('user_id', '!=', $this->kasir1->user_id)->firstOrFail();
         $this->token1 = $this->kasir1->createToken('test_token')->plainTextToken;
+        
+        // Clear globally seeded pending transactions so they don't interfere with cycle count guard
+        \App\Models\Transaksi::where('status', 'pending')->delete();
     }
 
     /** @test */
@@ -48,6 +51,50 @@ class SerahTerimaTest extends TestCase
         $this->assertGreaterThan(0, count($response->json('data.cycle_count_items')));
         $firstItem = $response->json('data.cycle_count_items.0');
         $this->assertArrayHasKey('pkm', $firstItem);
+    }
+
+    /** @test */
+    public function kasir_cannot_get_serah_terima_draft_if_pending_cash_orders_exist()
+    {
+        // Arrange: Create a pending cash order
+        \App\Models\Transaksi::create([
+            'anggota_id' => null,
+            'kasir_id' => $this->kasir1->user_id,
+            'total_harga' => 10000,
+            'metode_pembayaran' => 'cash',
+            'status' => 'pending',
+            'created_at' => now(),
+        ]);
+
+        // Act
+        $response = $this->withHeader('Authorization', "Bearer {$this->token1}")
+            ->getJson('/laravel/api/kasir/serah-terima-draft');
+
+        // Assert
+        $response->assertStatus(422);
+        $this->assertStringContainsString('Harap selesaikan atau batalkan semua transaksi tunai', $response->json('message'));
+    }
+
+    /** @test */
+    public function kasir_can_get_serah_terima_draft_if_pending_non_cash_orders_exist()
+    {
+        // Arrange: Create a pending non-cash order
+        \App\Models\Transaksi::create([
+            'anggota_id' => null,
+            'kasir_id' => $this->kasir1->user_id,
+            'total_harga' => 10000,
+            'metode_pembayaran' => 'transfer',
+            'status' => 'pending',
+            'created_at' => now(),
+        ]);
+
+        // Act
+        $response = $this->withHeader('Authorization', "Bearer {$this->token1}")
+            ->getJson('/laravel/api/kasir/serah-terima-draft');
+
+        // Assert
+        $response->assertStatus(200);
+        $this->assertTrue($response->json('success'));
     }
 
     /** @test */
@@ -124,6 +171,48 @@ class SerahTerimaTest extends TestCase
             'serah_id' => $serah->serah_id,
             'status' => 'approved',
         ]);
+    }
+
+    /** @test */
+    public function receiver_can_approve_serah_terima_and_only_updates_stok_toko()
+    {
+        $barang = Barang::firstOrFail();
+        $barang->update([
+            'stok_toko' => 5,
+            'stok_gudang' => 20,
+            'stok' => 25,
+            'pkm' => 10,
+        ]);
+
+        $serah = SerahTerimaKasir::create([
+            'kasir_from' => $this->kasir1->user_id,
+            'kasir_to' => $this->kasir2->user_id,
+            'hasil_opname' => json_encode([
+                'uang_fisik' => 1000000,
+                'items' => [
+                    [
+                        'barang_id' => $barang->barang_id,
+                        'stok_aktual' => 4, // physical count is 4
+                        'stok_input' => 5,  // original stok_toko
+                        'selisih' => -1,
+                    ],
+                ]
+            ]),
+            'status' => 'pending',
+        ]);
+
+        $token2 = $this->kasir2->createToken('test_token2')->plainTextToken;
+        $response = $this->withHeader('Authorization', "Bearer {$token2}")
+            ->postJson('/laravel/api/kasir/approve-serah-terima', [
+                'serah_id' => $serah->serah_id,
+            ]);
+
+        $response->assertStatus(200)->assertJson(['success' => true]);
+
+        $barang->refresh();
+        $this->assertEquals(4, $barang->stok_toko);
+        $this->assertEquals(20, $barang->stok_gudang);
+        $this->assertEquals(24, $barang->stok);
     }
 
     /** @test */
