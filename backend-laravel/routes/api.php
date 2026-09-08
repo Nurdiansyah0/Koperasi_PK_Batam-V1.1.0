@@ -105,6 +105,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/auto-calculate-pkm', [AdminController::class, 'autoCalculatePkm']);
         Route::get('/laporan-selisih-kasir', [AdminController::class, 'getLaporanSelisihKasir']);
         Route::get('/laporan-tarik-tunai', [AdminController::class, 'getLaporanTarikTunai']);
+        Route::post('/cash-adjustments', [AdminController::class, 'storeCashAdjustment']);
         Route::get('/shu-management', [AdminController::class, 'getShuManagement']);
         Route::post('/konversi-shu', [AdminController::class, 'prosesKonversiShu']);
         Route::post('/mutasi-stok', [AdminController::class, 'mutasiStok']);

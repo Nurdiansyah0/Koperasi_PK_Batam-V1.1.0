@@ -165,34 +165,30 @@ class AdminController extends Controller
     public function updateBarang(Request $request)
     {
         $this->checkAdmin($request);
-        $barang = Barang::find($request->barang_id);
+        
+        $validated = $request->validate([
+            'barang_id' => 'required|integer|exists:barang,barang_id',
+            'nama_barang' => 'required|string|max:100',
+            'pkm' => 'nullable|integer|min:1',
+            'harga_modal' => 'required|numeric|min:0',
+            'harga_jual' => 'required|numeric|min:0',
+            'tgl_kadaluarsa_toko' => 'nullable|date',
+            'tgl_kadaluarsa_gudang' => 'nullable|date',
+        ]);
+
+        $barang = Barang::find($validated['barang_id']);
         if (! $barang) {
             return response()->json(['success' => false, 'message' => 'Barang tidak ditemukan'], 404);
         }
 
-        $pkm = $request->has('pkm') ? (int) $request->pkm : (int) ($barang->pkm ?: 1);
-        $stokToko = $request->has('stok_toko') ? (int) $request->stok_toko : (int) $barang->stok_toko;
-        $stokGudang = $request->has('stok_gudang') ? (int) $request->stok_gudang : (int) $barang->stok_gudang;
-
-        if ($request->has('stok') && ! $request->has('stok_toko') && ! $request->has('stok_gudang')) {
-            $inputStok = (int) $request->stok;
-            $stokToko = min($inputStok, $pkm);
-            $stokGudang = max(0, $inputStok - $stokToko);
-        }
-
-        $totalStok = $stokToko + $stokGudang;
-        $data = $request->all();
-        $data['stok_toko'] = $stokToko;
-        $data['stok_gudang'] = $stokGudang;
-        $data['stok'] = $totalStok;
-        if ($request->has('tgl_kadaluarsa_toko')) {
-            $data['tgl_kadaluarsa_toko'] = $request->tgl_kadaluarsa_toko ?: null;
-        }
-        if ($request->has('tgl_kadaluarsa_gudang')) {
-            $data['tgl_kadaluarsa_gudang'] = $request->tgl_kadaluarsa_gudang ?: null;
-        }
-
-        $barang->update($data);
+        $barang->update([
+            'nama_barang' => $validated['nama_barang'],
+            'pkm' => $validated['pkm'] ?? 1,
+            'harga_modal' => $validated['harga_modal'],
+            'harga_jual' => $validated['harga_jual'],
+            'tgl_kadaluarsa_toko' => $validated['tgl_kadaluarsa_toko'] ?? null,
+            'tgl_kadaluarsa_gudang' => $validated['tgl_kadaluarsa_gudang'] ?? null,
+        ]);
 
         return response()->json(['success' => true, 'message' => 'Barang berhasil diupdate']);
     }
@@ -200,9 +196,19 @@ class AdminController extends Controller
     public function hapusBarang(Request $request)
     {
         $this->checkAdmin($request);
-        Barang::destroy($request->barang_id);
-
-        return response()->json(['success' => true, 'message' => 'Barang berhasil dihapus']);
+        try {
+            Barang::destroy($request->barang_id);
+            return response()->json(['success' => true, 'message' => 'Barang berhasil dihapus']);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Error 19 is SQLite Foreign Key constraint violation
+            if ($e->getCode() == '23000') {
+                return response()->json([
+                    'success' => false, 
+                    'message' => 'Barang tidak dapat dihapus karena sudah memiliki riwayat penjualan atau restock.'
+                ], 400);
+            }
+            throw $e;
+        }
     }
 
     public function restockBarang(Request $request, \App\Actions\Inventory\RestockBarangAction $action)
@@ -899,6 +905,48 @@ class AdminController extends Controller
                     ];
                 });
 
+            // ── 0. CASH OUTFLOW & INVENTORY VALUATION (RESTOCK LOGIC) ──
+            $qRestock = \App\Models\RiwayatRestock::query();
+            if ($tglAwal) {
+                $qRestock->whereDate('created_at', '>=', $tglAwal);
+            }
+            if ($tglAkhir) {
+                $qRestock->whereDate('created_at', '<=', $tglAkhir);
+            }
+            
+            // Asumsi: Semua sumber dana di luar "hutang" adalah cash outflow riil
+            $totalPembelianInventory = (float) $qRestock->where('sumber_dana', '!=', 'hutang_supplier')->sum('total_biaya');
+            
+            // ── 0.5. HISTORICAL CASH ADJUSTMENT ──
+            $qAdjust = \App\Models\CashAdjustment::query()->where('status', 'APPROVED');
+            if ($tglAwal) {
+                $qAdjust->whereDate('adjustment_date', '>=', $tglAwal);
+            }
+            if ($tglAkhir) {
+                $qAdjust->whereDate('adjustment_date', '<=', $tglAkhir);
+            }
+            if ($metode && $metode !== 'all') {
+                if ($metode === 'cash') {
+                    $qAdjust->where('source', 'CASH');
+                } elseif (in_array($metode, ['transfer', 'ewallet', 'qr'])) {
+                    $qAdjust->where('source', 'BANK');
+                } else {
+                    // hutang does not involve cash adjustment
+                    $qAdjust->whereRaw('1 = 0'); 
+                }
+            }
+            
+            $adjIn = (clone $qAdjust)->where('direction', 'IN')->sum('amount');
+            $adjOut = (clone $qAdjust)->where('direction', 'OUT')->sum('amount');
+            $historicalCashAdjustment = (float) ($adjIn - $adjOut);
+
+            // Fetch list for UI detail
+            $cashAdjustmentsList = (clone $qAdjust)->with(['creator', 'approver'])->orderBy('adjustment_date', 'desc')->get();
+
+            // Hitung nilai persediaan berjalan (Estimated Inventory Value)
+            $inventoryValue = (float) \App\Models\Barang::selectRaw('SUM((stok_toko + stok_gudang) * harga_modal) as total_val')->value('total_val');
+
+
             $withRelations = [
                 'kasir:user_id,username',
                 'anggota:anggota_id,nama_lengkap',
@@ -1131,12 +1179,16 @@ class AdminController extends Controller
                 'success' => true,
                 'summary' => [
                     'total_transaksi' => $totalTransaksi,
-                    'total_pendapatan' => $totalPendapatan,
-                    'total_keuntungan' => $totalKeuntungan,
-                    'total_laba_kotor' => $totalLabaKotor,
-                    'total_hpp' => $totalHpp,
-                    'total_beban_operasional' => $totalBebanOperasional,
-                    'total_laba_bersih' => $totalLabaBersih,
+                    'total_pendapatan' => $totalPendapatan, // Gross Sales
+                    'total_keuntungan' => $totalKeuntungan, // Gross Profit
+                    'total_laba_kotor' => $totalLabaKotor,  // Gross Profit
+                    'total_hpp' => $totalHpp,               // COGS / Replenishment Requirement
+                    'total_beban_operasional' => $totalBebanOperasional, // OPEX
+                    'total_laba_bersih' => $totalLabaBersih, // Net Profit
+                    'total_pembelian_inventory' => $totalPembelianInventory, // Cash Outflow
+                    'historical_cash_adjustment' => $historicalCashAdjustment, // Explicit correction
+                    'estimated_inventory_value' => $inventoryValue, // Assets
+                    'net_cash_flow' => $kasLikuidMasuk - $totalPembelianInventory - $totalBebanOperasional + $historicalCashAdjustment, // Net Cash Flow
                     'shu_anggota_60' => $shuAnggota60,
                     'shu_cadangan_30' => $shuCadangan30,
                     'shu_pengurus_10' => $shuPengurus10,
@@ -1155,6 +1207,7 @@ class AdminController extends Controller
                 'rekap_bulanan' => $rekapBulanan,
                 'analisis_kesehatan' => $analisisKesehatan,
                 'pengeluaran_operasional' => $daftarPengeluaran,
+                'cash_adjustments' => $cashAdjustmentsList,
                 'pagination' => $paginated,
                 'breakdown_pembayaran' => $breakdownPembayaran,
                 'breakdown_kasir' => $breakdownKasir,
@@ -1826,6 +1879,63 @@ class AdminController extends Controller
             DB::rollBack();
 
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+    }
+
+    public function storeCashAdjustment(Request $request)
+    {
+        $adminId = $this->checkAdmin($request);
+        
+        $validated = $request->validate([
+            'adjustment_date' => 'required|date',
+            'type' => 'required|string|in:HISTORICAL_INVENTORY_PURCHASE,CASH_RECONCILIATION',
+            'amount' => 'required|numeric|gt:0',
+            'direction' => 'required|string|in:IN,OUT',
+            'source' => 'required|string|in:CASH,BANK',
+            'reason' => 'required|string|min:3',
+            'reference' => 'nullable|string',
+        ]);
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            // Optional: Idempotency check if reference is provided
+            if (!empty($validated['reference'])) {
+                $exists = \App\Models\CashAdjustment::where('reference', $validated['reference'])->exists();
+                if ($exists) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Duplikasi terdeteksi: Penyesuaian dengan referensi ini sudah ada.'
+                    ], 422);
+                }
+            }
+
+            $adjustment = \App\Models\CashAdjustment::create([
+                'adjustment_date' => $validated['adjustment_date'],
+                'type' => $validated['type'],
+                'amount' => $validated['amount'],
+                'direction' => $validated['direction'],
+                'source' => $validated['source'],
+                'reason' => $validated['reason'],
+                'reference' => $validated['reference'] ?? null,
+                'status' => 'APPROVED', // Auto-approved for Admin logic
+                'created_by' => $adminId,
+                'approved_by' => $adminId,
+                'approved_at' => now(),
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Penyesuaian kas historis berhasil disimpan dan disetujui.',
+                'data' => $adjustment
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan penyesuaian: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

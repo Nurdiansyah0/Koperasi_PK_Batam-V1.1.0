@@ -111,6 +111,42 @@ export function LaporanTransaksi() {
   // Corporate Statement Print Modal State
   const [isCorporateModalOpen, setIsCorporateModalOpen] = useState(false)
 
+  const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false)
+  const [adjustmentForm, setAdjustmentForm] = useState({
+    adjustment_date: formatDateOnly(new Date()),
+    type: 'HISTORICAL_INVENTORY_PURCHASE',
+    amount: 0,
+    direction: 'OUT' as 'IN'|'OUT',
+    source: 'CASH',
+    reason: '',
+    reference: ''
+  })
+  const [isSubmittingAdjustment, setIsSubmittingAdjustment] = useState(false)
+
+  const handleCreateAdjustment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (adjustmentForm.amount <= 0) {
+      toast.error('Jumlah harus lebih dari 0')
+      return
+    }
+    if (adjustmentForm.reason.trim().length < 3) {
+      toast.error('Alasan terlalu singkat')
+      return
+    }
+    try {
+      setIsSubmittingAdjustment(true)
+      await adminService.postCashAdjustment(adjustmentForm)
+      toast.success('Penyesuaian kas historis berhasil disetujui')
+      setIsAdjustmentModalOpen(false)
+      loadData()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Gagal menyimpan penyesuaian')
+    } finally {
+      setIsSubmittingAdjustment(false)
+    }
+  }
+
+
   const applyPreset = (preset: string) => {
     setActivePreset(preset)
     setPage(1)
@@ -339,6 +375,10 @@ export function LaporanTransaksi() {
     total_hpp: 0,
     total_beban_operasional: 0,
     total_laba_bersih: 0,
+    total_pembelian_inventory: 0,
+    historical_cash_adjustment: 0,
+    estimated_inventory_value: 0,
+    net_cash_flow: 0,
     shu_anggota_60: 0,
     shu_cadangan_30: 0,
     shu_pengurus_10: 0,
@@ -349,7 +389,8 @@ export function LaporanTransaksi() {
     total_transfer: 0,
     omset_anggota: 0,
     omset_umum: 0,
-    avg_transaksi: 0
+    avg_transaksi: 0,
+    analisis_kesehatan: {}
   }
 
   const kasLikuid = (summary.total_cash || 0) + (summary.total_ewallet || 0) + (summary.total_qr || 0) + (summary.total_transfer || 0)
@@ -369,7 +410,7 @@ export function LaporanTransaksi() {
   const totHakShuRekap = (data?.rekap_anggota || []).reduce((acc, c) => acc + c.hak_shu, 0)
   const selisihShu = Math.abs(summary.shu_anggota_60 - totHakShuRekap)
 
-  const ksh = data?.analisis_kesehatan || summary.analisis_kesehatan || {
+  const ksh = data?.analisis_kesehatan || (summary as any).analisis_kesehatan || {
     total_anggota_terdaftar: (data?.rekap_anggota || []).length || 1,
     jumlah_anggota_aktif: (data?.rekap_anggota || []).length,
     rasio_partisipasi_persen: 100,
@@ -1140,105 +1181,122 @@ export function LaporanTransaksi() {
         )}
       </div>
 
-      {/* ── 6-Card Executive Financial Metrics (Incorporating OPEX) ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
-        {/* Omset */}
-        <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Omset</span>
-            <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600">
-              <TrendingUp className="w-3.5 h-3.5" />
+      {/* ── THREE-PANEL FINANCIAL SUMMARY ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        
+        {/* PANEL 1: PROFIT & LOSS (LABA RUGI) */}
+        <div className="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 shadow-xs flex flex-col">
+          <div className="flex items-center gap-2 mb-4 border-b border-slate-100 dark:border-zinc-800 pb-2">
+            <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700">
+              <TrendingUp className="w-4 h-4" />
             </div>
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300">1. Laba Rugi (Profit & Loss)</h3>
           </div>
-          <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-tight">
-            {formatRupiah(summary.total_pendapatan)}
-          </h3>
-          <p className="text-[10px] text-slate-400 mt-1">
-            {summary.total_transaksi} struk selesai
-          </p>
+          
+          <div className="space-y-3 flex-1">
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] text-slate-500 font-medium">Penjualan Kotor (Gross Sales)</span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{formatRupiah(summary.total_pendapatan)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] text-rose-500 font-medium">(-) HPP (Beban Pokok Barang)</span>
+              <span className="text-xs font-bold text-rose-600">({formatRupiah(summary.total_hpp)})</span>
+            </div>
+            <div className="flex justify-between items-center border-t border-dashed border-slate-200 dark:border-zinc-700 pt-2">
+              <span className="text-[11px] text-emerald-600 font-bold">Laba Kotor (Gross Profit)</span>
+              <span className="text-xs font-bold text-emerald-600">{formatRupiah(summary.total_keuntungan)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] text-amber-600 font-medium cursor-pointer hover:underline" onClick={() => setActiveTab('pengeluaran')}>(-) Beban Operasional (OPEX)</span>
+              <span className="text-xs font-bold text-amber-600">({formatRupiah(summary.total_beban_operasional)})</span>
+            </div>
+
+            <div className="flex justify-between items-center border-t border-dashed border-slate-200 dark:border-zinc-700 pt-2">
+              <div className="flex flex-col">
+                <span className="text-[11px] text-purple-600 font-bold cursor-pointer hover:underline flex items-center gap-1" onClick={() => setIsAdjustmentModalOpen(true)}>
+                  ± Penyesuaian Kas Historis
+                </span>
+              </div>
+              <span className={`text-xs font-bold ${(summary.historical_cash_adjustment || 0) >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
+                {formatRupiah(summary.historical_cash_adjustment || 0)}
+              </span>
+            </div>
+
+          </div>
+          
+          <div className="mt-4 pt-3 border-t border-slate-200 dark:border-zinc-800 flex justify-between items-center">
+            <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase">Laba Bersih (Net Profit)</span>
+            <span className="text-sm font-black text-emerald-600">{formatRupiah(summary.total_laba_bersih)}</span>
+          </div>
         </div>
 
-        {/* HPP */}
-        <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">HPP Modal</span>
-            <div className="p-1 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-600">
-              <Store className="w-3.5 h-3.5" />
+        {/* PANEL 2: CASH FLOW (ARUS KAS) */}
+        <div className="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 shadow-xs flex flex-col">
+          <div className="flex items-center gap-2 mb-4 border-b border-slate-100 dark:border-zinc-800 pb-2">
+            <div className="p-1.5 rounded-lg bg-indigo-100 text-indigo-700">
+              <Wallet className="w-4 h-4" />
+            </div>
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300">2. Arus Kas (Cash Flow)</h3>
+          </div>
+          
+          <div className="space-y-3 flex-1">
+            <div className="flex justify-between items-center">
+              <div className="flex flex-col">
+                <span className="text-[11px] text-slate-500 font-medium">Kas Masuk Likuid</span>
+                <span className="text-[9px] text-slate-400">Tunai, E-Wallet, QRIS, Transfer</span>
+              </div>
+              <span className="text-xs font-bold text-indigo-600">{formatRupiah(kasLikuid)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <div className="flex flex-col">
+                <span className="text-[11px] text-rose-500 font-medium">(-) Pembelian Inventaris / Restock</span>
+                <span className="text-[9px] text-slate-400">Uang keluar untuk belanja stok</span>
+              </div>
+              <span className="text-xs font-bold text-rose-600">({formatRupiah(summary.total_pembelian_inventory || 0)})</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <div className="flex flex-col">
+                <span className="text-[11px] text-amber-600 font-medium">(-) Pembayaran Operasional (OPEX)</span>
+                <span className="text-[9px] text-slate-400">Kas keluar untuk listrik, ATK, dll</span>
+              </div>
+              <span className="text-xs font-bold text-amber-600">({formatRupiah(summary.total_beban_operasional)})</span>
             </div>
           </div>
-          <h3 className="text-sm sm:text-base font-black text-slate-700 dark:text-slate-300 leading-tight">
-            {formatRupiah(summary.total_hpp)}
-          </h3>
-          <p className="text-[10px] text-slate-400 mt-1">
-            Beban pokok barang
-          </p>
+          
+          <div className="mt-4 pt-3 border-t border-slate-200 dark:border-zinc-800 flex justify-between items-center">
+            <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase">Kas Bersih (Net Cash)</span>
+            <span className={`text-sm font-black ${(summary.net_cash_flow || 0) >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
+              {formatRupiah(summary.net_cash_flow || 0)}
+            </span>
+          </div>
         </div>
 
-        {/* Laba Kotor */}
-        <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Laba Kotor</span>
-            <div className="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600">
-              <ArrowUpRight className="w-3.5 h-3.5" />
+        {/* PANEL 3: INVENTORY & WORKING CAPITAL */}
+        <div className="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 shadow-xs flex flex-col">
+          <div className="flex items-center gap-2 mb-4 border-b border-slate-100 dark:border-zinc-800 pb-2">
+            <div className="p-1.5 rounded-lg bg-cyan-100 text-cyan-700">
+              <Store className="w-4 h-4" />
+            </div>
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300">3. Aset & Modal Kerja</h3>
+          </div>
+          
+          <div className="space-y-4 flex-1">
+            <div className="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[11px] text-slate-500 font-bold uppercase">Estimasi Nilai Persediaan</span>
+              </div>
+              <span className="text-sm font-black text-cyan-700 dark:text-cyan-400">{formatRupiah(summary.estimated_inventory_value || 0)}</span>
+              <p className="text-[9px] text-slate-400 mt-1 leading-tight">Total nilai aset stok barang di toko & gudang saat ini berdasarkan harga modal berjalan.</p>
+            </div>
+            
+            <div className="bg-rose-50 dark:bg-rose-950/20 p-3 rounded-xl border border-rose-100 dark:border-rose-900/30">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[11px] text-rose-700 dark:text-rose-400 font-bold uppercase">Kebutuhan Replenishment</span>
+              </div>
+              <span className="text-sm font-black text-rose-700 dark:text-rose-400">{formatRupiah(summary.total_hpp)}</span>
+              <p className="text-[9px] text-rose-600/70 mt-1 leading-tight">Estimasi kas yang harus disiapkan untuk memutar/membeli kembali barang yang telah terjual pada periode ini (sama dengan HPP).</p>
             </div>
           </div>
-          <h3 className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 leading-tight">
-            {formatRupiah(summary.total_keuntungan)}
-          </h3>
-          <p className="text-[10px] text-emerald-600 font-bold mt-1">
-            Gross: {marginGrossPercent}%
-          </p>
-        </div>
-
-        {/* Beban Pengeluaran Kas (OPEX) */}
-        <div 
-          onClick={() => setActiveTab('pengeluaran')}
-          className="p-3 sm:p-4 rounded-3xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 shadow-xs cursor-pointer hover:border-amber-400 transition-colors"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Pengeluaran Kas</span>
-            <div className="p-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700">
-              <Receipt className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <h3 className="text-sm sm:text-base font-black text-amber-700 dark:text-amber-300 leading-tight">
-            {formatRupiah(summary.total_beban_operasional)}
-          </h3>
-          <p className="text-[10px] text-amber-600 font-bold mt-1">
-            {pengeluaranList.length} transaksi kas
-          </p>
-        </div>
-
-        {/* Net SHU Bersih */}
-        <div className="p-3 sm:p-4 rounded-3xl bg-emerald-500/10 border border-emerald-500/30 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">SHU Bersih Riil</span>
-            <div className="p-1 rounded-lg bg-emerald-500/20 text-emerald-700">
-              <PieChart className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <h3 className="text-sm sm:text-base font-black text-emerald-700 dark:text-emerald-300 leading-tight">
-            {formatRupiah(summary.total_laba_bersih)}
-          </h3>
-          <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold mt-1">
-            Net: {marginNetPercent}%
-          </p>
-        </div>
-
-        {/* Kas Likuid */}
-        <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kas Masuk Likuid</span>
-            <div className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600">
-              <Wallet className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <h3 className="text-sm sm:text-base font-black text-indigo-600 dark:text-indigo-400 leading-tight">
-            {formatRupiah(kasLikuid)}
-          </h3>
-          <p className="text-[10px] text-slate-400 mt-1">
-            Tunai, E-Wallet, QRIS
-          </p>
         </div>
       </div>
 

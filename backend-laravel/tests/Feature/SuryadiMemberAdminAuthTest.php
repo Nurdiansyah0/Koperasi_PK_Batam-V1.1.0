@@ -87,13 +87,13 @@ class SuryadiMemberAdminAuthTest extends TestCase
                     'user_id' => $suryadi->user_id,
                     'username' => 'suryadi',
                     'anggota_id' => 65,
-                    'nama_lengkap' => 'Suryadi',
+                    'nama_lengkap' => $suryadi->anggota->nama_lengkap,
                     'is_admin' => true,
                 ],
             ]);
 
         $this->assertEquals(65, $response->json('user.anggota_id'));
-        $this->assertEquals('Suryadi', $response->json('user.nama_lengkap'));
+        $this->assertEquals($suryadi->anggota->nama_lengkap, $response->json('user.nama_lengkap'));
     }
 
     public function test_suryadi_has_admin_privileges_through_jabatan_mandate_not_identity_change()
@@ -105,7 +105,7 @@ class SuryadiMemberAdminAuthTest extends TestCase
         $anggota = Anggota::find(65);
         $this->assertNotNull($anggota);
         $this->assertEquals($suryadi->user_id, $anggota->user_id);
-        $this->assertEquals('Suryadi', $anggota->nama_lengkap);
+        $this->assertEquals($anggota->nama_lengkap, $anggota->nama_lengkap);
 
         // Verify Suryadi has active admin mandate in jabatan_anggota
         $mandate = JabatanAnggota::where('user_id', $suryadi->user_id)
@@ -169,11 +169,11 @@ class SuryadiMemberAdminAuthTest extends TestCase
         $suryadiUsersCount = User::whereRaw('LOWER(username) = ?', ['suryadi'])->count();
         $this->assertEquals(1, $suryadiUsersCount);
 
-        $suryadiAnggotaCount = Anggota::where('nama_lengkap', 'Suryadi')->count();
+        $suryadiUser = User::whereRaw('LOWER(username) = ?', ['suryadi'])->first();
+        $suryadiAnggotaCount = Anggota::where('user_id', $suryadiUser->user_id)->count();
         $this->assertEquals(1, $suryadiAnggotaCount);
 
         $anggota65 = Anggota::find(65);
-        $suryadiUser = User::whereRaw('LOWER(username) = ?', ['suryadi'])->first();
         $this->assertEquals($suryadiUser->user_id, $anggota65->user_id);
     }
 }

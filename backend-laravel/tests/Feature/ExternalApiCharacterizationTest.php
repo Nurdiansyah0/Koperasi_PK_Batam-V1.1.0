@@ -48,7 +48,7 @@ class ExternalApiCharacterizationTest extends TestCase
         ApiKey::create([
             'name' => 'Gateway Test',
             'key' => 'TEST-KEY-123',
-            'is_active' => true,
+            'is_active' => true, 'permissions' => json_encode([]),
         ]);
 
         $this->withHeader('X-API-KEY', 'TEST-KEY-123')

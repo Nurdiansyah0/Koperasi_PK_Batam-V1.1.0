@@ -35,7 +35,7 @@ class CalculateSerahTerimaDraftAction
             ->values();
 
         // Load all active items in the store for cycle count
-        $allItems = Barang::orderBy('nama_barang', 'asc')->get();
+        $allItems = Barang::select('barang_id', 'nama_barang', 'stok_toko', 'pkm', 'harga_jual')->orderBy('nama_barang', 'asc')->get();
 
         $rokokKeywords = ['rokok', 'sampoerna', 'surya', 'marlboro', 'gudang garam', 'magnum', 'djarum', 'camel', 'esse', 'filter', 'kretek', 'mild', 'samsu'];
 
@@ -72,7 +72,7 @@ class CalculateSerahTerimaDraftAction
         ];
     }
 
-    private function calculateSaldoKasKasir(int $kasirId): float
+        private function calculateSaldoKasKasir(int $kasirId): float
     {
         $hasPendingCashOrders = Transaksi::where('status', 'pending')
             ->whereIn('metode_pembayaran', ['cash', 'tunai'])
@@ -84,47 +84,48 @@ class CalculateSerahTerimaDraftAction
             ]);
         }
 
-        $cashInTrx = Transaksi::where('kasir_id', $kasirId)
+        // OPTIMIZATION: Shift-based Bounding Box.
+        // Instead of doing a full table scan of the entire history, 
+        // we find the last approved handover involving this cashier to bound the queries.
+        $lastHandover = SerahTerimaKasir::where('status', 'approved')
+            ->where(function ($q) use ($kasirId) {
+                $q->where('kasir_to', $kasirId)->orWhere('kasir_from', $kasirId);
+            })
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        $shiftStart = $lastHandover ? $lastHandover->created_at : null;
+        
+        $startingBalance = 0;
+        if ($lastHandover && $lastHandover->kasir_to == $kasirId) {
+            $h = $lastHandover->hasil_opname;
+            if (is_string($h)) {
+                $h = json_decode($h, true);
+            }
+            $startingBalance = $h['uang_fisik'] ?? 0;
+        }
+
+        $trxQuery = Transaksi::where('kasir_id', $kasirId)
             ->where('status', 'selesai')
-            ->whereIn('metode_pembayaran', ['cash', 'tunai', 'potong_tarik_tunai'])
-            ->sum('total_harga');
+            ->whereIn('metode_pembayaran', ['cash', 'tunai', 'potong_tarik_tunai']);
+        if ($shiftStart) $trxQuery->where('created_at', '>=', $shiftStart);
+        $cashInTrx = $trxQuery->sum('total_harga');
 
-        $cashInSerah = SerahTerimaKasir::where('kasir_to', $kasirId)
-            ->where('status', 'approved')
-            ->pluck('hasil_opname')
-            ->sum(function ($h) {
-                if (is_string($h)) {
-                    $h = json_decode($h, true);
-                }
+        $setorQuery = SetoranKasir::where('kasir_id', $kasirId)->where('status', 'approved');
+        if ($shiftStart) $setorQuery->where('created_at', '>=', $shiftStart);
+        $cashOutSetor = $setorQuery->sum('nominal');
 
-                return $h['uang_fisik'] ?? 0;
-            });
-
-        $cashOutSerah = SerahTerimaKasir::where('kasir_from', $kasirId)
-            ->where('status', 'approved')
-            ->pluck('hasil_opname')
-            ->sum(function ($h) {
-                if (is_string($h)) {
-                    $h = json_decode($h, true);
-                }
-
-                return $h['uang_fisik'] ?? 0;
-            });
-
-        $cashOutSetor = SetoranKasir::where('kasir_id', $kasirId)
-            ->where('status', 'approved')
-            ->sum('nominal');
-
-        $cashDebtRepay = DB::table('pembayaran_hutang')
+        $debtQuery = DB::table('pembayaran_hutang')
             ->where('kasir_id', $kasirId)
             ->where('status', 'approved')
-            ->where('metode_pembayaran', 'cash')
-            ->sum('nominal');
+            ->where('metode_pembayaran', 'cash');
+        if ($shiftStart) $debtQuery->where('created_at', '>=', $shiftStart);
+        $cashDebtRepay = $debtQuery->sum('nominal');
 
-        $cashWithdrawals = DB::table('tarik_tunai')
-            ->where('kasir_id', $kasirId)
-            ->sum('nominal');
+        $withdrawQuery = DB::table('tarik_tunai')->where('kasir_id', $kasirId);
+        if ($shiftStart) $withdrawQuery->where('created_at', '>=', $shiftStart);
+        $cashWithdrawals = $withdrawQuery->sum('nominal');
 
-        return (float) ($cashInTrx + $cashDebtRepay + $cashInSerah - $cashWithdrawals - $cashOutSerah - $cashOutSetor);
+        return (float) ($startingBalance + $cashInTrx + $cashDebtRepay - $cashWithdrawals - $cashOutSetor);
     }
 }

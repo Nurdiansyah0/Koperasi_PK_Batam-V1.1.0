@@ -71,13 +71,8 @@ export function SerahTerimaPage() {
   }
 
   useEffect(() => {
-    setPage(1)
-    loadData(1, activeTab)
-  }, [activeTab])
-
-  useEffect(() => {
     loadData(page, activeTab)
-  }, [page])
+  }, [page, activeTab])
 
   const handleApprove = async (id: number) => {
     setProcessingId(id)
@@ -178,7 +173,7 @@ export function SerahTerimaPage() {
       {/* ─── SEGMENTED PILL TAB SWITCHER (THUMB-FRIENDLY) ─── */}
       <div className="flex p-1 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
         <button
-          onClick={() => setActiveTab('pending')}
+          onClick={() => { setActiveTab('pending'); setPage(1); }}
           className={`flex-1 py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all active:scale-95 ${
             activeTab === 'pending'
               ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
@@ -195,7 +190,7 @@ export function SerahTerimaPage() {
         </button>
 
         <button
-          onClick={() => setActiveTab('history')}
+          onClick={() => { setActiveTab('history'); setPage(1); }}
           className={`flex-1 py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all active:scale-95 ${
             activeTab === 'history'
               ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'

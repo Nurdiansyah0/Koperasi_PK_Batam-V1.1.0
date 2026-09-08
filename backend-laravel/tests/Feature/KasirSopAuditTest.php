@@ -362,7 +362,7 @@ class KasirSopAuditTest extends TestCase
     public function test_serah_terima_draft_and_daftar_kasir()
     {
         // Clear globally seeded pending transactions so they don't block the draft creation
-        \App\Models\Transaksi::where('status', 'pending')->delete();
+        \App\Models\Transaksi::where('status', 'pending')->update(['status' => 'batal']);
 
         $res1 = $this->withHeader('Authorization', "Bearer {$this->token}")
             ->getJson('/laravel/api/kasir/daftar-kasir');

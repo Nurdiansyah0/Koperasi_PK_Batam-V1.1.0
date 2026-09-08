@@ -9,6 +9,20 @@ import type {
 } from '@/types'
 
 export const adminService = {
+
+  async postCashAdjustment(payload: {
+    adjustment_date: string;
+    type: string;
+    amount: number;
+    direction: 'IN'|'OUT';
+    source: string;
+    reason: string;
+    reference?: string;
+  }): Promise<any> {
+    const res = await api.post('/api/cash-adjustments', payload)
+    return res.data
+  },
+
   submitOpnameMassal: async (adjustments: any[]) => {
     const { data } = await api.post('/laravel/api/admin/opname', { adjustments })
     return data

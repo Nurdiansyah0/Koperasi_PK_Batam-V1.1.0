@@ -1,0 +1,10 @@
+--- backend-laravel/routes/api.php
++++ backend-laravel/routes/api.php
+@@ -93,6 +93,7 @@
+         Route::post('/laporan-selisih-kasir', [AdminController::class, 'getLaporanSelisihKasir']);
+         Route::get('/laporan-tarik-tunai', [AdminController::class, 'getLaporanTarikTunai']);
+         Route::post('/laporan-tarik-tunai', [AdminController::class, 'getLaporanTarikTunai']);
++        Route::post('/cash-adjustments', [AdminController::class, 'storeCashAdjustment']);
+ 
+         Route::get('/kasir-list', [AdminController::class, 'getDaftarKasir']);
+         Route::post('/set-pkm', [AdminController::class, 'setTargetPkm']);

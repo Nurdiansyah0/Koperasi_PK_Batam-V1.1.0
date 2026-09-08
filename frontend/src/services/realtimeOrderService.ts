@@ -208,16 +208,19 @@ class RealtimeOrderManager {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
 
     try {
-      const reg = await navigator.serviceWorker.register(import.meta.env.DEV ? '/push-sw.js' : '/sw.js')
-      await navigator.serviceWorker.ready
-
+      await navigator.serviceWorker.register(import.meta.env.DEV ? '/push-sw.js' : '/sw.js')
+      const reg = await navigator.serviceWorker.ready
+      if (!this.isConnected) return // Prevent strict-mode race condition
+      
       const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: 'BC9sAxkHZSIMXEjr918ELsks1t-B0_W3qxwn_AlT4Hc2XNKZN4QTRxGu0bje8RBOI8Fjk-TapYU3-SHU3vW6GeI'
       })
 
+      if (!this.isConnected) return // Prevent strict-mode race condition
+
       const subData = JSON.parse(JSON.stringify(subscription))
-      await api.post('/laravel/api/push-subscribe', {
+      await api.post('/laravel/api/kasir/push-subscribe', {
         endpoint: subData.endpoint,
         keys: subData.keys
       })

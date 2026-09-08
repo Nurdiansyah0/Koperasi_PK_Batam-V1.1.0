@@ -27,7 +27,7 @@ class SerahTerimaTest extends TestCase
         $this->token1 = $this->kasir1->createToken('test_token')->plainTextToken;
         
         // Clear globally seeded pending transactions so they don't interfere with cycle count guard
-        \App\Models\Transaksi::where('status', 'pending')->delete();
+        \App\Models\Transaksi::where('status', 'pending')->update(['status' => 'batal']);
     }
 
     /** @test */

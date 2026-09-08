@@ -935,7 +935,8 @@ class KasirController extends Controller
             @ignore_user_abort(false);
 
             $lastPushedTime = microtime(true);
-            $maxExecutionSeconds = 25; // Reconnect smoothly every 25s
+            // OPTIMIZATION: Prevent php artisan serve single-thread blocking
+            $maxExecutionSeconds = app()->environment('local') ? 2 : 25; 
             $startTime = time();
 
             // Initial connection greeting

@@ -1108,18 +1108,20 @@ export function DataBarang() {
               <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Stok Display</label>
               <input
                 type="number" min="0"
-                className="w-full px-2.5 py-1.5 border rounded-xl text-xs bg-white dark:bg-zinc-900 font-bold"
+                className="w-full px-2.5 py-1.5 border rounded-xl text-xs bg-white dark:bg-zinc-900 font-bold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                 value={formData.stok_toko ?? ''}
                 onChange={e => setFormData({ ...formData, stok_toko: e.target.value === '' ? '' as any : Number(e.target.value) })}
+                disabled={isEditing}
               />
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Stok Gudang</label>
               <input
                 type="number" min="0"
-                className="w-full px-2.5 py-1.5 border rounded-xl text-xs bg-white dark:bg-zinc-900 font-bold"
+                className="w-full px-2.5 py-1.5 border rounded-xl text-xs bg-white dark:bg-zinc-900 font-bold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                 value={formData.stok_gudang ?? ''}
                 onChange={e => setFormData({ ...formData, stok_gudang: e.target.value === '' ? '' as any : Number(e.target.value) })}
+                disabled={isEditing}
               />
             </div>
             <div>

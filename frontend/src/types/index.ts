@@ -327,6 +327,10 @@ export interface LaporanTransaksi {
     total_hpp: number
     total_beban_operasional: number
     total_laba_bersih: number
+    historical_cash_adjustment: number
+    total_pembelian_inventory: number
+    estimated_inventory_value: number
+    net_cash_flow: number
     shu_anggota_60: number
     shu_cadangan_30: number
     shu_pengurus_10: number
@@ -393,6 +397,7 @@ export interface LaporanTransaksi {
   }[]
   data?: TransaksiLaporanItem[]
   pengeluaran_operasional?: PengeluaranOperasional[]
+  cash_adjustments?: CashAdjustment[]
   rekap_anggota?: {
     anggota_id: number
     nama_lengkap: string
@@ -524,3 +529,18 @@ export interface JabatanSummary {
   total_nonaktif: number
 }
 
+
+export interface CashAdjustment {
+  adjustment_id: number
+  adjustment_date: string
+  type: string
+  amount: number
+  direction: 'IN' | 'OUT'
+  source: string
+  reason: string
+  reference?: string
+  status: string
+  created_at: string
+  creator?: { username: string }
+  approver?: { username: string }
+}

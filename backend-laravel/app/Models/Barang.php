@@ -92,6 +92,14 @@ class Barang extends Model
     {
         parent::boot();
 
+        static::saved(function ($model) {
+            \Illuminate\Support\Facades\Cache::forget('kasir_barang_catalog');
+        });
+
+        static::deleted(function ($model) {
+            \Illuminate\Support\Facades\Cache::forget('kasir_barang_catalog');
+        });
+
         static::saving(function ($model) {
             if ($model->isDirty(['stok_toko', 'stok_gudang'])) {
                 $model->stok = ((int) $model->stok_toko) + ((int) $model->stok_gudang);
