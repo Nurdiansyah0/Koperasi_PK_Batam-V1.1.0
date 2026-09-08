@@ -56,8 +56,10 @@ class HistoricalCashAdjustmentTest extends TestCase
             'keuntungan' => 5000,
         ]);
 
+        $filterDate = ['tanggal_awal' => Carbon::now()->format('Y-m-d'), 'tanggal_akhir' => Carbon::now()->format('Y-m-d')];
+
         // Hit Get Laporan (Baseline)
-        $response1 = $this->actingAs($this->admin)->postJson('/laravel/api/admin/laporan-transaksi');
+        $response1 = $this->actingAs($this->admin)->postJson('/laravel/api/admin/laporan-transaksi', $filterDate);
         $response1->assertStatus(200);
         $summary1 = $response1->json('summary');
         
@@ -80,7 +82,7 @@ class HistoricalCashAdjustmentTest extends TestCase
         $adjResponse->assertStatus(200);
 
         // 3. Hit Get Laporan Again
-        $response2 = $this->actingAs($this->admin)->postJson('/laravel/api/admin/laporan-transaksi');
+        $response2 = $this->actingAs($this->admin)->postJson('/laravel/api/admin/laporan-transaksi', $filterDate);
         $summary2 = $response2->json('summary');
 
         // assertions to guarantee separation of accounting concerns

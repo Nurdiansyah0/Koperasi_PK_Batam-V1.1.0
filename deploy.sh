@@ -17,9 +17,18 @@ REMOTE_USER="dqfqxjrd"
 REMOTE_PATH="/home/$REMOTE_USER/public_html"
 # Always resolve key relative to this script's directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SSH_KEY="$SCRIPT_DIR/id_rsa"
-SSH="ssh -i $SSH_KEY -p $REMOTE_PORT -o StrictHostKeyChecking=no"
-SCP="scp -i $SSH_KEY -P $REMOTE_PORT -o StrictHostKeyChecking=no"
+if [ -n "$DEPLOY_SSH_KEY" ]; then
+    SSH_KEY="$DEPLOY_SSH_KEY"
+elif [ -f "$HOME/.ssh/koperasi_deploy_ed25519" ]; then
+    SSH_KEY="$HOME/.ssh/koperasi_deploy_ed25519"
+elif [ -f "$SCRIPT_DIR/id_rsa" ]; then
+    SSH_KEY="$SCRIPT_DIR/id_rsa"
+else
+    echo "ERROR: Deployment SSH key not found."
+    exit 1
+fi
+SSH="ssh -i $SSH_KEY -p $REMOTE_PORT -o StrictHostKeyChecking=yes"
+SCP="scp -i $SSH_KEY -P $REMOTE_PORT -o StrictHostKeyChecking=yes"
 DEPLOY_TARGET="${1:-all}"
 
 chmod 600 "$SSH_KEY"
@@ -81,51 +90,51 @@ deploy_backend() {
     echo "[BACKEND] Verifying server .env..."
     $SSH "$REMOTE_USER@$REMOTE_HOST" "mkdir -p $REMOTE_PATH/laravel"
     if ! $SSH "$REMOTE_USER@$REMOTE_HOST" "test -f $REMOTE_PATH/laravel/.env"; then
-        echo "  → Auto-provisioning production .env with verified MySQL credentials..."
-        $SSH "$REMOTE_USER@$REMOTE_HOST" "cat << 'EOF' > $REMOTE_PATH/laravel/.env
-APP_NAME=\"Koperasi PK Batam\"
-APP_ENV=production
-APP_KEY=
-APP_DEBUG=false
-APP_URL=https://koperasipkbatam.my.id/laravel
-
-LOG_CHANNEL=single
-LOG_LEVEL=error
-
-DB_CONNECTION=mysql
-DB_HOST=localhost
-DB_PORT=3306
-DB_DATABASE=dqfqxjrd_koperasi_db
-DB_USERNAME=dqfqxjrd_admin
-DB_PASSWORD=Ma2syndicate
-
-BROADCAST_DRIVER=log
-CACHE_DRIVER=file
-FILESYSTEM_DISK=local
-QUEUE_CONNECTION=sync
-SESSION_DRIVER=file
-SESSION_LIFETIME=480
-
-SANCTUM_STATEFUL_DOMAINS=koperasipkbatam.my.id
-
-MAIL_MAILER=smtp
-MAIL_FROM_ADDRESS=\"noreply@koperasipkbatam.my.id\"
-MAIL_FROM_NAME=\"Koperasi PK Batam\"
-EOF"
-        echo "  ✓ Production .env auto-provisioned successfully."
+        echo "  ✗ Production .env is missing on the server."
+        echo "    Create/configure $REMOTE_PATH/laravel/.env manually before deployment."
+        echo "    deploy.sh will never provision database credentials automatically."
+        exit 1
     fi
+    echo "  ✓ Production .env exists; preserving server configuration."
 
-    echo "[BACKEND] Packing Laravel (excluding vendor, .env, logs)..."
+    echo "[BACKEND] Packing Laravel (excluding vendor, .env, logs, runtime caches, sqlite, tests)..."
     TMPDIR=$(mktemp -d)
     cp -r "$SCRIPT_DIR/backend-laravel/." "$TMPDIR/"
     rm -rf "$TMPDIR/vendor"
     rm -rf "$TMPDIR/node_modules"
-    rm -f  "$TMPDIR/.env"
-    rm -f  "$TMPDIR/.env.production.example"
+    rm -rf "$TMPDIR/tests"
+    rm -f  "$TMPDIR"/.env*
+    rm -f  "$TMPDIR/phpunit.xml"
+    rm -f  "$TMPDIR/.phpunit.result.cache"
+    rm -f  "$TMPDIR/test_results.log"
     rm -f  "$TMPDIR/server.log"
-    find "$TMPDIR/storage" -name "*.log" -delete
+    rm -f  "$TMPDIR"/patch* "$TMPDIR"/fix_* "$TMPDIR"/sync_stok.php
+
+    # Never deploy local SQLite databases
+    find "$TMPDIR" -type f \( -name "*.sqlite" -o -name "*.sqlite-*" \) -delete 2>/dev/null || true
+
+    # Clean local logs
+    find "$TMPDIR/storage" -name "*.log" -delete 2>/dev/null || true
+
+    # Never deploy local runtime cache/session/testing state
+    find "$TMPDIR/storage/framework/cache/data" -mindepth 1 -not -name ".gitignore" -delete 2>/dev/null || true
+    find "$TMPDIR/storage/framework/sessions" -mindepth 1 -not -name ".gitignore" -delete 2>/dev/null || true
+    find "$TMPDIR/storage/framework/testing" -mindepth 1 -not -name ".gitignore" -delete 2>/dev/null || true
+
+    # Remove compiled Blade/runtime artifacts
+    find "$TMPDIR/storage/framework/views" -type f ! -name ".gitignore" -delete 2>/dev/null || true
     find "$TMPDIR/storage/framework" -name "*.php" -not -name ".gitignore" -delete 2>/dev/null || true
+
+    # Remove generated bootstrap cache
     rm -f "$TMPDIR/bootstrap/cache/"*.php
+
+    # Ensure required framework runtime directory structure exists
+    mkdir -p "$TMPDIR/storage/framework/cache/data" \
+             "$TMPDIR/storage/framework/sessions" \
+             "$TMPDIR/storage/framework/views" \
+             "$TMPDIR/storage/framework/testing" \
+             "$TMPDIR/storage/logs" \
+             "$TMPDIR/bootstrap/cache"
 
     tar -czf /tmp/koperasi_backend.tar.gz -C "$TMPDIR" .
     rm -rf "$TMPDIR"
@@ -163,11 +172,11 @@ fi
 echo "  → Installing Composer dependencies..."
 $COMPOSER_CMD install --no-dev --optimize-autoloader --quiet
 
+echo "  → Verifying APP_KEY (generating if not set)..."
+grep -q "^APP_KEY=.\+" .env || $PHP_BIN artisan key:generate --no-interaction --force
+
 echo "  → Running database migrations..."
 $PHP_BIN artisan migrate --force
-
-echo "  → Generating app key (if not set)..."
-grep -q "^APP_KEY=.\+" .env || $PHP_BIN artisan key:generate --no-interaction --force
 
 echo "  → Caching config, routes & views..."
 $PHP_BIN artisan config:clear && $PHP_BIN artisan config:cache
@@ -176,7 +185,7 @@ $PHP_BIN artisan view:clear && $PHP_BIN artisan view:cache
 
 echo "  → Setting storage permissions..."
 chmod -R 775 storage bootstrap/cache
-chmod 644 .env
+chmod 600 .env
 
 echo "  ✓ Server setup complete"
 ENDSSH

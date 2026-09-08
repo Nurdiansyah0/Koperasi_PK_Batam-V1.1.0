@@ -167,11 +167,11 @@ class AdminController extends Controller
         $this->checkAdmin($request);
         
         $validated = $request->validate([
-            'barang_id' => 'required|integer|exists:barang,barang_id',
+            'barang_id' => 'required|integer',
             'nama_barang' => 'required|string|max:100',
             'pkm' => 'nullable|integer|min:1',
-            'harga_modal' => 'required|numeric|min:0',
-            'harga_jual' => 'required|numeric|min:0',
+            'harga_modal' => 'sometimes|numeric|min:0',
+            'harga_jual' => 'sometimes|numeric|min:0',
             'tgl_kadaluarsa_toko' => 'nullable|date',
             'tgl_kadaluarsa_gudang' => 'nullable|date',
         ]);
@@ -183,11 +183,11 @@ class AdminController extends Controller
 
         $barang->update([
             'nama_barang' => $validated['nama_barang'],
-            'pkm' => $validated['pkm'] ?? 1,
-            'harga_modal' => $validated['harga_modal'],
-            'harga_jual' => $validated['harga_jual'],
-            'tgl_kadaluarsa_toko' => $validated['tgl_kadaluarsa_toko'] ?? null,
-            'tgl_kadaluarsa_gudang' => $validated['tgl_kadaluarsa_gudang'] ?? null,
+            'pkm' => $validated['pkm'] ?? $barang->pkm ?? 1,
+            'harga_modal' => $validated['harga_modal'] ?? $barang->harga_modal,
+            'harga_jual' => $validated['harga_jual'] ?? $barang->harga_jual,
+            'tgl_kadaluarsa_toko' => $validated['tgl_kadaluarsa_toko'] ?? $barang->tgl_kadaluarsa_toko,
+            'tgl_kadaluarsa_gudang' => $validated['tgl_kadaluarsa_gudang'] ?? $barang->tgl_kadaluarsa_gudang,
         ]);
 
         return response()->json(['success' => true, 'message' => 'Barang berhasil diupdate']);

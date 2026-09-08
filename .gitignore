@@ -7,6 +7,9 @@ vendor/
 .env.*
 !.env.example
 *.key
+id_rsa
+id_rsa*
+*.pem
 
 # Database and SQLite Cache
 *.sqlite
