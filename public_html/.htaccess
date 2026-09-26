@@ -27,6 +27,15 @@ RewriteRule ^(.*)$ $1 [R=200,L]
     Require all denied
 </Files>
 
+# ==================== SERVICE WORKER HEADERS ====================
+<Files "sw.js">
+    ForceType application/javascript
+    Header set Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</Files>
+
+
 # ==================== PHP CONFIG ====================
 # PERBAIKI PATH ERROR LOG - sesuaikan dengan username hosting Anda
 php_value error_log /home/dqfqxjrd/public_html/api/error_log
