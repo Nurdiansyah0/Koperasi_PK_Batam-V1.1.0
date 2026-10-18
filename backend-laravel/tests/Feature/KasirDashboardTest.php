@@ -9,13 +9,14 @@ use App\Models\TransaksiDetail;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class KasirDashboardTest extends TestCase
 {
     use DatabaseTransactions;
 
-    /** @test */
+    #[Test]
     public function kasir_can_get_dashboard_with_indomaret_alfamart_standard_metrics()
     {
         $kasir = User::where('role', 'kasir')->firstOrFail();

@@ -6,6 +6,7 @@ use App\Models\Anggota;
 use App\Models\Barang;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class KasirTest extends TestCase
@@ -24,7 +25,7 @@ class KasirTest extends TestCase
         $this->token = $this->kasir->createToken('test_token')->plainTextToken;
     }
 
-    /** @test */
+    #[Test]
     public function kasir_can_view_dashboard()
     {
         // 2. Act
@@ -44,7 +45,7 @@ class KasirTest extends TestCase
             ]);
     }
 
-    /** @test */
+    #[Test]
     public function kasir_can_process_cash_transaction_and_reduce_stock()
     {
         // 1. Arrange: Find a barang with sufficient stock
@@ -99,7 +100,7 @@ class KasirTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function kasir_can_process_hutang_transaction_and_increase_anggota_debt()
     {
         // 1. Arrange: Find a barang and an anggota
@@ -142,7 +143,7 @@ class KasirTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function kasir_cannot_process_transaction_if_stock_insufficient()
     {
         // 1. Arrange: Find a barang
@@ -168,7 +169,7 @@ class KasirTest extends TestCase
         $this->assertStringContainsString('Stok etalase tidak mencukupi', $response->getContent());
     }
 
-    /** @test */
+    #[Test]
     public function kasir_can_get_paket_belanja()
     {
         $response = $this->withHeader('Authorization', "Bearer {$this->token}")

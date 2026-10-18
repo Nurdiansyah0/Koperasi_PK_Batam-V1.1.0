@@ -74,7 +74,7 @@ deploy_frontend() {
     tar -czf /tmp/koperasi_frontend.tar.gz -C "$TMPDIR" .
     rm -rf "$TMPDIR"
     $SCP /tmp/koperasi_frontend.tar.gz "$REMOTE_USER@$REMOTE_HOST:/tmp/koperasi_frontend.tar.gz"
-    $SSH "$REMOTE_USER@$REMOTE_HOST" "tar -xzf /tmp/koperasi_frontend.tar.gz -C $REMOTE_PATH && rm /tmp/koperasi_frontend.tar.gz && chmod 750 $REMOTE_PATH"
+    $SSH "$REMOTE_USER@$REMOTE_HOST" "rm -rf $REMOTE_PATH/assets $REMOTE_PATH/dist $REMOTE_PATH/workbox-*.js && tar -xzf /tmp/koperasi_frontend.tar.gz -C $REMOTE_PATH && rm /tmp/koperasi_frontend.tar.gz && chmod 750 $REMOTE_PATH"
     rm /tmp/koperasi_frontend.tar.gz
 
     # Upload .htaccess last (always overwrite)
@@ -110,8 +110,8 @@ deploy_backend() {
     rm -f  "$TMPDIR/server.log"
     rm -f  "$TMPDIR"/patch* "$TMPDIR"/fix_* "$TMPDIR"/sync_stok.php
 
-    # Never deploy local SQLite databases
-    find "$TMPDIR" -type f \( -name "*.sqlite" -o -name "*.sqlite-*" \) -delete 2>/dev/null || true
+    # Never deploy local SQLite databases or patch/backup artifacts
+    find "$TMPDIR" -type f \( -name "*.sqlite" -o -name "*.sqlite-*" -o -name "*.orig" -o -name "*.patch" -o -name "*.rej" \) -delete 2>/dev/null || true
 
     # Clean local logs
     find "$TMPDIR/storage" -name "*.log" -delete 2>/dev/null || true

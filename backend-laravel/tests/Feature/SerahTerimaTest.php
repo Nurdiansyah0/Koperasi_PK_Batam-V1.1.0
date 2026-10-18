@@ -6,6 +6,7 @@ use App\Models\Barang;
 use App\Models\SerahTerimaKasir;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class SerahTerimaTest extends TestCase
@@ -30,7 +31,7 @@ class SerahTerimaTest extends TestCase
         \App\Models\Transaksi::where('status', 'pending')->update(['status' => 'batal']);
     }
 
-    /** @test */
+    #[Test]
     public function kasir_can_get_serah_terima_draft()
     {
         // Act
@@ -53,7 +54,7 @@ class SerahTerimaTest extends TestCase
         $this->assertArrayHasKey('pkm', $firstItem);
     }
 
-    /** @test */
+    #[Test]
     public function kasir_cannot_get_serah_terima_draft_if_pending_cash_orders_exist()
     {
         // Arrange: Create a pending cash order
@@ -75,7 +76,7 @@ class SerahTerimaTest extends TestCase
         $this->assertStringContainsString('Harap selesaikan atau batalkan semua transaksi tunai', $response->json('message'));
     }
 
-    /** @test */
+    #[Test]
     public function kasir_can_get_serah_terima_draft_if_pending_non_cash_orders_exist()
     {
         // Arrange: Create a pending non-cash order
@@ -97,7 +98,7 @@ class SerahTerimaTest extends TestCase
         $this->assertTrue($response->json('success'));
     }
 
-    /** @test */
+    #[Test]
     public function kasir_can_create_hybrid_serah_terima()
     {
         $barang = Barang::firstOrFail();
@@ -147,7 +148,7 @@ class SerahTerimaTest extends TestCase
         $this->assertEquals(-2, $record->hasil_opname['items'][0]['selisih']);
     }
 
-    /** @test */
+    #[Test]
     public function receiver_can_approve_serah_terima()
     {
         // 1. Kasir 1 Creates
@@ -173,7 +174,7 @@ class SerahTerimaTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function receiver_can_approve_serah_terima_and_only_updates_stok_toko()
     {
         $barang = Barang::firstOrFail();
@@ -215,7 +216,7 @@ class SerahTerimaTest extends TestCase
         $this->assertEquals(24, $barang->stok);
     }
 
-    /** @test */
+    #[Test]
     public function receiver_can_reject_serah_terima()
     {
         $serah = SerahTerimaKasir::create([
@@ -241,7 +242,7 @@ class SerahTerimaTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function sender_can_see_sent_handovers_in_history()
     {
         // 1. Kasir 1 Sends to Kasir 2 (and it is completed/rejected)

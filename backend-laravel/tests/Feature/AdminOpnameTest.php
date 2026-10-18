@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Barang;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class AdminOpnameTest extends TestCase
@@ -23,7 +24,7 @@ class AdminOpnameTest extends TestCase
         $this->token = $this->admin->createToken('test_token')->plainTextToken;
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_submit_mass_opname()
     {
         // 1. Arrange: Find a barang to adjust

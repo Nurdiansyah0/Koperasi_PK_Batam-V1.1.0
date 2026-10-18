@@ -11,6 +11,7 @@ use App\Models\Transaksi;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class AdminSopAuditTest extends TestCase
@@ -44,7 +45,7 @@ class AdminSopAuditTest extends TestCase
             ->postJson($uri, $data);
     }
 
-    /** @test */
+    #[Test]
     public function audit_01_dashboard_stats()
     {
         $res = $this->authGet('/laravel/api/admin/dashboard-stats');
@@ -68,7 +69,7 @@ class AdminSopAuditTest extends TestCase
         $this->assertGreaterThanOrEqual(1, $res->json('total_anggota'));
     }
 
-    /** @test */
+    #[Test]
     public function audit_02_master_barang_crud()
     {
         // 1. Get Barang
@@ -106,7 +107,7 @@ class AdminSopAuditTest extends TestCase
         $this->assertNull(Barang::find($created->barang_id));
     }
 
-    /** @test */
+    #[Test]
     public function audit_03_restock_barang_and_riwayat()
     {
         $barang = Barang::firstOrFail();
@@ -133,7 +134,7 @@ class AdminSopAuditTest extends TestCase
         $this->assertGreaterThanOrEqual(300000, $resHistory->json('total_pengeluaran'));
     }
 
-    /** @test */
+    #[Test]
     public function audit_04_opname_massal()
     {
         $b1 = Barang::firstOrFail();
@@ -156,7 +157,7 @@ class AdminSopAuditTest extends TestCase
         $this->assertEquals(88 + $b2->stok_gudang, $b2->stok);
     }
 
-    /** @test */
+    #[Test]
     public function audit_05_pkm_analysis_and_auto_calculate()
     {
         // 1. Get PKM Analysis
@@ -183,7 +184,7 @@ class AdminSopAuditTest extends TestCase
         $resAuto->assertStatus(200)->assertJson(['success' => true]);
     }
 
-    /** @test */
+    #[Test]
     public function audit_06_anggota_and_user_management_with_last_admin_lock()
     {
         // 1. Get Anggota
@@ -230,7 +231,7 @@ class AdminSopAuditTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function audit_07_jabatan_and_mandat_governance()
     {
         // 1. Get Daftar Jabatan
@@ -257,7 +258,7 @@ class AdminSopAuditTest extends TestCase
         $resRevoke->assertStatus(200)->assertJson(['success' => true]);
     }
 
-    /** @test */
+    #[Test]
     public function audit_08_setoran_kasir_and_approval()
     {
         // 1. Create a pending setoran kasir
@@ -281,7 +282,7 @@ class AdminSopAuditTest extends TestCase
         $this->assertEquals('approved', $setoran->status);
     }
 
-    /** @test */
+    #[Test]
     public function audit_09_shu_management_distribution_and_conversions()
     {
         $anggota = Anggota::firstOrFail();
@@ -331,7 +332,7 @@ class AdminSopAuditTest extends TestCase
         $this->assertArrayHasKey('summary', $resDistribusi->json());
     }
 
-    /** @test */
+    #[Test]
     public function audit_10_laporan_transaksi_and_tarik_tunai()
     {
         // 1. Laporan Transaksi
@@ -348,7 +349,7 @@ class AdminSopAuditTest extends TestCase
         $this->assertArrayHasKey('summary', $resTarik->json());
     }
 
-    /** @test */
+    #[Test]
     public function audit_11_laporan_selisih_kasir_and_data_kasir()
     {
         // 1. Create a serah terima with variance to test calculation
@@ -404,7 +405,7 @@ class AdminSopAuditTest extends TestCase
         $this->assertIsArray($resKasir->json('data'));
     }
 
-    /** @test */
+    #[Test]
     public function audit_12_two_tier_inventory_mutation_and_auto_refill()
     {
         // 1. Create a product with 2-Tier stock allocation
@@ -476,7 +477,7 @@ class AdminSopAuditTest extends TestCase
         $this->assertEquals(30, $barang->stok);
     }
 
-    /** @test */
+    #[Test]
     public function audit_13_expiry_tracking_and_write_off()
     {
         // 1. Create an item with expired date on display toko
@@ -519,7 +520,7 @@ class AdminSopAuditTest extends TestCase
         $this->assertEquals(6, $barang->stok);
     }
 
-    /** @test */
+    #[Test]
     public function audit_14_bulk_restock_inbound_faktur()
     {
         $b1 = Barang::create([

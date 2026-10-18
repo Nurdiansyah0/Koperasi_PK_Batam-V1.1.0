@@ -14,6 +14,14 @@ id_rsa*
 # Database and SQLite Cache
 *.sqlite
 *.sqlite-journal
+*.sql
+
+# Patch, Backup, and Scratch Artifacts
+*.orig
+*.patch
+*.rej
+*.bak
+*.backup-*
 
 # Test and Framework Caches
 .phpunit.result.cache

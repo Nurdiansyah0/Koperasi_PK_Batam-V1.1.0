@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Barang;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class PkmTest extends TestCase
@@ -36,7 +37,7 @@ class PkmTest extends TestCase
         $this->kasirToken = $this->kasir->createToken('kasir-token')->plainTextToken;
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_get_pkm_analysis()
     {
         $response = $this->withHeader('Authorization', "Bearer {$this->adminToken}")
@@ -65,7 +66,7 @@ class PkmTest extends TestCase
             ]);
     }
 
-    /** @test */
+    #[Test]
     public function kasir_cannot_access_pkm_analysis()
     {
         $response = $this->withHeader('Authorization', "Bearer {$this->kasirToken}")
@@ -74,7 +75,7 @@ class PkmTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_update_individual_pkm()
     {
         $barang = Barang::firstOrFail();
@@ -91,7 +92,7 @@ class PkmTest extends TestCase
         $this->assertEquals(5, Barang::find($barang->barang_id)->pkm);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_auto_calculate_all_pkm()
     {
         $response = $this->withHeader('Authorization', "Bearer {$this->adminToken}")

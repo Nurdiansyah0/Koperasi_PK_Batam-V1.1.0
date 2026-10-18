@@ -6,13 +6,14 @@ use App\Models\Anggota;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
 {
     use DatabaseTransactions; // Wrap each test in a transaction and roll back when done
 
-    /** @test */
+    #[Test]
     public function it_can_login_with_valid_credentials()
     {
         // 1. Arrange: Create or find a user
@@ -47,7 +48,7 @@ class AuthTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_fails_login_with_invalid_credentials()
     {
         // 1. Arrange

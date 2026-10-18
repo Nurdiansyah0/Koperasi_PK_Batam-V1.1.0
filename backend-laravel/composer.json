@@ -9,6 +9,7 @@
         "php": "^8.2",
         "laravel-notification-channels/webpush": "^12.1",
         "laravel/framework": "^12.0",
+        "laravel/nightwatch": "^1.30",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1"
     },
@@ -50,6 +51,7 @@
             "@php artisan config:clear --ansi",
             "@php artisan test"
         ],
+        "nightwatch": "php artisan nightwatch:agent",
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

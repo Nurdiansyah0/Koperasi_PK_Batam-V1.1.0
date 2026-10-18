@@ -478,7 +478,6 @@ class TarikTunaiTest extends TestCase
         $this->assertEquals(100000, $a2->saldo);
     }
 
-    /** @test */
     public function test_konversi_shu_clears_kasir_cache()
     {
         [$admin, $token] = $this->authenticateAs('admin');
