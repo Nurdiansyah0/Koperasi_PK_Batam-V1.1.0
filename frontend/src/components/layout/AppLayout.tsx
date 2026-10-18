@@ -62,9 +62,8 @@ export function AppLayout() {
                 <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white leading-none">
                   Koperasi PKPPK BTH
                 </span>
-                <span className="flex items-center gap-1 text-[9px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Live System
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Sistem Koperasi
                 </span>
               </div>
             </div>

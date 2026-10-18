@@ -35,25 +35,45 @@ class AdminController extends Controller
     {
         $this->checkAdmin($request);
 
-        // 1. Daily Metrics
-        $total_transaksi_hari_ini = Transaksi::whereDate('created_at', Carbon::today())
-            ->where('status', 'selesai')->count();
-        $total_pendapatan_hari_ini = Transaksi::whereDate('created_at', Carbon::today())
-            ->where('status', 'selesai')->sum('total_harga');
-        $total_keuntungan_hari_ini = Transaksi::whereDate('created_at', Carbon::today())
-            ->where('status', 'selesai')->sum('total_keuntungan');
+        // 1. Daily Metrics (Consolidated Single Query with Indexed Range)
+        $todayStart = Carbon::today()->startOfDay();
+        $todayEnd = Carbon::today()->endOfDay();
 
-        // 2. Koperasi Assets & Liabilities
-        $total_anggota = Anggota::count();
-        $total_hutang_beredar = Anggota::sum('hutang');
-        $total_saldo_anggota = Anggota::sum('saldo'); // Simpanan / E-wallet
-        $total_shu_tersedia = Anggota::sum('shu'); // SHU allocated to members
+        $trxStats = Transaksi::whereBetween('created_at', [$todayStart, $todayEnd])
+            ->where('status', 'selesai')
+            ->selectRaw('COUNT(*) as total_count, COALESCE(SUM(total_harga), 0) as total_pendapatan, COALESCE(SUM(total_keuntungan), 0) as total_keuntungan')
+            ->first();
 
-        $total_shu_pengurus = DB::table('shu_distribusi')->sum('shu_10_percent') ?? 0;
-        $total_shu_koperasi = DB::table('shu_distribusi')->sum('shu_30_percent') ?? 0;
+        $total_transaksi_hari_ini = (int) ($trxStats->total_count ?? 0);
+        $total_pendapatan_hari_ini = (float) ($trxStats->total_pendapatan ?? 0);
+        $total_keuntungan_hari_ini = (float) ($trxStats->total_keuntungan ?? 0);
+
+        // 2. Koperasi Assets & Liabilities (Consolidated Anggota Aggregates)
+        $anggotaStats = Anggota::selectRaw('
+            COUNT(*) as total_anggota,
+            COALESCE(SUM(hutang), 0) as total_hutang,
+            COALESCE(SUM(saldo), 0) as total_saldo,
+            COALESCE(SUM(shu), 0) as total_shu,
+            COALESCE(SUM(CASE WHEN hutang >= 300000 THEN 1 ELSE 0 END), 0) as limit_kritis_count
+        ')->first();
+
+        $total_anggota = (int) ($anggotaStats->total_anggota ?? 0);
+        $total_hutang_beredar = (float) ($anggotaStats->total_hutang ?? 0);
+        $total_saldo_anggota = (float) ($anggotaStats->total_saldo ?? 0);
+        $total_shu_tersedia = (float) ($anggotaStats->total_shu ?? 0);
+        $anggota_limit_kritis_count = (int) ($anggotaStats->limit_kritis_count ?? 0);
+
+        // SHU Distribusi Aggregates
+        $shuDistStats = DB::table('shu_distribusi')->selectRaw('
+            COALESCE(SUM(shu_10_percent), 0) as total_shu_pengurus,
+            COALESCE(SUM(shu_30_percent), 0) as total_shu_koperasi
+        ')->first();
+
+        $total_shu_pengurus = (float) ($shuDistStats->total_shu_pengurus ?? 0);
+        $total_shu_koperasi = (float) ($shuDistStats->total_shu_koperasi ?? 0);
 
         // Nilai Aset Barang (Total Inventory Value = Stok * Harga Modal)
-        $total_aset_barang = Barang::sum(DB::raw('stok * harga_modal'));
+        $total_aset_barang = (float) Barang::sum(DB::raw('stok * harga_modal'));
 
         // 3. Operational Central Nervous System Telemetry
         // A. Critical Restock (< PKM or stock <= 2)
@@ -63,16 +83,19 @@ class AdminController extends Controller
         $stok_kritis_count = $stok_kritis_query->count();
         $stok_kritis_items = $stok_kritis_query->orderBy('stok', 'asc')->limit(5)->get(['barang_id', 'nama_barang', 'stok', 'pkm', 'harga_modal']);
 
-        // B. Pending Setoran Kasir (Cash-in-Transit waiting for safe deposit)
-        $setoran_pending_count = SetoranKasir::where('status', 'pending')->count();
-        $setoran_pending_nominal = (float) (SetoranKasir::where('status', 'pending')->sum('nominal') ?? 0);
+        // B. Pending Setoran Kasir (Consolidated Count & Sum)
+        $setoranStats = SetoranKasir::where('status', 'pending')
+            ->selectRaw('COUNT(*) as pending_count, COALESCE(SUM(nominal), 0) as pending_nominal')
+            ->first();
 
-        // C. Credit Risk Monitoring (Anggota with debt >= Rp 300.000, max limit is 400.000)
-        $anggota_limit_kritis_count = Anggota::where('hutang', '>=', 300000)->count();
+        $setoran_pending_count = (int) ($setoranStats->pending_count ?? 0);
+        $setoran_pending_nominal = (float) ($setoranStats->pending_nominal ?? 0);
 
-        // D. Monthly Restock Expenditure
-        $total_restock_bulan_ini = (float) (RiwayatRestock::whereMonth('created_at', Carbon::now()->month)
-            ->whereYear('created_at', Carbon::now()->year)
+        // C. Monthly Restock Expenditure (Indexed Range Seek)
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $endOfMonth = Carbon::now()->endOfMonth();
+
+        $total_restock_bulan_ini = (float) (RiwayatRestock::whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->sum('total_biaya') ?? 0);
 
         // E. Expiry Tracking Telemetry (FEFO & Waste Risk)
@@ -482,14 +505,18 @@ class AdminController extends Controller
 
             if ($request->has('items') && is_array($request->input('items'))) {
                 // Confirmed picking list with custom physical counts
-                foreach ($request->input('items') as $item) {
+                $items = $request->input('items');
+                $barangIds = array_values(array_filter(array_unique(array_column($items, 'barang_id'))));
+                $barangs = Barang::whereIn('barang_id', $barangIds)->lockForUpdate()->get()->keyBy('barang_id');
+
+                foreach ($items as $item) {
                     $barangId = $item['barang_id'] ?? null;
                     $jumlah = (int) ($item['jumlah'] ?? 0);
                     if (! $barangId || $jumlah <= 0) {
                         continue;
                     }
 
-                    $barang = Barang::where('barang_id', $barangId)->lockForUpdate()->first();
+                    $barang = $barangs->get($barangId);
                     if ($barang) {
                         $canTransfer = min($jumlah, (int) $barang->stok_gudang);
                         if ($canTransfer > 0) {
@@ -499,11 +526,16 @@ class AdminController extends Controller
                             if (! $barang->tgl_kadaluarsa_toko && $barang->tgl_kadaluarsa_gudang) {
                                 $barang->tgl_kadaluarsa_toko = $barang->tgl_kadaluarsa_gudang;
                             }
-                            $barang->save();
 
                             $totalRefilled += $canTransfer;
                             $itemsRefilled++;
                         }
+                    }
+                }
+
+                foreach ($barangs as $barang) {
+                    if ($barang->isDirty()) {
+                        $barang->save();
                     }
                 }
             } else {
@@ -522,11 +554,16 @@ class AdminController extends Controller
                             if (! $barang->tgl_kadaluarsa_toko && $barang->tgl_kadaluarsa_gudang) {
                                 $barang->tgl_kadaluarsa_toko = $barang->tgl_kadaluarsa_gudang;
                             }
-                            $barang->save();
 
                             $totalRefilled += $canTransfer;
                             $itemsRefilled++;
                         }
+                    }
+                }
+
+                foreach ($barangs as $barang) {
+                    if ($barang->isDirty()) {
+                        $barang->save();
                     }
                 }
             }
@@ -779,21 +816,40 @@ class AdminController extends Controller
         if (! $adjustments || ! is_array($adjustments)) {
             return response()->json(['success' => false, 'message' => 'Invalid data']);
         }
+
+        $barangIds = array_values(array_filter(array_unique(array_column($adjustments, 'barang_id'))));
+        if (empty($barangIds)) {
+            return response()->json(['success' => false, 'message' => 'Invalid data']);
+        }
+
         DB::beginTransaction();
         try {
+            $barangs = Barang::whereIn('barang_id', $barangIds)
+                ->orderBy('barang_id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('barang_id');
+
             foreach ($adjustments as $adj) {
-                $barang = Barang::where('barang_id', $adj['barang_id'])->lockForUpdate()->first();
+                $bId = $adj['barang_id'] ?? null;
+                $barang = $barangs->get($bId);
                 if ($barang) {
                     $lokasi = $adj['lokasi'] ?? 'toko'; // Default to toko
                     if ($lokasi === 'gudang') {
-                        $barang->stok_gudang = $adj['stok_akhir'];
+                        $barang->stok_gudang = (int) $adj['stok_akhir'];
                     } else {
-                        $barang->stok_toko = $adj['stok_akhir'];
+                        $barang->stok_toko = (int) $adj['stok_akhir'];
                     }
                     $barang->stok = ((int) $barang->stok_toko) + ((int) $barang->stok_gudang);
+                }
+            }
+
+            foreach ($barangs as $barang) {
+                if ($barang->isDirty()) {
                     $barang->save();
                 }
             }
+
             DB::commit();
 
             return response()->json(['success' => true, 'message' => 'Stok berhasil disesuaikan']);
@@ -817,13 +873,18 @@ class AdminController extends Controller
             $search = $request->input('search');
             $perPage = $request->input('per_page', 25);
 
+            $startDateTime = $tglAwal ? Carbon::parse($tglAwal)->startOfDay() : null;
+            $endDateTime = $tglAkhir ? Carbon::parse($tglAkhir)->endOfDay() : null;
+            $startDateString = $tglAwal ? Carbon::parse($tglAwal)->toDateString() : null;
+            $endDateString = $tglAkhir ? Carbon::parse($tglAkhir)->toDateString() : null;
+
             $q = Transaksi::query()->where('status', '!=', 'batal')->where('status', '!=', 'ditolak');
 
-            if ($tglAwal) {
-                $q->whereDate('created_at', '>=', $tglAwal);
+            if ($startDateTime) {
+                $q->where('created_at', '>=', $startDateTime);
             }
-            if ($tglAkhir) {
-                $q->whereDate('created_at', '<=', $tglAkhir);
+            if ($endDateTime) {
+                $q->where('created_at', '<=', $endDateTime);
             }
             if ($metode && $metode !== 'all') {
                 $q->where('metode_pembayaran', $metode);
@@ -907,11 +968,11 @@ class AdminController extends Controller
 
             // ── 0. CASH OUTFLOW & INVENTORY VALUATION (RESTOCK LOGIC) ──
             $qRestock = \App\Models\RiwayatRestock::query();
-            if ($tglAwal) {
-                $qRestock->whereDate('created_at', '>=', $tglAwal);
+            if ($startDateTime) {
+                $qRestock->where('created_at', '>=', $startDateTime);
             }
-            if ($tglAkhir) {
-                $qRestock->whereDate('created_at', '<=', $tglAkhir);
+            if ($endDateTime) {
+                $qRestock->where('created_at', '<=', $endDateTime);
             }
             
             // Asumsi: Semua sumber dana di luar "hutang" adalah cash outflow riil
@@ -919,11 +980,11 @@ class AdminController extends Controller
             
             // ── 0.5. HISTORICAL CASH ADJUSTMENT ──
             $qAdjust = \App\Models\CashAdjustment::query()->where('status', 'APPROVED');
-            if ($tglAwal) {
-                $qAdjust->whereDate('adjustment_date', '>=', $tglAwal);
+            if ($startDateTime) {
+                $qAdjust->where('adjustment_date', '>=', $startDateTime);
             }
-            if ($tglAkhir) {
-                $qAdjust->whereDate('adjustment_date', '<=', $tglAkhir);
+            if ($endDateTime) {
+                $qAdjust->where('adjustment_date', '<=', $endDateTime);
             }
             if ($metode && $metode !== 'all') {
                 if ($metode === 'cash') {
@@ -1012,11 +1073,11 @@ class AdminController extends Controller
 
             // Total Beban Operasional Kas (OPEX)
             $qPengeluaran = PengeluaranOperasional::query();
-            if ($tglAwal) {
-                $qPengeluaran->whereDate('tanggal', '>=', $tglAwal);
+            if ($startDateTime) {
+                $qPengeluaran->where('tanggal', '>=', $startDateTime);
             }
-            if ($tglAkhir) {
-                $qPengeluaran->whereDate('tanggal', '<=', $tglAkhir);
+            if ($endDateTime) {
+                $qPengeluaran->where('tanggal', '<=', $endDateTime);
             }
 
             $totalBebanOperasional = (float) $qPengeluaran->sum('nominal');

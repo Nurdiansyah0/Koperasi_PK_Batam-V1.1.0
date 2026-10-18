@@ -5,7 +5,6 @@ import { AppLayout } from './components/layout/AppLayout'
 import { useAuthStore } from './store/authStore'
 
 // ─── Critical path (always eager loaded — kecil & dibutuhkan segera) ─────────
-import { LandingPage } from './pages/LandingPage'
 import { LoginPage } from './pages/LoginPage'
 
 // ─── Admin Pages (lazy — hanya dimuat saat kasir/admin mengaksesnya) ──────────
@@ -74,9 +73,9 @@ export function App() {
       <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/landing" element={<LandingPage />} />
+          <Route path="/" element={<LoginPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/landing" element={<Navigate to="/" replace />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Admin Routes */}

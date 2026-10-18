@@ -133,6 +133,10 @@ class ProsesKonversiShuAction
         $totalConverted = 0;
         $countMembers = 0;
 
+        $now = now();
+        $desc = $keterangan ?: "Distribusi Massal SHU ({$persentase}%) ke Saldo Belanja Hari Raya";
+        $konversiRecords = [];
+
         $anggotas = Anggota::lockForUpdate()->where('shu', '>', 0)->get();
         foreach ($anggotas as $a) {
             $nominalToConvert = round($a->shu * $ratio, 2);
@@ -141,17 +145,23 @@ class ProsesKonversiShuAction
                 $a->saldo += $nominalToConvert;
                 $a->save();
 
-                KonversiShu::create([
+                $konversiRecords[] = [
                     'anggota_id' => $a->anggota_id,
                     'admin_id' => $adminId,
                     'nominal' => $nominalToConvert,
                     'tipe_konversi' => 'distribusi_hari_raya',
-                    'keterangan' => $keterangan ?: "Distribusi Massal SHU ({$persentase}%) ke Saldo Belanja Hari Raya",
-                ]);
+                    'keterangan' => $desc,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
 
                 $totalConverted += $nominalToConvert;
                 $countMembers++;
             }
+        }
+
+        if (! empty($konversiRecords)) {
+            KonversiShu::insert($konversiRecords);
         }
 
         return 'Distribusi massal berhasil! Rp '.number_format($totalConverted, 0, ',', '.')." dipindahkan ke saldo belanja {$countMembers} anggota.";

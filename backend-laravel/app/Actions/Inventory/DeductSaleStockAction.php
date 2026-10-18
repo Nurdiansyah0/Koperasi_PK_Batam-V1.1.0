@@ -29,13 +29,18 @@ class DeductSaleStockAction
         $uniqueBarangIds = array_values(array_unique(array_column($normalizedItems, 'barang_id')));
         sort($uniqueBarangIds);
 
-        $lockedBarangs = [];
-        foreach ($uniqueBarangIds as $bId) {
-            $b = Barang::where('barang_id', $bId)->lockForUpdate()->first();
-            if (! $b) {
-                throw new Exception('Stok etalase tidak mencukupi untuk barang ID: '.$bId);
+        $lockedBarangs = Barang::whereIn('barang_id', $uniqueBarangIds)
+            ->orderBy('barang_id', 'asc')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('barang_id');
+
+        if ($lockedBarangs->count() !== count($uniqueBarangIds)) {
+            foreach ($uniqueBarangIds as $bId) {
+                if (! isset($lockedBarangs[$bId])) {
+                    throw new Exception('Stok etalase tidak mencukupi untuk barang ID: '.$bId);
+                }
             }
-            $lockedBarangs[$bId] = $b;
         }
 
         // 2. Validate stock and deduct inventory in received business line order
@@ -71,7 +76,13 @@ class DeductSaleStockAction
             ];
 
             $barang->stok_toko -= $qty;
-            $barang->save();
+            $barang->stok = $barang->stok_toko + (int) $barang->stok_gudang;
+        }
+
+        foreach ($lockedBarangs as $b) {
+            if ($b->isDirty()) {
+                $b->save();
+            }
         }
 
         return [

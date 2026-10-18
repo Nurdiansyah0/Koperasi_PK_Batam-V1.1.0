@@ -11,10 +11,10 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', loading, children, disabled, ...props }, ref) => {
     const variants = {
-      primary: 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm hover:from-blue-700 hover:to-indigo-700 active:scale-[0.98] border border-blue-600/20',
+      primary: 'bg-blue-600 text-white shadow-xs hover:bg-blue-700 active:scale-[0.98]',
       secondary: 'bg-slate-100 text-slate-800 hover:bg-slate-200 active:scale-[0.98] dark:bg-slate-800 dark:text-slate-200',
-      danger: 'bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-sm hover:from-rose-600 hover:to-red-700 active:scale-[0.98]',
-      success: 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-sm hover:from-emerald-600 hover:to-green-700 active:scale-[0.98]',
+      danger: 'bg-rose-600 text-white shadow-xs hover:bg-rose-700 active:scale-[0.98]',
+      success: 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 active:scale-[0.98]',
       outline: 'border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
       ghost: 'bg-transparent hover:bg-slate-100 text-slate-700 dark:hover:bg-slate-800 dark:text-slate-300',
     }

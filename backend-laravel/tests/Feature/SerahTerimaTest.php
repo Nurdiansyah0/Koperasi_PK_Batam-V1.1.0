@@ -45,6 +45,7 @@ class SerahTerimaTest extends TestCase
                 'data' => [
                     'kasir_list',
                     'cycle_count_items',
+                    'all_items',
                 ],
             ]);
 
@@ -52,10 +53,54 @@ class SerahTerimaTest extends TestCase
         $this->assertGreaterThan(0, count($response->json('data.cycle_count_items')));
         $firstItem = $response->json('data.cycle_count_items.0');
         $this->assertArrayHasKey('pkm', $firstItem);
+        $this->assertArrayHasKey('stok_toko', $firstItem);
+        $this->assertArrayHasKey('stok_gudang', $firstItem);
     }
 
     #[Test]
-    public function kasir_cannot_get_serah_terima_draft_if_pending_cash_orders_exist()
+    public function zero_stock_items_older_than_three_days_are_hidden_from_cycle_count_items()
+    {
+        // Arrange: 1 item zero stock updated 4 days ago, 1 item zero stock updated today
+        $oldZeroItem = Barang::create([
+            'nama_barang' => 'Barang Nol Stok Lama',
+            'stok' => 0,
+            'stok_toko' => 0,
+            'stok_gudang' => 0,
+            'harga_modal' => 1000,
+            'harga_jual' => 2000,
+            'updated_at' => now()->subDays(4),
+        ]);
+
+        $recentZeroItem = Barang::create([
+            'nama_barang' => 'Barang Nol Stok Baru',
+            'stok' => 0,
+            'stok_toko' => 0,
+            'stok_gudang' => 0,
+            'harga_modal' => 1000,
+            'harga_jual' => 2000,
+            'updated_at' => now()->subHours(2),
+        ]);
+
+        // Act
+        $response = $this->withHeader('Authorization', "Bearer {$this->token1}")
+            ->getJson('/laravel/api/kasir/serah-terima-draft');
+
+        // Assert
+        $response->assertStatus(200);
+        $cycleItemIds = collect($response->json('data.cycle_count_items'))->pluck('barang_id')->all();
+        $allItemIds = collect($response->json('data.all_items'))->pluck('barang_id')->all();
+
+        // Old zero item should NOT be in cycle count items
+        $this->assertNotContains($oldZeroItem->barang_id, $cycleItemIds);
+        // But should be available in all_items for search & add
+        $this->assertContains($oldZeroItem->barang_id, $allItemIds);
+
+        // Recent zero item (< 3 days) SHOULD still be in cycle count items
+        $this->assertContains($recentZeroItem->barang_id, $cycleItemIds);
+    }
+
+    #[Test]
+    public function kasir_can_get_serah_terima_draft_with_pending_cash_orders_status()
     {
         // Arrange: Create a pending cash order
         \App\Models\Transaksi::create([
@@ -72,8 +117,11 @@ class SerahTerimaTest extends TestCase
             ->getJson('/laravel/api/kasir/serah-terima-draft');
 
         // Assert
-        $response->assertStatus(422);
-        $this->assertStringContainsString('Harap selesaikan atau batalkan semua transaksi tunai', $response->json('message'));
+        $response->assertStatus(200);
+        $this->assertTrue($response->json('success'));
+        $this->assertArrayHasKey('pending_cash_orders', $response->json('data'));
+        $this->assertGreaterThanOrEqual(1, $response->json('data.pending_cash_orders.count'));
+        $this->assertGreaterThanOrEqual(10000, $response->json('data.pending_cash_orders.nominal'));
     }
 
     #[Test]

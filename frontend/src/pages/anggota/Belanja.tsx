@@ -19,7 +19,6 @@ import {
   QrCode,
   ArrowLeft,
   AlertTriangle,
-  Sparkles,
   Zap,
   Check,
   ChevronLeft,
@@ -551,7 +550,8 @@ export function BelanjaPage() {
               <span className="text-sm font-bold text-blue-700 dark:text-blue-300">{user?.username} (Otomatis)</span>
             </div>
 
-            {/* OPSI TARIK TUNAI SAAT BELANJA (POTONG BELANJA LANGSUNG) */}
+            {/* OPSI TARIK TUNAI SAAT BELANJA (POTONG BELANJA LANGSUNG) - HIDDEN */}
+            {false && (
             <div className={`p-3 rounded-2xl border transition-all ${
               sertakanTarikTunai 
                 ? 'bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border-emerald-500/50 shadow-xs' 
@@ -692,6 +692,7 @@ export function BelanjaPage() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Metode Pembayaran (Hidden if Tarik Tunai active) */}
             {!sertakanTarikTunai && (

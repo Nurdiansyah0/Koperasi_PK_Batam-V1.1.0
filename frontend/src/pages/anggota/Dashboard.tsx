@@ -75,26 +75,6 @@ export function AnggotaDashboard() {
               Terverifikasi
             </span>
           </div>
-
-          {/* Tarik Tunai & SHU Quick Access */}
-          <button
-            onClick={() => navigate('/anggota/tarik-tunai')}
-            className="w-full p-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-3xl shadow-sm hover:shadow-md transition-all flex items-center justify-between group"
-          >
-            <div className="flex items-center gap-3 text-left">
-              <div className="p-2.5 bg-white/20 backdrop-blur-md rounded-2xl">
-                <Banknote className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="font-bold text-sm text-white flex items-center gap-1.5">
-                  Tarik Tunai & Saldo SHU
-                  <span className="text-[9px] bg-white/30 px-2 py-0.2 rounded-full font-bold">POS</span>
-                </p>
-                <p className="text-[11px] text-emerald-100 mt-0.5">Cek kelayakan & buat tiket pencairan kas</p>
-              </div>
-            </div>
-            <ArrowUpRight className="w-5 h-5 text-emerald-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-          </button>
         </div>
 
         {/* Right Column: Recent Transactions & Activity */}

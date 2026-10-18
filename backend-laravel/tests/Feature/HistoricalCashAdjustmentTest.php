@@ -31,6 +31,13 @@ class HistoricalCashAdjustmentTest extends TestCase
 
     public function test_adjustment_only_affects_cash_flow_not_profit_or_shu()
     {
+        $today = Carbon::now()->format('Y-m-d');
+        $todayIds = Transaksi::whereDate('created_at', $today)->pluck('transaksi_id');
+        TransaksiDetail::whereIn('transaksi_id', $todayIds)->delete();
+        Transaksi::whereIn('transaksi_id', $todayIds)->delete();
+        RiwayatRestock::whereDate('created_at', $today)->delete();
+        PengeluaranOperasional::whereDate('created_at', $today)->delete();
+
         // 1. Create Baseline Transaction
         $barang = Barang::create(['nama_barang'=>'Test Item', 'kategori'=>'Test', 'satuan'=>'pcs',
             'stok_toko' => 10,

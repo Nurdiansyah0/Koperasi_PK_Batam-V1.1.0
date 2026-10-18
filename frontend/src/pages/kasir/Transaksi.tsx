@@ -434,9 +434,9 @@ export function TransaksiKasir() {
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-zinc-200">
-                <Sparkles className="w-4 h-4 text-amber-500 fill-amber-500" />
+                <ShoppingCart className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 <span>Paket Belanja Genap (1-Klik Tambah)</span>
-                <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 font-semibold ml-1">
+                <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 font-semibold ml-1">
                   Tanpa Uang 500an
                 </span>
               </div>
@@ -469,7 +469,7 @@ export function TransaksiKasir() {
                 return (
                   <div
                     key={paket.id}
-                    className="shrink-0 w-[275px] sm:w-[300px] snap-start rounded-2xl bg-gradient-to-br from-white to-slate-50/80 dark:from-zinc-900 dark:to-zinc-900/60 border border-slate-200/80 dark:border-zinc-800 p-3 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                    className="shrink-0 w-[275px] sm:w-[300px] snap-start rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-3 shadow-xs hover:border-slate-300 dark:hover:border-zinc-700 transition-all flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -479,7 +479,7 @@ export function TransaksiKasir() {
                             <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white leading-tight">
                               {paket.nama_paket}
                             </h4>
-                            <span className="inline-block text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 mt-0.5">
+                            <span className="inline-block text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 mt-0.5">
                               {paket.tag}
                             </span>
                           </div>
@@ -792,8 +792,8 @@ export function TransaksiKasir() {
               )}
             </div>
 
-            {/* OPSI PENARIKAN TUNAI SAAT BELANJA (POTONG BELANJA LANGSUNG) */}
-            {selectedAnggotaObj && (
+            {/* OPSI PENARIKAN TUNAI SAAT BELANJA (POTONG BELANJA LANGSUNG) - HIDDEN */}
+            {selectedAnggotaObj && (false as boolean) && (
               <div className={`p-3.5 rounded-2xl border transition-all ${
                 sertakanTarikTunai 
                   ? 'bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border-emerald-500/50 shadow-xs' 

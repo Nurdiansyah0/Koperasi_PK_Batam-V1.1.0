@@ -9,10 +9,7 @@ export { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 export { authService } from '@/services/authService'
 export { useAuthStore } from '@/store/authStore'
 
-// 2. Landing Module
-export { LandingPage } from '@/pages/LandingPage'
-
-// 3. POS & Cashier Module
+// 2. POS & Cashier Module
 export { KasirDashboard } from '@/pages/kasir/Dashboard'
 export { TransaksiKasir } from '@/pages/kasir/Transaksi'
 export { PembayaranHutangPage } from '@/pages/kasir/PembayaranHutang'

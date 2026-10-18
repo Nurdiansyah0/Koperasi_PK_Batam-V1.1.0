@@ -100,9 +100,8 @@ export function BayarHutangPage() {
         {/* Left Column: Debt Summary & Collateral System Panel */}
         <div className="md:col-span-6 space-y-5">
           
-          {/* 1. Apple Pay Style Debt Summary Card */}
-          <div className="rounded-3xl bg-gradient-to-br from-rose-500 to-red-600 text-white p-6 shadow-xl shadow-rose-600/20 text-center relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+          {/* 1. Debt Summary Card */}
+          <div className="rounded-3xl bg-rose-600 text-white p-6 shadow-md text-center">
             <p className="text-xs font-bold text-rose-100 uppercase tracking-wider flex items-center justify-center gap-1.5">
               <CreditCard className="w-4 h-4" />
               Total Hutang Belanja Saat Ini

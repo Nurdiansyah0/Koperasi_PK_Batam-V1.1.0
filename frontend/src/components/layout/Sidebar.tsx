@@ -59,7 +59,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       items: [
         { to: '/admin/laporan', icon: FileText, label: 'Laporan Transaksi' },
         { to: '/admin/laporan-selisih', icon: Scale, label: 'Laporan Selisih Kasir' },
-        { to: '/admin/tarik-tunai', icon: Banknote, label: 'Laporan Tarik Tunai' },
         { to: '/admin/setoran-kasir', icon: Wallet, label: 'Persetujuan Setoran' },
       ]
     },
@@ -84,7 +83,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       items: [
         { to: '/kasir/pesanan', icon: ShoppingBag, label: 'Pesanan Online' },
         { to: '/kasir/hutang', icon: CreditCard, label: 'Persetujuan Hutang' },
-        { to: '/kasir/tarik-tunai', icon: Banknote, label: 'Tarik Tunai SHU' },
       ]
     },
     {
@@ -107,7 +105,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     {
       title: 'Finansial & Tabungan',
       items: [
-        { to: '/anggota/tarik-tunai', icon: Banknote, label: 'Tarik Tunai / SHU' },
         { to: '/anggota/bayar-hutang', icon: CreditCard, label: 'Bayar Hutang' },
         { to: '/anggota/riwayat', icon: History, label: 'Riwayat Transaksi' },
       ]

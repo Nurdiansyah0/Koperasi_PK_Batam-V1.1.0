@@ -24,6 +24,7 @@ class Barang extends Model
         'pkm',
         'harga_modal',
         'harga_jual',
+        'updated_at',
     ];
 
     protected $casts = [

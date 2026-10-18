@@ -89,11 +89,7 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#060a12] via-[#0b1329] to-[#0f172a] p-4 sm:p-6 relative overflow-hidden selection:bg-blue-600 selection:text-white">
-      {/* Dynamic Background Glows */}
-      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[140px] pointer-events-none" />
-
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 p-4 sm:p-6 relative selection:bg-blue-600 selection:text-white">
       {/* Top Navigation */}
       <div className="w-full max-w-md mb-4 z-10 flex justify-between items-center px-1">
         <button
@@ -106,13 +102,11 @@ export function ResetPasswordPage() {
       </div>
 
       {/* Main Reset Card */}
-      <Card className="w-full max-w-md bg-slate-900/90 backdrop-blur-2xl border-white/15 shadow-2xl rounded-[32px] z-10 text-white overflow-hidden">
-        <div className="h-1.5 w-full bg-gradient-to-r from-amber-400 via-blue-500 to-emerald-400" />
-
+      <Card className="w-full max-w-md bg-slate-900 border-slate-800 shadow-xl rounded-[28px] z-10 text-white overflow-hidden">
         <CardHeader className="text-center pb-2 pt-8 px-6 sm:px-8">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 p-3 bg-gradient-to-tr from-amber-500/20 to-blue-500/20 rounded-3xl border border-amber-500/30 shadow-inner flex items-center justify-center">
-              <KeyRound className="w-8 h-8 text-amber-400" />
+            <div className="w-14 h-14 p-2.5 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-center">
+              <KeyRound className="w-7 h-7 text-blue-400" />
             </div>
           </div>
           <CardTitle className="text-2xl sm:text-3xl font-black tracking-tight text-white">
@@ -172,7 +166,8 @@ export function ResetPasswordPage() {
                 {/* Visual Explanation Card */}
                 <div className="p-3 bg-slate-950/80 rounded-xl border border-white/10 text-[11px] space-y-2.5">
                   <p className="text-slate-300 font-bold flex items-center gap-1.5 text-xs">
-                    💡 Cara Mengetahui Angka Verifikasi:
+                    <HelpCircle className="w-4 h-4 text-blue-400" />
+                    Cara Mengetahui Angka Verifikasi:
                   </p>
                   
                   <div className="space-y-2 text-slate-300">
@@ -323,10 +318,21 @@ export function ResetPasswordPage() {
       </Card>
 
       {/* Footer */}
-      <div className="mt-8 text-center z-10">
-        <p className="text-slate-500 text-xs">
-          &copy; 2025 Koperasi PKPPK BTH &bull; Sistem Reset Mandiri
-        </p>
+      <div className="mt-8 text-center z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <a
+          href="https://nurdiansyahlabs.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 group text-slate-400 hover:text-white transition-colors py-1.5 px-3 rounded-full hover:bg-white/5"
+        >
+          <span className="text-xs font-medium text-slate-500 group-hover:text-slate-400">Powered by</span>
+          <img
+            src="/Invinite_Logo.png"
+            alt="Infinity.id"
+            className="h-5 w-auto object-contain brightness-110 contrast-125 group-hover:brightness-125 transition-all"
+          />
+          <span className="text-xs font-bold text-slate-400 group-hover:text-white">Infinity.id</span>
+        </a>
       </div>
     </div>
   )

@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { User, Lock, AlertCircle, ShieldCheck, Eye, EyeOff, ArrowLeft, HelpCircle, X, PhoneCall, CheckCircle2 } from 'lucide-react'
+import { User, Lock, AlertCircle, ShieldCheck, Eye, EyeOff, HelpCircle, X, PhoneCall, CheckCircle2 } from 'lucide-react'
 import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt'
 import toast from 'react-hot-toast'
 
@@ -52,44 +52,13 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#060a12] via-[#0b1329] to-[#0f172a] p-4 sm:p-6 relative overflow-hidden selection:bg-blue-600 selection:text-white">
-      {/* Dynamic Background Glows */}
-      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-500/5 rounded-full blur-[160px] pointer-events-none" />
-
-      {/* Top Navigation Bar */}
-      <div className="w-full max-w-md mb-4 z-10 flex justify-between items-center px-1">
-        <button
-          onClick={() => navigate('/')}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-white px-3 py-1.5 rounded-xl hover:bg-white/10 active:scale-95 transition-all"
-        >
-          <ArrowLeft className="w-4 h-4 text-blue-400" />
-          <span>Kembali ke Beranda</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setShowHelpModal(true)}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-blue-300 px-3 py-1.5 rounded-xl hover:bg-white/10 active:scale-95 transition-all"
-        >
-          <HelpCircle className="w-4 h-4 text-slate-400" />
-          <span>Bantuan</span>
-        </button>
-      </div>
-
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 p-4 sm:p-6 relative selection:bg-blue-600 selection:text-white">
       {/* Main Login Card */}
-      <Card className="w-full max-w-md bg-slate-900/90 dark:bg-slate-900/95 backdrop-blur-2xl border-white/15 shadow-2xl rounded-[32px] z-10 text-white overflow-hidden">
-        <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400" />
-
+      <Card className="w-full max-w-md bg-slate-900 border-slate-800 shadow-xl rounded-[28px] z-10 text-white overflow-hidden">
         <CardHeader className="text-center pb-2 pt-8 px-6 sm:px-8">
           <div className="flex justify-center mb-4">
-            <div className="w-20 h-20 p-2.5 bg-gradient-to-tr from-blue-600/20 to-indigo-600/20 rounded-3xl border border-blue-500/30 shadow-inner flex items-center justify-center relative group">
-              <img src="/Logo.svg" alt="Logo Koperasi PKPPK BTH" className="w-full h-full object-contain drop-shadow-md group-hover:scale-105 transition-transform" />
-              <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-slate-900" />
-              </span>
+            <div className="w-16 h-16 p-2.5 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-center">
+              <img src="/Logo.svg" alt="Logo Koperasi PKPPK BTH" className="w-full h-full object-contain" />
             </div>
           </div>
           <CardTitle className="text-2xl sm:text-3xl font-black tracking-tight text-white">
@@ -159,8 +128,8 @@ export function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs pt-1">
-              <label className="flex items-center gap-2 cursor-pointer group">
+            <div className="flex items-start justify-between text-xs pt-1">
+              <label className="flex items-center gap-2 cursor-pointer group pt-0.5">
                 <input
                   type="checkbox"
                   checked={rememberMe}
@@ -172,19 +141,29 @@ export function LoginPage() {
                 </span>
               </label>
 
-              <button
-                type="button"
-                onClick={() => navigate('/reset-password')}
-                className="text-blue-400 hover:text-blue-300 font-bold transition-colors hover:underline"
-              >
-                Lupa password?
-              </button>
+              <div className="flex flex-col items-end gap-1">
+                <button
+                  type="button"
+                  onClick={() => navigate('/reset-password')}
+                  className="text-blue-400 hover:text-blue-300 font-bold transition-colors hover:underline"
+                >
+                  Lupa password?
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowHelpModal(true)}
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-blue-300 transition-colors"
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Bantuan</span>
+                </button>
+              </div>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-12 rounded-2xl bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-blue-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4 cursor-pointer disabled:opacity-60"
+              className="w-full h-12 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-xs active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4 cursor-pointer disabled:opacity-60"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -230,22 +209,6 @@ export function LoginPage() {
         </CardContent>
       </Card>
 
-      {/* Feature Highlights Pills */}
-      <div className="flex flex-wrap items-center justify-center gap-2 mt-6 max-w-md px-2 z-10">
-        {[
-          '📱 PWA Native Ready',
-          '💳 Kartu Anggota Digital',
-          '🔒 Sistem Transparan & Akurat',
-        ].map((feat, idx) => (
-          <span
-            key={idx}
-            className="text-[11px] font-semibold px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 backdrop-blur-md shadow-xs"
-          >
-            {feat}
-          </span>
-        ))}
-      </div>
-
       {/* Help / Password Reset Modal */}
       {showHelpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -286,7 +249,7 @@ export function LoginPage() {
                   setShowHelpModal(false)
                   navigate('/reset-password')
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-blue-600/30 transition-all"
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all"
               >
                 Reset Sandi Mandiri &rarr;
               </button>
@@ -304,12 +267,20 @@ export function LoginPage() {
 
       {/* Footer */}
       <div className="mt-8 text-center z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <p className="text-slate-500 text-xs sm:text-sm">
-          &copy; 2025 Koperasi PKPPK BTH. All rights reserved.
-        </p>
-        <p className="text-slate-600 text-[10px] sm:text-xs mt-1">
-          Version 1.1.0 &bull; Single-Sign-On Ready
-        </p>
+        <a
+          href="https://nurdiansyahlabs.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 group text-slate-400 hover:text-white transition-colors py-1.5 px-3 rounded-full hover:bg-white/5"
+        >
+          <span className="text-xs font-medium text-slate-500 group-hover:text-slate-400">Powered by</span>
+          <img
+            src="/Invinite_Logo.png"
+            alt="Infinity.id"
+            className="h-5 w-auto object-contain brightness-110 contrast-125 group-hover:brightness-125 transition-all"
+          />
+          <span className="text-xs font-bold text-slate-400 group-hover:text-white">Infinity.id</span>
+        </a>
       </div>
 
       <PwaInstallPrompt />

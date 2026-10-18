@@ -8,6 +8,7 @@ use App\Models\SetoranKasir;
 use App\Models\Transaksi;
 use App\Models\User;
 use App\Models\JabatanAnggota;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class CalculateSerahTerimaDraftAction
@@ -34,10 +35,16 @@ class CalculateSerahTerimaDraftAction
             })
             ->values();
 
-        // Load all active items in the store for cycle count
-        $allItems = Barang::select('barang_id', 'nama_barang', 'stok_toko', 'pkm', 'harga_jual')->orderBy('nama_barang', 'asc')->get();
+        // Load all items in the store with store & warehouse stocks
+        $allItems = Barang::select('barang_id', 'nama_barang', 'stok_toko', 'stok_gudang', 'pkm', 'harga_jual', 'updated_at')
+            ->orderBy('nama_barang', 'asc')
+            ->get();
 
         $rokokKeywords = ['rokok', 'sampoerna', 'surya', 'marlboro', 'gudang garam', 'magnum', 'djarum', 'camel', 'esse', 'filter', 'kretek', 'mild', 'samsu'];
+        $threeDaysAgo = Carbon::now()->subDays(3);
+
+        $defaultItems = [];
+        $allItemsList = [];
 
         foreach ($allItems as $item) {
             $nameLower = strtolower($item->nama_barang);
@@ -60,29 +67,44 @@ class CalculateSerahTerimaDraftAction
                 $item->risk_badge = 'Display Toko';
                 $item->audit_reason = "PKM Toko 4 Hari: {$pkmValue} pcs";
             }
+
+            // Hide from default count if both store and warehouse stock == 0 for more than 3 days
+            $isZeroStock = ($item->stok_toko <= 0 && $item->stok_gudang <= 0);
+            $isOldZeroStock = $isZeroStock && (! $item->updated_at || Carbon::parse($item->updated_at)->lt($threeDaysAgo));
+            $item->is_hidden_default = $isOldZeroStock;
+
+            $allItemsList[] = $item;
+
+            if (! $isOldZeroStock) {
+                $defaultItems[] = $item;
+            }
         }
 
         // Calculate theoretical drawer cash in system (READ-ONLY POS & Cash Management Dependency)
         $saldoKasSistem = $this->calculateSaldoKasKasir($kasirId);
 
+        // Include pending cash transactions status for transparency without blocking shift handover
+        $pendingCashQuery = Transaksi::where('status', 'pending')
+            ->whereIn('metode_pembayaran', ['cash', 'tunai']);
+        $pendingCashCount = (int) $pendingCashQuery->count();
+        $pendingCashNominal = (float) $pendingCashQuery->sum('total_harga');
+        $totalPendingCount = (int) Transaksi::where('status', 'pending')->count();
+
         return [
             'kasir_list' => $kasirList,
             'saldo_kas_sistem' => (float) $saldoKasSistem,
-            'cycle_count_items' => $allItems,
+            'cycle_count_items' => array_values($defaultItems),
+            'all_items' => array_values($allItemsList),
+            'pending_cash_orders' => [
+                'count' => $pendingCashCount,
+                'nominal' => $pendingCashNominal,
+                'total_pending_count' => $totalPendingCount,
+            ],
         ];
     }
 
-        private function calculateSaldoKasKasir(int $kasirId): float
+    private function calculateSaldoKasKasir(int $kasirId): float
     {
-        $hasPendingCashOrders = Transaksi::where('status', 'pending')
-            ->whereIn('metode_pembayaran', ['cash', 'tunai'])
-            ->exists();
-            
-        if ($hasPendingCashOrders) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'pending_orders' => ['Harap selesaikan atau batalkan semua transaksi tunai yang masih berstatus pending sebelum serah terima.']
-            ]);
-        }
 
         // OPTIMIZATION: Shift-based Bounding Box.
         // Instead of doing a full table scan of the entire history, 

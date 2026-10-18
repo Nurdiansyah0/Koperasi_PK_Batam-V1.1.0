@@ -314,6 +314,13 @@ export function SerahTerimaPage() {
                     </div>
                   )}
 
+                  {opname && (opname.pending_cash_orders?.count > 0 || (opname.summary?.pendingCashOrdersCount && opname.summary.pendingCashOrdersCount > 0)) && (
+                    <div className="mt-2 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-xl text-[10px] text-amber-800 dark:text-amber-300 font-semibold flex items-center gap-1.5">
+                      <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                      <span>{opname.pending_cash_orders?.count || opname.summary?.pendingCashOrdersCount} pesanan tunai pending dicatat</span>
+                    </div>
+                  )}
+
                   {s.alasan_penolakan && (
                     <div className="mt-2.5 p-2 bg-rose-50 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-900 text-[11px] text-rose-700 dark:text-rose-300">
                       <span className="font-bold">Alasan Tolak:</span> {s.alasan_penolakan}
@@ -465,15 +472,34 @@ export function SerahTerimaPage() {
                   </div>
                 )}
 
+                {/* Pending Cash Orders Record */}
+                {opname && (opname.pending_cash_orders?.count > 0 || (opname.summary?.pendingCashOrdersCount && opname.summary.pendingCashOrdersCount > 0)) && (
+                  <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 p-3 rounded-2xl text-xs flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                        <span>Catatan Transaksi Pending Saat Serah Terima:</span>
+                        <span className="text-[10px] bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 px-2 py-0.2 rounded-full font-black">
+                          {opname.pending_cash_orders?.count || opname.summary?.pendingCashOrdersCount} Transaksi
+                        </span>
+                      </div>
+                      <p className="text-amber-800 dark:text-amber-300 mt-0.5">
+                        Terdapat {opname.pending_cash_orders?.count || opname.summary?.pendingCashOrdersCount} transaksi tunai pending senilai{' '}
+                        {formatRupiah(opname.pending_cash_orders?.nominal || opname.summary?.pendingCashOrdersNominal || 0)} saat serah terima dibuat.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Stock Cycle Count Table */}
                 {opname && (
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between">
                       <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs sm:text-sm flex items-center gap-1.5">
-                        <ScanLine className="w-4 h-4 text-blue-600" /> Hasil Audit Fisik Barang (Cycle Count)
+                        <ScanLine className="w-4 h-4 text-blue-600" /> Hasil Audit Fisik Stok Toko (Area Display Kasir)
                       </h4>
                       <span className="text-xs font-semibold text-slate-500">
-                        {items.length} Barang Diaudit
+                        {items.length} Barang Toko
                       </span>
                     </div>
 
@@ -481,7 +507,7 @@ export function SerahTerimaPage() {
                       <div className="bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 p-3 rounded-2xl text-xs flex gap-2.5 border border-rose-200 dark:border-rose-900">
                         <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
                         <div>
-                          <div className="font-black">Peringatan: Terdapat {barangSelisihCount} barang selisih!</div>
+                          <div className="font-black">Peringatan: Terdapat {barangSelisihCount} barang selisih di toko!</div>
                           {totalMinusNominal > 0 && (
                             <div className="text-[11px] mt-0.5 font-bold">
                               Estimasi potensi kerugian fisik barang minus: {formatRupiah(totalMinusNominal)}
@@ -489,15 +515,15 @@ export function SerahTerimaPage() {
                           )}
                           <div className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 font-semibold">
                             {isApproved
-                              ? '✓ Stok fisik di sistem telah otomatis diselaraskan dengan hasil hitungan di atas.'
-                              : '*Saat Anda menerima shift ini, sistem akan otomatis menyesuaikan stok fisik barang di inventori.'}
+                              ? '✓ Stok fisik toko di sistem telah otomatis diselaraskan (stok gudang tidak berubah).'
+                              : '*Saat Anda menerima shift ini, sistem akan otomatis menyesuaikan stok fisik toko di inventori (stok gudang tetap utuh).'}
                           </div>
                         </div>
                       </div>
                     ) : (
                       <div className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 p-3 rounded-2xl text-xs flex items-center gap-2 border border-emerald-200 dark:border-emerald-900 font-semibold">
                         <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>Seluruh hitungan fisik barang 100% cocok dengan stok sistem koperasi.</span>
+                        <span>Seluruh hitungan fisik barang toko 100% cocok dengan stok toko sistem koperasi.</span>
                       </div>
                     )}
 
@@ -632,11 +658,11 @@ export function SerahTerimaPage() {
                                   <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
                                     <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                                       <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md text-[11px]">
-                                        Sistem: <b className="text-slate-800 dark:text-slate-200">{item.stok_input}</b>
+                                        Sistem Toko: <b className="text-slate-800 dark:text-slate-200">{item.stok_input}</b>
                                       </span>
                                       <span className="text-slate-300 dark:text-slate-600">&rarr;</span>
                                       <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md text-[11px]">
-                                        Fisik: <b className="text-slate-900 dark:text-white font-black">{item.stok_aktual}</b>
+                                        Fisik Toko: <b className="text-slate-900 dark:text-white font-black">{item.stok_aktual}</b>
                                       </span>
                                     </div>
 

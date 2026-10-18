@@ -19,7 +19,9 @@ import {
   BadgeCheck, 
   ReceiptText, 
   Landmark, 
-  ChevronRight 
+  ChevronRight,
+  FileText,
+  Smartphone
 } from 'lucide-react'
 
 export function KasirDashboard() {
@@ -71,32 +73,28 @@ export function KasirDashboard() {
       value: `${data?.total_transaksi_hari_ini || 0} Struk`, 
       desc: 'Nota transaksi berhasil selesai',
       icon: ReceiptText, 
-      color: 'text-blue-600 dark:text-blue-400', 
-      bg: 'from-blue-500/10 to-indigo-500/10 border-blue-500/20' 
+      color: 'text-blue-600 dark:text-blue-400'
     },
     { 
       label: 'Item Terjual (Qty)', 
       value: `${(data?.total_item_terjual_hari_ini ?? data?.totalItemTerjualHariIni ?? 0).toLocaleString('id-ID')} Pcs`, 
       desc: 'Fisik barang keluar kasir',
       icon: ShoppingBag, 
-      color: 'text-emerald-600 dark:text-emerald-400', 
-      bg: 'from-emerald-500/10 to-teal-500/10 border-emerald-500/20' 
+      color: 'text-emerald-600 dark:text-emerald-400'
     },
     { 
       label: 'Status Sesi Shift', 
       value: activeShift ? 'Shift Aktif' : 'Shift Standby', 
       desc: activeShift ? `Mulai: ${formatDate(activeShift.created_at)}` : 'Sesi kasir operasional POS',
       icon: Clock, 
-      color: 'text-indigo-600 dark:text-indigo-400', 
-      bg: 'from-indigo-500/10 to-purple-500/10 border-indigo-500/20' 
+      color: 'text-indigo-600 dark:text-indigo-400'
     },
     { 
       label: 'Tugas Serah Terima', 
       value: `${data?.pending_serah_terima || 0} Antrean`, 
       desc: 'Verifikasi pergantian shift',
       icon: ArrowRightLeft, 
-      color: 'text-amber-600 dark:text-amber-400', 
-      bg: 'from-amber-500/10 to-orange-500/10 border-amber-500/20' 
+      color: 'text-amber-600 dark:text-amber-400'
     },
   ]
 
@@ -109,67 +107,41 @@ export function KasirDashboard() {
   return (
     <div className="space-y-4 sm:space-y-6 pb-24 max-w-lg md:max-w-4xl mx-auto px-1 sm:px-0">
       
-      {/* ─── CARD 1: IDENTITY & ANGGOTA STATUS HERO (GLASSMORPHISM) ─── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-5 sm:p-6 shadow-xl border border-slate-800">
-        <div className="absolute -right-12 -top-12 w-48 h-48 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col gap-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white font-black text-lg flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0 ring-2 ring-white/10">
-                {user?.nama_lengkap ? user.nama_lengkap.charAt(0).toUpperCase() : user?.username?.charAt(0).toUpperCase() || 'K'}
+      {/* ─── CARD 1: IDENTITY & KASIR STATUS HERO ─── */}
+      <div className="rounded-3xl bg-slate-900 text-white p-5 sm:p-6 shadow-md border border-slate-800">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white font-black text-lg flex items-center justify-center shrink-0">
+              {user?.nama_lengkap ? user.nama_lengkap.charAt(0).toUpperCase() : user?.username?.charAt(0).toUpperCase() || 'K'}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
+                  {user?.nama_lengkap || user?.username}
+                </h2>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider flex items-center gap-1">
+                  <BadgeCheck className="w-3 h-3" />
+                  Kasir Aktif
+                </span>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
-                    {user?.nama_lengkap || user?.username}
-                  </h2>
-                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider flex items-center gap-1">
-                    <BadgeCheck className="w-3 h-3" />
-                    Kasir Aktif
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  @{user?.username} &bull; Anggota Resmi #{user?.anggota_id || '-'}
-                </p>
-              </div>
-            </div>
-
-            <span className="hidden sm:inline-block text-[11px] text-slate-400 bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl font-mono">
-              POS v2.1
-            </span>
-          </div>
-
-          {/* Member Financial Stats Pills */}
-          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/80">
-            <div className="bg-white/5 backdrop-blur-xs p-2.5 rounded-2xl border border-white/5">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">SHU Pribadi</p>
-              <p className="text-xs sm:text-sm font-black text-emerald-400 mt-0.5 truncate">
-                {formatRupiah(user?.shu || 0)}
-              </p>
-            </div>
-            <div className="bg-white/5 backdrop-blur-xs p-2.5 rounded-2xl border border-white/5">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Simpanan</p>
-              <p className="text-xs sm:text-sm font-black text-blue-300 mt-0.5 truncate">
-                {formatRupiah(user?.saldo || 300000)}
-              </p>
-            </div>
-            <div className="bg-white/5 backdrop-blur-xs p-2.5 rounded-2xl border border-white/5">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Limit Kasbon</p>
-              <p className="text-xs sm:text-sm font-black text-amber-300 mt-0.5 truncate">
-                {formatRupiah(400000)}
+              <p className="text-xs text-slate-400 mt-0.5">
+                @{user?.username} &bull; Anggota #{user?.anggota_id || '-'}
               </p>
             </div>
           </div>
+
+          <button
+            onClick={() => navigate('/kasir/transaksi')}
+            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs active:scale-95 transition-all shrink-0"
+          >
+            Buka POS &rarr;
+          </button>
         </div>
       </div>
 
-
-
       {/* ─── URGENT NOTIFICATION BANNER (SERAH TERIMA) ─── */}
       {(data?.pending_serah_terima || 0) > 0 && (
-        <div className="p-4 rounded-3xl bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-lg flex items-center justify-between gap-3 animate-pulse">
+        <div className="p-4 rounded-3xl bg-amber-600 text-white shadow-md flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
               <ArrowRightLeft className="w-5 h-5 text-white" />
@@ -183,7 +155,7 @@ export function KasirDashboard() {
           </div>
           <button
             onClick={() => navigate('/kasir/serah-terima')}
-            className="px-3.5 py-2 rounded-xl bg-white text-rose-700 font-black text-xs shadow-md shrink-0 active:scale-95 hover:bg-rose-50 transition-transform"
+            className="px-3.5 py-2 rounded-xl bg-white text-amber-900 font-bold text-xs shadow-xs shrink-0 active:scale-95 hover:bg-amber-50 transition-transform"
           >
             Validasi &rarr;
           </button>
@@ -254,11 +226,11 @@ export function KasirDashboard() {
           return (
             <div
               key={st.label}
-              className={`p-3.5 sm:p-4 rounded-3xl bg-gradient-to-br ${st.bg} bg-white dark:bg-slate-900 border shadow-xs flex flex-col justify-between`}
+              className="p-3.5 sm:p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{st.label}</span>
-                <div className={`p-1.5 rounded-xl bg-white/80 dark:bg-slate-800/80 shadow-2xs ${st.color}`}>
+                <div className={`p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 ${st.color}`}>
                   <Icon className="w-4 h-4" />
                 </div>
               </div>
@@ -273,33 +245,8 @@ export function KasirDashboard() {
         })}
       </div>
 
-      {/* ─── CARD 5: DUA AKSI SPESIFIK KASIR (NON-REDUNDANT DENGAN BOTTOMNAV) ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* Layanan Tarik Tunai SHU */}
-        <button
-          onClick={() => navigate('/kasir/tarik-tunai')}
-          className="p-4 rounded-3xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-600/20 flex items-center justify-between text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-              <Banknote className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h4 className="font-extrabold text-sm text-white">Layanan Tarik Tunai</h4>
-                <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-md bg-white/20 text-white">
-                  SHU
-                </span>
-              </div>
-              <p className="text-[11px] text-emerald-100 mt-0.5">
-                Verifikasi 4-Tahap & Pencairan Kas
-              </p>
-            </div>
-          </div>
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-            <ChevronRight className="w-4 h-4 text-white" />
-          </div>
-        </button>
+      {/* ─── CARD 5: AKSI SPESIFIK KASIR ─── */}
+      <div className="grid grid-cols-1 gap-3">
 
         {/* Setoran Kas Toko ke Admin */}
         <button
@@ -361,7 +308,15 @@ export function KasirDashboard() {
                       ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400'
                       : 'bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400'
                   }`}>
-                    {t.metode_pembayaran === 'cash' || t.metode_pembayaran === 'tunai' ? '💵' : t.metode_pembayaran === 'saldo' ? '💳' : t.metode_pembayaran === 'hutang' ? '📝' : '📱'}
+                    {t.metode_pembayaran === 'cash' || t.metode_pembayaran === 'tunai' ? (
+                      <Banknote className="w-4 h-4" />
+                    ) : t.metode_pembayaran === 'saldo' ? (
+                      <CreditCard className="w-4 h-4" />
+                    ) : t.metode_pembayaran === 'hutang' ? (
+                      <FileText className="w-4 h-4" />
+                    ) : (
+                      <Smartphone className="w-4 h-4" />
+                    )}
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-slate-900 dark:text-white truncate">

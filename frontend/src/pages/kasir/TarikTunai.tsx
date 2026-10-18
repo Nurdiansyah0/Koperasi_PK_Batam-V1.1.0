@@ -203,12 +203,11 @@ export const TarikTunai: React.FC = () => {
   return (
     <div className="space-y-6 pb-12">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white p-6 rounded-3xl shadow-lg relative overflow-hidden">
-        <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-emerald-600 text-white p-6 rounded-3xl shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <div className="p-2 bg-white/20 backdrop-blur-md rounded-xl">
+              <div className="p-2 bg-white/20 rounded-xl">
                 <Banknote className="w-5 h-5 text-emerald-100" />
               </div>
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-200">Layanan Kasir POS</span>

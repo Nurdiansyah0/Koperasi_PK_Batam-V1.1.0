@@ -15,19 +15,24 @@ class GetCashierDashboardQuery
      */
     public function execute(int $kasirId): array
     {
-        $penjualanHariIni = Transaksi::where('kasir_id', $kasirId)
-            ->whereDate('created_at', Carbon::today())
-            ->where('status', 'selesai')
-            ->sum('total_harga');
+        $todayStart = Carbon::today()->startOfDay();
+        $todayEnd = Carbon::today()->endOfDay();
 
-        $transaksiHariIniIds = Transaksi::where('kasir_id', $kasirId)
-            ->whereDate('created_at', Carbon::today())
+        $dailyStats = Transaksi::where('kasir_id', $kasirId)
             ->where('status', 'selesai')
-            ->pluck('transaksi_id');
+            ->whereBetween('created_at', [$todayStart, $todayEnd])
+            ->selectRaw('COUNT(*) as total_transaksi, COALESCE(SUM(total_harga), 0) as total_penjualan')
+            ->first();
 
-        $transaksiHariIni = $transaksiHariIniIds->count();
+        $penjualanHariIni = (float) ($dailyStats->total_penjualan ?? 0);
+        $transaksiHariIni = (int) ($dailyStats->total_transaksi ?? 0);
+
         $itemTerjualHariIni = $transaksiHariIni > 0
-            ? (int) TransaksiDetail::whereIn('transaksi_id', $transaksiHariIniIds)->sum('jumlah')
+            ? (int) TransaksiDetail::join('transaksi', 'transaksi.transaksi_id', '=', 'transaksi_detail.transaksi_id')
+                ->where('transaksi.kasir_id', $kasirId)
+                ->where('transaksi.status', 'selesai')
+                ->whereBetween('transaksi.created_at', [$todayStart, $todayEnd])
+                ->sum('transaksi_detail.jumlah')
             : 0;
 
         $totalTransaksiDilayani = Transaksi::where('kasir_id', $kasirId)
@@ -101,46 +106,56 @@ class GetCashierDashboardQuery
 
     private function calculateSaldoKasKasir(int $kasirId): float
     {
-        $cashInTrx = Transaksi::where('kasir_id', $kasirId)
+        $lastHandover = SerahTerimaKasir::where('status', 'approved')
+            ->where(function ($q) use ($kasirId) {
+                $q->where('kasir_to', $kasirId)->orWhere('kasir_from', $kasirId);
+            })
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        $shiftStart = $lastHandover ? $lastHandover->created_at : null;
+
+        $startingBalance = 0;
+        if ($lastHandover && $lastHandover->kasir_to == $kasirId) {
+            $h = $lastHandover->hasil_opname;
+            if (is_string($h)) {
+                $h = json_decode($h, true);
+            }
+            $startingBalance = $h['uang_fisik'] ?? 0;
+        }
+
+        $trxQuery = Transaksi::where('kasir_id', $kasirId)
             ->where('status', 'selesai')
-            ->whereIn('metode_pembayaran', ['cash', 'tunai'])
-            ->sum('total_harga');
+            ->whereIn('metode_pembayaran', ['cash', 'tunai', 'potong_tarik_tunai']);
+        if ($shiftStart) {
+            $trxQuery->where('created_at', '>=', $shiftStart);
+        }
+        $cashInTrx = $trxQuery->sum('total_harga');
 
-        $cashInSerah = SerahTerimaKasir::where('kasir_to', $kasirId)
-            ->where('status', 'approved')
-            ->pluck('hasil_opname')
-            ->sum(function ($h) {
-                if (is_string($h)) {
-                    $h = json_decode($h, true);
-                }
-                return $h['uang_fisik'] ?? 0;
-            });
+        $setorQuery = \App\Models\SetoranKasir::where('kasir_id', $kasirId)
+            ->where('status', 'approved');
+        if ($shiftStart) {
+            $setorQuery->where('created_at', '>=', $shiftStart);
+        }
+        $cashOutSetor = $setorQuery->sum('nominal');
 
-        $cashOutSerah = SerahTerimaKasir::where('kasir_from', $kasirId)
-            ->where('status', 'approved')
-            ->pluck('hasil_opname')
-            ->sum(function ($h) {
-                if (is_string($h)) {
-                    $h = json_decode($h, true);
-                }
-                return $h['uang_fisik'] ?? 0;
-            });
-
-        $cashOutSetor = \App\Models\SetoranKasir::where('kasir_id', $kasirId)
-            ->where('status', 'approved')
-            ->sum('nominal');
-
-        $cashDebtRepay = DB::table('pembayaran_hutang')
+        $debtQuery = DB::table('pembayaran_hutang')
             ->where('kasir_id', $kasirId)
             ->where('status', 'approved')
-            ->where('metode_pembayaran', 'cash')
-            ->sum('nominal');
+            ->where('metode_pembayaran', 'cash');
+        if ($shiftStart) {
+            $debtQuery->where('created_at', '>=', $shiftStart);
+        }
+        $cashDebtRepay = $debtQuery->sum('nominal');
 
-        $cashWithdrawals = DB::table('tarik_tunai')
-            ->where('kasir_id', $kasirId)
-            ->sum('nominal');
+        $withdrawQuery = DB::table('tarik_tunai')
+            ->where('kasir_id', $kasirId);
+        if ($shiftStart) {
+            $withdrawQuery->where('created_at', '>=', $shiftStart);
+        }
+        $cashWithdrawals = $withdrawQuery->sum('nominal');
 
-        return (float) ($cashInTrx + $cashDebtRepay + $cashInSerah - $cashWithdrawals - $cashOutSerah - $cashOutSetor);
+        return (float) ($startingBalance + $cashInTrx + $cashDebtRepay - $cashWithdrawals - $cashOutSetor);
     }
 
     private function parseHasilOpname($raw, $barangs = null)

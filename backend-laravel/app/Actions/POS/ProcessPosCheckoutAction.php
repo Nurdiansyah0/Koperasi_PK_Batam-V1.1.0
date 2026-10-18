@@ -178,16 +178,20 @@ class ProcessPosCheckoutAction
                 $this->recordPosIntegratedTarikTunaiAction->linkTransaction($tarik, $transaksi->transaksi_id);
             }
 
-            // 8. Persist Transaksi Details
+            // 8. Persist Transaksi Details (Bulk Insert)
+            $detailRecords = [];
             foreach ($transaksiItems as $tItem) {
-                TransaksiDetail::create([
+                $detailRecords[] = [
                     'transaksi_id' => $transaksi->transaksi_id,
                     'barang_id' => $tItem['barang_id'],
                     'jumlah' => $tItem['jumlah'],
                     'harga_satuan' => $tItem['harga_satuan'],
                     'subtotal' => $tItem['subtotal'],
                     'keuntungan' => $tItem['keuntungan'],
-                ]);
+                ];
+            }
+            if (! empty($detailRecords)) {
+                TransaksiDetail::insert($detailRecords);
             }
 
             // 9. Calculate and Distribute SHU (60% Anggota, 10% & 30% Koperasi)
