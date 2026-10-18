@@ -8,6 +8,13 @@ use App\Http\Controllers\KasirController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes with rate limiting
+Route::get('/ping', function () {
+    return response()->json([
+        'status' => 'ONLINE',
+        'app' => 'Koperasi PK Batam API',
+        'timestamp' => now()->toIso8601String(),
+    ]);
+});
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/reset-password', [AuthController::class, 'resetPasswordWithChallenge'])->middleware('throttle:5,1');
 

@@ -4,9 +4,10 @@
 # Target: koperasipkbatam.my.id (Shared Apache Hosting)
 #
 # Usage:
-#   ./deploy.sh          → Full deploy (frontend + backend)
-#   ./deploy.sh frontend → Frontend only
-#   ./deploy.sh backend  → Backend only
+#   ./deploy.sh          → Full deploy (snapshot + frontend + backend)
+#   ./deploy.sh snapshot → Safety snapshot backup only
+#   ./deploy.sh frontend → Snapshot + Frontend only
+#   ./deploy.sh backend  → Snapshot + Backend only
 # =======================================================
 
 set -e
@@ -49,6 +50,54 @@ upload_dir() {
     rm /tmp/koperasi_upload.tar.gz
 }
 
+# ── Remote Snapshot Backup (Safety Snapshot) ───────────
+snapshot_backup() {
+    if [ "$SKIP_SNAPSHOT" = "1" ] || [ "$SKIP_SNAPSHOT" = "true" ]; then
+        echo ""
+        echo "[SNAPSHOT] Skipping snapshot backup (SKIP_SNAPSHOT is set)."
+        return 0
+    fi
+
+    local TIMESTAMP
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    local BACKUP_FILENAME="production_public_html_backup_${TIMESTAMP}.tar.gz"
+    local BACKUP_PATH="/home/$REMOTE_USER/$BACKUP_FILENAME"
+
+    echo ""
+    echo "[SNAPSHOT] Creating safety snapshot backup on server..."
+    echo "  Target: $BACKUP_PATH"
+    echo "  Source: $REMOTE_PATH"
+
+    $SSH "$REMOTE_USER@$REMOTE_HOST" bash -s "$BACKUP_PATH" "$REMOTE_USER" << 'ENDSSH'
+set -e
+BACKUP_PATH="$1"
+REMOTE_USER="$2"
+MIN_SIZE=1048576
+
+echo "  → Archiving /home/$REMOTE_USER/public_html to $BACKUP_PATH..."
+tar -czf "$BACKUP_PATH" -C "/home/$REMOTE_USER" public_html
+
+if [ ! -f "$BACKUP_PATH" ]; then
+    echo "  ✗ ERROR: Backup file was not created: $BACKUP_PATH" >&2
+    exit 1
+fi
+
+BACKUP_SIZE=$(stat -c%s "$BACKUP_PATH" 2>/dev/null || stat -f%z "$BACKUP_PATH")
+echo "  → Archive created successfully: $BACKUP_PATH ($BACKUP_SIZE bytes)"
+
+if [ "$BACKUP_SIZE" -le "$MIN_SIZE" ]; then
+    echo "  ✗ ERROR: Backup archive size ($BACKUP_SIZE bytes) is <= 1MB ($MIN_SIZE bytes)." >&2
+    exit 1
+fi
+
+echo "  → Verifying archive integrity via tar -tzf..."
+tar -tzf "$BACKUP_PATH" | head -n 30 > /dev/null
+echo "  ✓ Archive integrity verified. Size: $BACKUP_SIZE bytes (> 1MB)"
+ENDSSH
+
+    echo "[SNAPSHOT] ✓ Safety snapshot backup completed and verified."
+}
+
 # ── Frontend Build & Deploy ─────────────────────────────
 deploy_frontend() {
     echo ""
@@ -87,8 +136,30 @@ deploy_frontend() {
 # ── Laravel Backend Deploy ─────────────────────────────
 deploy_backend() {
     echo ""
-    echo "[BACKEND] Verifying server .env..."
+    echo "[BACKEND] Preparing server .env..."
     $SSH "$REMOTE_USER@$REMOTE_HOST" "mkdir -p $REMOTE_PATH/laravel"
+
+    # Auto-restore production .env from verified backup if not already present
+    local BACKUP_ENV="/home/$REMOTE_USER/production_public_html_backup_20260927_030311/laravel/.env"
+    $SSH "$REMOTE_USER@$REMOTE_HOST" bash -s "$REMOTE_PATH" "$BACKUP_ENV" << 'ENDSSH'
+set -e
+REMOTE_PATH="$1"
+BACKUP_ENV="$2"
+
+if [ ! -f "$REMOTE_PATH/laravel/.env" ]; then
+    if [ -f "$BACKUP_ENV" ]; then
+        echo "  → Auto-restoring production .env from $BACKUP_ENV..."
+        cp "$BACKUP_ENV" "$REMOTE_PATH/laravel/.env"
+        chmod 600 "$REMOTE_PATH/laravel/.env"
+        echo "  ✓ Production .env restored successfully (mode 0600)."
+    else
+        echo "  ✗ WARNING: Backup .env not found at $BACKUP_ENV" >&2
+    fi
+else
+    chmod 600 "$REMOTE_PATH/laravel/.env"
+fi
+ENDSSH
+
     if ! $SSH "$REMOTE_USER@$REMOTE_HOST" "test -f $REMOTE_PATH/laravel/.env"; then
         echo "  ✗ Production .env is missing on the server."
         echo "    Create/configure $REMOTE_PATH/laravel/.env manually before deployment."
@@ -110,7 +181,8 @@ deploy_backend() {
     rm -f  "$TMPDIR/server.log"
     rm -f  "$TMPDIR"/patch* "$TMPDIR"/fix_* "$TMPDIR"/sync_stok.php
 
-    # Never deploy local SQLite databases or patch/backup artifacts
+    # Strictly exclude local SQLite databases (database.sqlite, restored.sqlite, testing.sqlite, etc.)
+    rm -f "$TMPDIR/database/"*.sqlite*
     find "$TMPDIR" -type f \( -name "*.sqlite" -o -name "*.sqlite-*" -o -name "*.orig" -o -name "*.patch" -o -name "*.rej" \) -delete 2>/dev/null || true
 
     # Clean local logs
@@ -155,22 +227,24 @@ chmod 755 public
 if [ -x "/opt/cpanel/ea-php82/root/usr/bin/php" ]; then
     PHP_BIN="/opt/cpanel/ea-php82/root/usr/bin/php"
 else
-    PHP_BIN="php"
+    PHP_BIN="$(which php)"
 fi
 
 # Auto-detect Composer binary
 if [ -f "/usr/local/bin/composer" ]; then
-    COMPOSER_CMD="$PHP_BIN /usr/local/bin/composer"
+    COMPOSER_BIN="/usr/local/bin/composer"
 elif [ -f "$HOME/composer.phar" ]; then
-    COMPOSER_CMD="$PHP_BIN $HOME/composer.phar"
+    COMPOSER_BIN="$HOME/composer.phar"
 elif which composer >/dev/null 2>&1; then
-    COMPOSER_CMD="composer"
+    COMPOSER_BIN="$(which composer)"
 else
-    COMPOSER_CMD="$PHP_BIN /usr/local/bin/composer"
+    COMPOSER_BIN="/usr/local/bin/composer"
 fi
 
-echo "  → Installing Composer dependencies..."
-$COMPOSER_CMD install --no-dev --optimize-autoloader --quiet
+COMPOSER_CMD="$PHP_BIN $COMPOSER_BIN"
+
+echo "  → Installing Composer dependencies ($COMPOSER_CMD)..."
+$COMPOSER_CMD install --no-dev --optimize-autoloader
 
 echo "  → Verifying APP_KEY (generating if not set)..."
 grep -q "^APP_KEY=.\+" .env || $PHP_BIN artisan key:generate --no-interaction --force
@@ -195,9 +269,10 @@ ENDSSH
 
 # ── Run ────────────────────────────────────────────────
 case "$DEPLOY_TARGET" in
-    frontend) deploy_frontend ;;
-    backend)  deploy_backend ;;
-    all|*)    deploy_frontend; deploy_backend ;;
+    snapshot) snapshot_backup ;;
+    frontend) snapshot_backup; deploy_frontend ;;
+    backend)  snapshot_backup; deploy_backend ;;
+    all|*)    snapshot_backup; deploy_frontend; deploy_backend ;;
 esac
 
 echo ""
