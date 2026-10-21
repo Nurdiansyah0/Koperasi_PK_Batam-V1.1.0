@@ -31,6 +31,7 @@ fi
 SSH="ssh -i $SSH_KEY -p $REMOTE_PORT -o StrictHostKeyChecking=yes"
 SCP="scp -i $SSH_KEY -P $REMOTE_PORT -o StrictHostKeyChecking=yes"
 DEPLOY_TARGET="${1:-all}"
+LOCAL_TMP="${TMPDIR:-/tmp}"
 
 chmod 600 "$SSH_KEY"
 
@@ -44,10 +45,10 @@ upload_dir() {
     local LOCAL_DIR="$1"
     local REMOTE_DIR="$2"
     echo "  → Packing and uploading $(basename $LOCAL_DIR)..."
-    tar -czf /tmp/koperasi_upload.tar.gz -C "$LOCAL_DIR" .
-    $SCP /tmp/koperasi_upload.tar.gz "$REMOTE_USER@$REMOTE_HOST:/tmp/koperasi_upload.tar.gz"
+    tar -czf "$LOCAL_TMP/koperasi_upload.tar.gz" -C "$LOCAL_DIR" .
+    $SCP "$LOCAL_TMP/koperasi_upload.tar.gz" "$REMOTE_USER@$REMOTE_HOST:/tmp/koperasi_upload.tar.gz"
     $SSH "$REMOTE_USER@$REMOTE_HOST" "mkdir -p $REMOTE_DIR && tar -xzf /tmp/koperasi_upload.tar.gz -C $REMOTE_DIR && rm /tmp/koperasi_upload.tar.gz"
-    rm /tmp/koperasi_upload.tar.gz
+    rm "$LOCAL_TMP/koperasi_upload.tar.gz"
 }
 
 # ── Remote Snapshot Backup (Safety Snapshot) ───────────
@@ -120,11 +121,11 @@ deploy_frontend() {
     rm -f "$TMPDIR/fix_rocky_bcrypt.php"
 
     # Upload packed assets
-    tar -czf /tmp/koperasi_frontend.tar.gz -C "$TMPDIR" .
+    tar -czf "$LOCAL_TMP/koperasi_frontend.tar.gz" -C "$TMPDIR" .
     rm -rf "$TMPDIR"
-    $SCP /tmp/koperasi_frontend.tar.gz "$REMOTE_USER@$REMOTE_HOST:/tmp/koperasi_frontend.tar.gz"
+    $SCP "$LOCAL_TMP/koperasi_frontend.tar.gz" "$REMOTE_USER@$REMOTE_HOST:/tmp/koperasi_frontend.tar.gz"
     $SSH "$REMOTE_USER@$REMOTE_HOST" "rm -rf $REMOTE_PATH/assets $REMOTE_PATH/dist $REMOTE_PATH/workbox-*.js && tar -xzf /tmp/koperasi_frontend.tar.gz -C $REMOTE_PATH && rm /tmp/koperasi_frontend.tar.gz && chmod 750 $REMOTE_PATH"
-    rm /tmp/koperasi_frontend.tar.gz
+    rm "$LOCAL_TMP/koperasi_frontend.tar.gz"
 
     # Upload .htaccess last (always overwrite)
     $SCP "$SCRIPT_DIR/public_html/.htaccess" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH/.htaccess"
@@ -208,13 +209,13 @@ ENDSSH
              "$TMPDIR/storage/logs" \
              "$TMPDIR/bootstrap/cache"
 
-    tar -czf /tmp/koperasi_backend.tar.gz -C "$TMPDIR" .
+    tar -czf "$LOCAL_TMP/koperasi_backend.tar.gz" -C "$TMPDIR" .
     rm -rf "$TMPDIR"
 
     echo "[BACKEND] Uploading to server..."
-    $SCP /tmp/koperasi_backend.tar.gz "$REMOTE_USER@$REMOTE_HOST:/tmp/koperasi_backend.tar.gz"
+    $SCP "$LOCAL_TMP/koperasi_backend.tar.gz" "$REMOTE_USER@$REMOTE_HOST:/tmp/koperasi_backend.tar.gz"
     $SSH "$REMOTE_USER@$REMOTE_HOST" "mkdir -p $REMOTE_PATH/laravel && tar -xzf /tmp/koperasi_backend.tar.gz -C $REMOTE_PATH/laravel && rm /tmp/koperasi_backend.tar.gz"
-    rm /tmp/koperasi_backend.tar.gz
+    rm "$LOCAL_TMP/koperasi_backend.tar.gz"
 
     echo "[BACKEND] Running post-deploy setup on server..."
     $SSH "$REMOTE_USER@$REMOTE_HOST" bash << 'ENDSSH'

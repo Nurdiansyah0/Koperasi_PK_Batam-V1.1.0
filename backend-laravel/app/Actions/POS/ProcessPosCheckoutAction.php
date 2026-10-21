@@ -79,6 +79,9 @@ class ProcessPosCheckoutAction
             }
 
             $metodePembayaran = $data['metode_pembayaran'] ?? 'cash';
+            if ($metodePembayaran === 'saldo') {
+                $metodePembayaran = 'ewallet';
+            }
 
             // 3. Payment Mode Execution via Members Action
             $this->applyPosMemberBalanceChangesAction->execute($anggota, $metodePembayaran, $totalHarga);

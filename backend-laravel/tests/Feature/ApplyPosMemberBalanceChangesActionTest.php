@@ -69,16 +69,32 @@ class ApplyPosMemberBalanceChangesActionTest extends TestCase
         $this->assertEquals(60000, (float) $this->anggota->saldo);
     }
 
-    public function test_ewallet_payment_fails_when_member_has_outstanding_debt(): void
+    public function test_ewallet_payment_succeeds_even_when_member_has_outstanding_debt(): void
     {
         $this->anggota->saldo = 100000;
         $this->anggota->hutang = 15000;
         $this->anggota->save();
 
-        $this->expectException(Exception::class);
-        $this->expectExceptionMessage('Gagal: Anggota ini masih memiliki tunggakan hutang. Harap lunasi terlebih dahulu.');
+        $result = $this->action->execute($this->anggota, 'ewallet', 40000);
 
-        $this->action->execute($this->anggota, 'ewallet', 40000);
+        $this->assertSame($this->anggota, $result);
+        $this->anggota->refresh();
+        $this->assertEquals(60000, (float) $this->anggota->saldo);
+        $this->assertEquals(15000, (float) $this->anggota->hutang);
+    }
+
+    public function test_saldo_payment_alias_succeeds_even_when_member_has_outstanding_debt(): void
+    {
+        $this->anggota->saldo = 100000;
+        $this->anggota->hutang = 15000;
+        $this->anggota->save();
+
+        $result = $this->action->execute($this->anggota, 'saldo', 40000);
+
+        $this->assertSame($this->anggota, $result);
+        $this->anggota->refresh();
+        $this->assertEquals(60000, (float) $this->anggota->saldo);
+        $this->assertEquals(15000, (float) $this->anggota->hutang);
     }
 
     public function test_ewallet_payment_fails_when_saldo_is_insufficient(): void

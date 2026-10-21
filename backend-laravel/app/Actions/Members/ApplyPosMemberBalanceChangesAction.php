@@ -11,7 +11,7 @@ class ApplyPosMemberBalanceChangesAction
      * Executes member balance mutations for POS checkout payments within an ambient transaction.
      *
      * @param  Anggota  $anggota  Already-locked member model instance
-     * @param  string  $metodePembayaran  Payment mode ('ewallet', 'hutang', 'cash', etc.)
+     * @param  string  $metodePembayaran  Payment mode ('ewallet', 'saldo', 'hutang', 'cash', etc.)
      * @param  float  $totalHarga  Authoritative transaction total
      * @return Anggota Updated member instance
      *
@@ -19,10 +19,7 @@ class ApplyPosMemberBalanceChangesAction
      */
     public function execute(Anggota $anggota, string $metodePembayaran, float $totalHarga): Anggota
     {
-        if ($metodePembayaran === 'ewallet') {
-            if ($anggota->hutang > 0) {
-                throw new Exception('Gagal: Anggota ini masih memiliki tunggakan hutang. Harap lunasi terlebih dahulu.');
-            }
+        if ($metodePembayaran === 'ewallet' || $metodePembayaran === 'saldo') {
             if ($anggota->saldo < $totalHarga) {
                 throw new Exception('Gagal: Saldo tidak mencukupi. Saldo tersedia: Rp '.number_format($anggota->saldo, 0, ',', '.'));
             }

@@ -268,7 +268,7 @@ class AnggotaController extends Controller
     public function simpanTransaksi(Request $request)
     {
         $request->validate([
-            'metode_pembayaran' => 'required|string|in:cash,qr,ewallet,transfer,hutang,potong_tarik_tunai',
+            'metode_pembayaran' => 'required|string|in:cash,qr,ewallet,saldo,transfer,hutang,potong_tarik_tunai',
             'items' => 'required|array',
             'items.*.barang_id' => 'required|integer',
             'items.*.jumlah' => 'required|integer|min:1',
@@ -279,7 +279,7 @@ class AnggotaController extends Controller
         ]);
 
         $anggotaId = $this->getAnggotaId($request);
-        $metode = $request->metode_pembayaran;
+        $metode = $request->metode_pembayaran === 'saldo' ? 'ewallet' : $request->metode_pembayaran;
         $items = $request->items;
 
         DB::beginTransaction();
@@ -416,7 +416,7 @@ class AnggotaController extends Controller
 
                     $anggota->hutang += $totalHarga;
                     $anggota->save();
-                } elseif ($metode === 'ewallet') {
+                } elseif ($metode === 'ewallet' || $metode === 'saldo') {
                     if ($anggota->saldo < $totalHarga) {
                         throw new \Exception('Saldo tidak mencukupi');
                     }

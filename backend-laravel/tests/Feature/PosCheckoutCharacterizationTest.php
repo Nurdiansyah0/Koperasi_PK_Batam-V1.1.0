@@ -347,10 +347,10 @@ class PosCheckoutCharacterizationTest extends TestCase
         $this->assertEquals(60000, $response->json('tarik_tunai.nominal_tarik'));
     }
 
-    public function test_checkout_ewallet_blocks_when_member_has_any_debt(): void
+    public function test_checkout_ewallet_succeeds_even_when_member_has_any_debt(): void
     {
         $barang = Barang::create([
-            'nama_barang' => 'Barang Ewallet Debt Block '.uniqid(),
+            'nama_barang' => 'Barang Ewallet Debt Allowed '.uniqid(),
             'stok' => 10,
             'stok_toko' => 10,
             'harga_modal' => 5000,
@@ -376,12 +376,16 @@ class PosCheckoutCharacterizationTest extends TestCase
         $response = $this->withHeader('Authorization', "Bearer {$this->kasirToken}")
             ->postJson('/laravel/api/kasir/buat-transaksi', $payload);
 
-        $response->assertStatus(400);
-        $this->assertStringContainsString('tunggakan hutang', $response->json('message'));
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Transaksi berhasil',
+            ]);
 
-        // Saldo remains untouched
+        // Saldo is deducted (500k - 10k = 490k), debt remains unchanged at 15000
         $this->anggota->refresh();
-        $this->assertEquals(500000, (float) $this->anggota->saldo);
+        $this->assertEquals(490000, (float) $this->anggota->saldo);
+        $this->assertEquals(15000, (float) $this->anggota->hutang);
     }
 
     public function test_checkout_hutang_enforces_sisa_limit_ceiling(): void
