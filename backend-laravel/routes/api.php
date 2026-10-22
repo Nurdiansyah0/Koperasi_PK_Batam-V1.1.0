@@ -23,6 +23,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth Profile
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
+    // Ganti password akun sendiri (semua role: admin, kasir, anggota)
+    Route::post('/change-password', [AnggotaController::class, 'changePassword'])->middleware('throttle:10,1');
 
     // Anggota Module
     Route::prefix('anggota')->group(function () {
@@ -91,6 +93,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/anggota', [AdminController::class, 'getAnggota']);
         Route::post('/tambah-user', [AdminController::class, 'tambahUser']);
         Route::post('/update-user', [AdminController::class, 'updateUser']);
+        Route::post('/reset-password-user', [AdminController::class, 'resetPasswordUser']);
         Route::post('/hapus-user', [AdminController::class, 'hapusUser']);
         Route::get('/setoran-kasir', [AdminController::class, 'getSetoranKasir']);
         Route::post('/approve-setoran-kasir', [AdminController::class, 'approveSetoranKasir']);

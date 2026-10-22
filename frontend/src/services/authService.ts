@@ -15,7 +15,7 @@ export const authService = {
   },
 
   changePassword: async (old_password: string, new_password: string): Promise<ApiResponse> => {
-    const { data } = await api.post<ApiResponse>('/laravel/api/anggota/change-password', {
+    const { data } = await api.post<ApiResponse>('/laravel/api/change-password', {
       current_password: old_password,
       new_password,
     })

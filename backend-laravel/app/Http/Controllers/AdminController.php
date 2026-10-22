@@ -618,6 +618,7 @@ class AdminController extends Controller
         $anggota = Anggota::with('user')->get()->map(function ($a) {
             return [
                 'anggota_id' => $a->anggota_id,
+                'user_id' => $a->user_id,
                 'nama_lengkap' => $a->nama_lengkap,
                 'username' => $a->user ? $a->user->username : '',
                 'saldo' => (float) $a->saldo,
@@ -709,6 +710,38 @@ class AdminController extends Controller
 
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
+    }
+
+    /**
+     * Admin mereset password user lain (lupa password, akun kasir/anggota baru, dll).
+     * Untuk akun sendiri gunakan /change-password (wajib password lama).
+     */
+    public function resetPasswordUser(Request $request)
+    {
+        $adminId = $this->checkAdmin($request);
+        $request->validate([
+            'user_id' => 'required|integer|exists:users,user_id',
+            'password_baru' => 'required|string|min:6',
+        ]);
+
+        if ((int) $request->user_id === (int) $adminId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gunakan menu Akun Saya untuk mengganti password Anda sendiri',
+            ], 422);
+        }
+
+        $user = User::find($request->user_id);
+        $user->password_hash = Hash::make($request->password_baru);
+        $user->save();
+
+        // Paksa logout semua sesi aktif user tersebut
+        $user->tokens()->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Password user {$user->username} berhasil direset",
+        ]);
     }
 
     public function hapusUser(Request $request)

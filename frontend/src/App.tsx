@@ -39,6 +39,7 @@ const Belanja              = lazy(() => import('./pages/anggota/Belanja'))
 const BayarHutang          = lazy(() => import('./pages/anggota/BayarHutang'))
 const RiwayatAnggota       = lazy(() => import('./pages/anggota/Riwayat').then(m => ({ default: m.RiwayatTransaksiAnggota })))
 const ProfilPage           = lazy(() => import('./pages/anggota/Profil'))
+const AkunSaya             = lazy(() => import('./pages/AkunSaya'))
 const TarikTunaiAnggota    = lazy(() => import('./pages/anggota/TarikTunai'))
 
 // ─── Loading Skeleton yang ringan ─────────────────────────────────────────────
@@ -92,6 +93,7 @@ export function App() {
             <Route path="tarik-tunai" element={<LaporanTarikTunai />} />
             <Route path="setoran-kasir" element={<PersetujuanSetoran />} />
             <Route path="integrasi-api" element={<ApiIntegration />} />
+            <Route path="akun" element={<AkunSaya />} />
           </Route>
 
           {/* Kasir Routes */}
@@ -105,6 +107,7 @@ export function App() {
             <Route path="serah-terima/buat" element={<BuatSerahTerima />} />
             <Route path="setoran" element={<SetoranKasir />} />
             <Route path="riwayat" element={<RiwayatKasir />} />
+            <Route path="akun" element={<AkunSaya />} />
           </Route>
 
           {/* Anggota Routes */}

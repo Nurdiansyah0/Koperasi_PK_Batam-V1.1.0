@@ -71,7 +71,7 @@ export function AppLayout() {
 
           <div className="flex items-center gap-2">
             <button 
-              onClick={() => navigate(user.role === 'anggota' ? '/anggota/profil' : `/${user.role}`)}
+              onClick={() => navigate(user.role === 'anggota' ? '/anggota/profil' : `/${user.role}/akun`)}
               className="flex items-center gap-2 py-1 px-2.5 rounded-full bg-slate-100 dark:bg-zinc-800/80 active:scale-95 transition-transform"
             >
               <div className="w-5 h-5 rounded-full bg-blue-600 text-white font-extrabold text-[10px] flex items-center justify-center shadow-xs">

@@ -67,6 +67,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       items: [
         { to: '/admin/integrasi-api', icon: KeyRound, label: 'Integrasi API & Web' },
       ]
+    },
+    {
+      title: 'Pengaturan Akun',
+      items: [
+        { to: '/admin/akun', icon: UserCircle, label: 'Akun Saya' },
+      ]
     }
   ]
 
@@ -90,6 +96,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       items: [
         { to: '/kasir/serah-terima', icon: ArrowRightLeft, label: 'Operasional Shift' },
         { to: '/kasir/riwayat', icon: History, label: 'Riwayat Transaksi' },
+      ]
+    },
+    {
+      title: 'Pengaturan Akun',
+      items: [
+        { to: '/kasir/akun', icon: UserCircle, label: 'Akun Saya' },
       ]
     }
   ]

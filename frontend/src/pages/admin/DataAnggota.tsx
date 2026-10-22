@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
-import { Search, ChevronLeft, ChevronRight, Users, Wallet, HandCoins, CreditCard, UserCheck, Calculator } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Users, Wallet, HandCoins, CreditCard, UserCheck, Calculator, KeyRound } from 'lucide-react'
 
 export function DataAnggota() {
   const [anggota, setAnggota] = useState<Anggota[]>([])
@@ -18,6 +18,12 @@ export function DataAnggota() {
   const [selectedAnggota, setSelectedAnggota] = useState<Anggota | null>(null)
   const [jumlahSHU, setJumlahSHU] = useState(0)
   const [saving, setSaving] = useState(false)
+
+  // Reset password user
+  const [resetTarget, setResetTarget] = useState<Anggota | null>(null)
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetConfirm, setResetConfirm] = useState('')
+  const [resetting, setResetting] = useState(false)
 
   // Pagination & Search
   const [search, setSearch] = useState('')
@@ -103,6 +109,29 @@ export function DataAnggota() {
       toast.error(error.response?.data?.message || error.response?.data?.error || 'Gagal mencairkan SHU')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleOpenReset = (item: Anggota) => {
+    setResetTarget(item)
+    setResetPassword('')
+    setResetConfirm('')
+  }
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!resetTarget) return
+    if (resetPassword.length < 6) return toast.error('Password minimal 6 karakter')
+    if (resetPassword !== resetConfirm) return toast.error('Konfirmasi password tidak cocok')
+    setResetting(true)
+    try {
+      const res = await adminService.resetPasswordUser(resetTarget.user_id, resetPassword)
+      toast.success(res.message || 'Password berhasil direset')
+      setResetTarget(null)
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Gagal mereset password')
+    } finally {
+      setResetting(false)
     }
   }
 
@@ -233,15 +262,26 @@ export function DataAnggota() {
                     </div>
                   </div>
 
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={item.shu <= 0}
-                    onClick={() => handleOpenTopup(item)}
-                    className="h-8 px-2.5 rounded-xl font-bold text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 shrink-0"
-                  >
-                    <HandCoins className="w-3.5 h-3.5 mr-1" /> Cairkan
-                  </Button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenReset(item)}
+                      title="Reset Password"
+                      className="h-8 px-2 rounded-xl text-slate-500 border-slate-200 hover:bg-slate-50"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={item.shu <= 0}
+                      onClick={() => handleOpenTopup(item)}
+                      className="h-8 px-2.5 rounded-xl font-bold text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 shrink-0"
+                    >
+                      <HandCoins className="w-3.5 h-3.5 mr-1" /> Cairkan
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 pt-1 text-center">
@@ -367,7 +407,16 @@ export function DataAnggota() {
                         <span className="text-slate-400 font-medium text-sm">Rp 0</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right pr-4">
+                    <TableCell className="text-right pr-4 whitespace-nowrap">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        title="Reset Password"
+                        className="h-8 px-2.5 mr-2 shadow-sm border-slate-200 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs"
+                        onClick={() => handleOpenReset(item)}
+                      >
+                        <KeyRound className="w-3.5 h-3.5" />
+                      </Button>
                       <Button 
                         size="sm" 
                         variant="outline" 
@@ -467,6 +516,36 @@ export function DataAnggota() {
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
             <Button type="button" variant="ghost" className="font-medium" onClick={() => setIsModalOpen(false)}>Batal</Button>
             <Button type="submit" loading={saving} variant="primary" className="font-bold px-6 shadow-md shadow-blue-500/20">Konfirmasi Pencairan</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={!!resetTarget} onClose={() => setResetTarget(null)} title="Reset Password User">
+        <form onSubmit={handleResetPassword} className="space-y-4">
+          <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 text-sm">
+            Reset password untuk <b>{resetTarget?.nama_lengkap || resetTarget?.username}</b> (@{resetTarget?.username}).
+            Semua sesi login user ini akan otomatis keluar.
+          </div>
+          <Input
+            label="Password Baru"
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={6}
+            value={resetPassword}
+            onChange={e => setResetPassword(e.target.value)}
+          />
+          <Input
+            label="Konfirmasi Password Baru"
+            type="password"
+            autoComplete="new-password"
+            required
+            value={resetConfirm}
+            onChange={e => setResetConfirm(e.target.value)}
+          />
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <Button type="button" variant="ghost" className="font-medium" onClick={() => setResetTarget(null)}>Batal</Button>
+            <Button type="submit" loading={resetting} variant="danger" className="font-bold px-6">Reset Password</Button>
           </div>
         </form>
       </Modal>

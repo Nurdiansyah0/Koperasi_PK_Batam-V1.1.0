@@ -76,6 +76,11 @@ export const adminService = {
     return data
   },
 
+  resetPasswordUser: async (user_id: number, password_baru: string): Promise<ApiResponse> => {
+    const { data } = await api.post<ApiResponse>('/laravel/api/admin/reset-password-user', { user_id, password_baru })
+    return data
+  },
+
   hapusUser: async (user_id: number): Promise<ApiResponse> => {
     const { data } = await api.post<ApiResponse>('/laravel/api/admin/hapus-user', { user_id })
     return data
