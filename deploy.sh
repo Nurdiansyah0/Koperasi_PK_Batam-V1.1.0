@@ -102,29 +102,34 @@ ENDSSH
 # ── Frontend Build & Deploy ─────────────────────────────
 deploy_frontend() {
     echo ""
-    echo "[FRONTEND] Building React app..."
-    cd "$SCRIPT_DIR/frontend"
+    if [ "$SKIP_BUILD" = "1" ] || [ "$SKIP_BUILD" = "true" ]; then
+        echo "[FRONTEND] Skipping build (using pre-built public_html)..."
+    else
+        echo "[FRONTEND] Building React app..."
+        cd "$SCRIPT_DIR/frontend"
 
-    echo "VITE_API_URL=" > .env.production
-    npm run build
-    echo "[FRONTEND] ✓ Build complete"
+        echo "VITE_API_URL=" > .env.production
+        npm run build
+        echo "[FRONTEND] ✓ Build complete"
+    fi
 
     echo "[FRONTEND] Uploading assets to server..."
 
     # Create a clean temp copy excluding files we don't want to overwrite
-    TMPDIR=$(mktemp -d)
-    cp -r "$SCRIPT_DIR/public_html/." "$TMPDIR/"
-    rm -f "$TMPDIR/.htaccess"     # handled separately
-    rm -rf "$TMPDIR/laravel"      # backend folder, not touched by frontend
-    rm -rf "$TMPDIR/api"          # legacy PHP, keep on server
-    rm -f "$TMPDIR/composer.phar"
-    rm -f "$TMPDIR/fix_rocky_bcrypt.php"
+    local TEMP_FRONTEND_DIR
+    TEMP_FRONTEND_DIR=$(mktemp -d)
+    cp -r "$SCRIPT_DIR/public_html/." "$TEMP_FRONTEND_DIR/"
+    rm -f "$TEMP_FRONTEND_DIR/.htaccess"     # handled separately
+    rm -rf "$TEMP_FRONTEND_DIR/laravel"      # backend folder, not touched by frontend
+    rm -rf "$TEMP_FRONTEND_DIR/api"          # legacy PHP, keep on server
+    rm -f "$TEMP_FRONTEND_DIR/composer.phar"
+    rm -f "$TEMP_FRONTEND_DIR/fix_rocky_bcrypt.php"
 
     # Upload packed assets
-    tar -czf "$LOCAL_TMP/koperasi_frontend.tar.gz" -C "$TMPDIR" .
-    rm -rf "$TMPDIR"
+    tar -czf "$LOCAL_TMP/koperasi_frontend.tar.gz" -C "$TEMP_FRONTEND_DIR" .
+    rm -rf "$TEMP_FRONTEND_DIR"
     $SCP "$LOCAL_TMP/koperasi_frontend.tar.gz" "$REMOTE_USER@$REMOTE_HOST:/tmp/koperasi_frontend.tar.gz"
-    $SSH "$REMOTE_USER@$REMOTE_HOST" "rm -rf $REMOTE_PATH/assets $REMOTE_PATH/dist $REMOTE_PATH/workbox-*.js && tar -xzf /tmp/koperasi_frontend.tar.gz -C $REMOTE_PATH && rm /tmp/koperasi_frontend.tar.gz && chmod 750 $REMOTE_PATH"
+    $SSH "$REMOTE_USER@$REMOTE_HOST" "rm -rf $REMOTE_PATH/assets $REMOTE_PATH/dist $REMOTE_PATH/workbox-*.js && tar -xzf /tmp/koperasi_frontend.tar.gz -C $REMOTE_PATH && rm /tmp/koperasi_frontend.tar.gz && chmod 750 $REMOTE_PATH && chmod -R 755 $REMOTE_PATH/assets && chmod 644 $REMOTE_PATH/index.html"
     rm "$LOCAL_TMP/koperasi_frontend.tar.gz"
 
     # Upload .htaccess last (always overwrite)
@@ -170,47 +175,48 @@ ENDSSH
     echo "  ✓ Production .env exists; preserving server configuration."
 
     echo "[BACKEND] Packing Laravel (excluding vendor, .env, logs, runtime caches, sqlite, tests)..."
-    TMPDIR=$(mktemp -d)
-    cp -r "$SCRIPT_DIR/backend-laravel/." "$TMPDIR/"
-    rm -rf "$TMPDIR/vendor"
-    rm -rf "$TMPDIR/node_modules"
-    rm -rf "$TMPDIR/tests"
-    rm -f  "$TMPDIR"/.env*
-    rm -f  "$TMPDIR/phpunit.xml"
-    rm -f  "$TMPDIR/.phpunit.result.cache"
-    rm -f  "$TMPDIR/test_results.log"
-    rm -f  "$TMPDIR/server.log"
-    rm -f  "$TMPDIR"/patch* "$TMPDIR"/fix_* "$TMPDIR"/sync_stok.php
+    local TEMP_BACKEND_DIR
+    TEMP_BACKEND_DIR=$(mktemp -d)
+    cp -r "$SCRIPT_DIR/backend-laravel/." "$TEMP_BACKEND_DIR/"
+    rm -rf "$TEMP_BACKEND_DIR/vendor"
+    rm -rf "$TEMP_BACKEND_DIR/node_modules"
+    rm -rf "$TEMP_BACKEND_DIR/tests"
+    rm -f  "$TEMP_BACKEND_DIR"/.env*
+    rm -f  "$TEMP_BACKEND_DIR/phpunit.xml"
+    rm -f  "$TEMP_BACKEND_DIR/.phpunit.result.cache"
+    rm -f  "$TEMP_BACKEND_DIR/test_results.log"
+    rm -f  "$TEMP_BACKEND_DIR/server.log"
+    rm -f  "$TEMP_BACKEND_DIR"/patch* "$TEMP_BACKEND_DIR"/fix_* "$TEMP_BACKEND_DIR"/sync_stok.php
 
     # Strictly exclude local SQLite databases (database.sqlite, restored.sqlite, testing.sqlite, etc.)
-    rm -f "$TMPDIR/database/"*.sqlite*
-    find "$TMPDIR" -type f \( -name "*.sqlite" -o -name "*.sqlite-*" -o -name "*.orig" -o -name "*.patch" -o -name "*.rej" \) -delete 2>/dev/null || true
+    rm -f "$TEMP_BACKEND_DIR/database/"*.sqlite*
+    find "$TEMP_BACKEND_DIR" -type f \( -name "*.sqlite" -o -name "*.sqlite-*" -o -name "*.orig" -o -name "*.patch" -o -name "*.rej" \) -delete 2>/dev/null || true
 
     # Clean local logs
-    find "$TMPDIR/storage" -name "*.log" -delete 2>/dev/null || true
+    find "$TEMP_BACKEND_DIR/storage" -name "*.log" -delete 2>/dev/null || true
 
     # Never deploy local runtime cache/session/testing state
-    find "$TMPDIR/storage/framework/cache/data" -mindepth 1 -not -name ".gitignore" -delete 2>/dev/null || true
-    find "$TMPDIR/storage/framework/sessions" -mindepth 1 -not -name ".gitignore" -delete 2>/dev/null || true
-    find "$TMPDIR/storage/framework/testing" -mindepth 1 -not -name ".gitignore" -delete 2>/dev/null || true
+    find "$TEMP_BACKEND_DIR/storage/framework/cache/data" -mindepth 1 -not -name ".gitignore" -delete 2>/dev/null || true
+    find "$TEMP_BACKEND_DIR/storage/framework/sessions" -mindepth 1 -not -name ".gitignore" -delete 2>/dev/null || true
+    find "$TEMP_BACKEND_DIR/storage/framework/testing" -mindepth 1 -not -name ".gitignore" -delete 2>/dev/null || true
 
     # Remove compiled Blade/runtime artifacts
-    find "$TMPDIR/storage/framework/views" -type f ! -name ".gitignore" -delete 2>/dev/null || true
-    find "$TMPDIR/storage/framework" -name "*.php" -not -name ".gitignore" -delete 2>/dev/null || true
+    find "$TEMP_BACKEND_DIR/storage/framework/views" -type f ! -name ".gitignore" -delete 2>/dev/null || true
+    find "$TEMP_BACKEND_DIR/storage/framework" -name "*.php" -not -name ".gitignore" -delete 2>/dev/null || true
 
     # Remove generated bootstrap cache
-    rm -f "$TMPDIR/bootstrap/cache/"*.php
+    rm -f "$TEMP_BACKEND_DIR/bootstrap/cache/"*.php
 
     # Ensure required framework runtime directory structure exists
-    mkdir -p "$TMPDIR/storage/framework/cache/data" \
-             "$TMPDIR/storage/framework/sessions" \
-             "$TMPDIR/storage/framework/views" \
-             "$TMPDIR/storage/framework/testing" \
-             "$TMPDIR/storage/logs" \
-             "$TMPDIR/bootstrap/cache"
+    mkdir -p "$TEMP_BACKEND_DIR/storage/framework/cache/data" \
+             "$TEMP_BACKEND_DIR/storage/framework/sessions" \
+             "$TEMP_BACKEND_DIR/storage/framework/views" \
+             "$TEMP_BACKEND_DIR/storage/framework/testing" \
+             "$TEMP_BACKEND_DIR/storage/logs" \
+             "$TEMP_BACKEND_DIR/bootstrap/cache"
 
-    tar -czf "$LOCAL_TMP/koperasi_backend.tar.gz" -C "$TMPDIR" .
-    rm -rf "$TMPDIR"
+    tar -czf "$LOCAL_TMP/koperasi_backend.tar.gz" -C "$TEMP_BACKEND_DIR" .
+    rm -rf "$TEMP_BACKEND_DIR"
 
     echo "[BACKEND] Uploading to server..."
     $SCP "$LOCAL_TMP/koperasi_backend.tar.gz" "$REMOTE_USER@$REMOTE_HOST:/tmp/koperasi_backend.tar.gz"
