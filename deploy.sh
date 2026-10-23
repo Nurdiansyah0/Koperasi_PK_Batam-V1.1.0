@@ -129,7 +129,7 @@ deploy_frontend() {
     tar -czf "$LOCAL_TMP/koperasi_frontend.tar.gz" -C "$TEMP_FRONTEND_DIR" .
     rm -rf "$TEMP_FRONTEND_DIR"
     $SCP "$LOCAL_TMP/koperasi_frontend.tar.gz" "$REMOTE_USER@$REMOTE_HOST:/tmp/koperasi_frontend.tar.gz"
-    $SSH "$REMOTE_USER@$REMOTE_HOST" "rm -rf $REMOTE_PATH/assets $REMOTE_PATH/dist $REMOTE_PATH/workbox-*.js && tar -xzf /tmp/koperasi_frontend.tar.gz -C $REMOTE_PATH && rm /tmp/koperasi_frontend.tar.gz && chmod 750 $REMOTE_PATH && chmod -R 755 $REMOTE_PATH/assets && chmod 644 $REMOTE_PATH/index.html"
+    $SSH "$REMOTE_USER@$REMOTE_HOST" "rm -rf $REMOTE_PATH/assets $REMOTE_PATH/dist $REMOTE_PATH/workbox-*.js && tar -xzf /tmp/koperasi_frontend.tar.gz -C $REMOTE_PATH && rm /tmp/koperasi_frontend.tar.gz && chmod 750 $REMOTE_PATH && chmod -R 755 $REMOTE_PATH/assets && chmod 644 $REMOTE_PATH/*.js $REMOTE_PATH/*.svg $REMOTE_PATH/*.png $REMOTE_PATH/*.webmanifest $REMOTE_PATH/*.txt $REMOTE_PATH/*.html 2>/dev/null || true"
     rm "$LOCAL_TMP/koperasi_frontend.tar.gz"
 
     # Upload .htaccess last (always overwrite)
