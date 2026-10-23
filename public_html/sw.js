@@ -1,1 +1,26 @@
-if(!self.define){let e,s={};const i=(i,n)=>(i=new URL(i+".js",n).href,s[i]||new Promise(s=>{if("document"in self){const e=document.createElement("script");e.src=i,e.onload=s,document.head.appendChild(e)}else e=i,importScripts(i),s()}).then(()=>{let e=s[i];if(!e)throw new Error(`Module ${i} didn’t register its module`);return e}));self.define=(n,r)=>{const l=e||("document"in self?document.currentScript.src:"")||location.href;if(s[l])return;let o={};const a=e=>i(e,l),t={module:{uri:l},exports:o,require:a};s[l]=Promise.all(n.map(e=>t[e]||a(e))).then(e=>(r(...e),o))}}define(["./workbox-efbd304a"],function(e){"use strict";importScripts("/push-sw.js"),self.skipWaiting(),e.clientsClaim(),e.precacheAndRoute([{url:"registerSW.js",revision:"1872c500de691dce40960bb85481de07"},{url:"push-sw.js",revision:"0c02cdeff265961844ae085195e5a082"},{url:"index.html",revision:"f3273ce6e68afba495f85e452a6b5dc7"},{url:"icons.svg",revision:"3b4fcfcf393eca4d264dca4a4663bc37"},{url:"favicon.svg",revision:"d072f078551260de775ab78139379cd9"},{url:"Logo.svg",revision:"f62d59426ffca90c595c7692aba1c06b"},{url:"Invinite_Logo.png",revision:"c337342e8e20679e073db413b1e6a68d"},{url:"assets/vendor-react-CW2pBTOz.js",revision:null},{url:"assets/vendor-libs-DtZThsj8.js",revision:null},{url:"assets/vendor-icons-3N4J9nKJ.js",revision:null},{url:"assets/rolldown-runtime-hePW80VL.js",revision:null},{url:"assets/pages-kasir-CX9OZ1zx.js",revision:null},{url:"assets/pages-anggota-CDkLp-zo.js",revision:null},{url:"assets/pages-admin-B5DZDgWE.js",revision:null},{url:"assets/index-tXyFQ2Hr.js",revision:null},{url:"assets/index-D5CBlbVJ.css",revision:null},{url:"assets/ResetPasswordPage-CFSEEZsc.js",revision:null},{url:"Logo.svg",revision:"f62d59426ffca90c595c7692aba1c06b"},{url:"favicon.svg",revision:"d072f078551260de775ab78139379cd9"},{url:"robots.txt",revision:"5e0bd1c281a62a380d7a948085bfe2d1"},{url:"manifest.webmanifest",revision:"38103c2fce34b039a8e9440fa1e7098b"}],{}),e.cleanupOutdatedCaches(),e.registerRoute(new e.NavigationRoute(e.createHandlerBoundToURL("/index.html"),{allowlist:[/^(?!\/(api|laravel)).*$/]})),e.registerRoute(({request:e,url:s})=>"GET"===e.method&&(s.pathname.includes("/barang")||s.pathname.includes("/paket-belanja")),new e.NetworkFirst({cacheName:"catalog-cache",plugins:[new e.ExpirationPlugin({maxEntries:50,maxAgeSeconds:300}),new e.CacheableResponsePlugin({statuses:[0,200]})]}),"GET")});
+// Self-updating, cache-busting Service Worker for Koperasi PK Batam
+const CACHE_VERSION = 'koperasi-sw-v2';
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          return caches.delete(key);
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+  // Always fetch fresh from network for assets, scripts, and API
+  event.respondWith(
+    fetch(event.request).catch(() => caches.match(event.request))
+  );
+});

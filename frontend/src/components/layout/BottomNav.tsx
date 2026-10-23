@@ -24,15 +24,15 @@ export function BottomNav() {
     { to: '/admin/barang', icon: Package, label: 'Barang' },
     { to: '/admin/anggota', icon: Users, label: 'Anggota' },
     { to: '/admin/laporan', icon: FileText, label: 'Laporan' },
-    { to: '/admin/setoran-kasir', icon: Wallet, label: 'Setoran' },
+    { to: '/admin/akun', icon: UserCircle, label: 'Akun' },
   ]
 
   const kasirNav = [
     { to: '/kasir', icon: LayoutDashboard, label: 'Beranda' },
     { to: '/kasir/pesanan', icon: ShoppingBag, label: 'Pesanan' },
     { to: '/kasir/transaksi', icon: Store, label: 'POS', isPrimary: true },
-    { to: '/kasir/hutang', icon: CreditCard, label: 'Hutang' },
     { to: '/kasir/serah-terima', icon: ArrowRightLeft, label: 'Shift' },
+    { to: '/kasir/akun', icon: UserCircle, label: 'Akun' },
   ]
 
   const anggotaNav = [
