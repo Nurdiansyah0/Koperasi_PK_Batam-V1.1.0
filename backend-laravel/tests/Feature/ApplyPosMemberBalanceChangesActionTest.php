@@ -51,6 +51,7 @@ class ApplyPosMemberBalanceChangesActionTest extends TestCase
             'user_id' => $this->anggotaUser->user_id,
             'nama_lengkap' => 'Anggota Unit Test',
             'saldo' => 200000,
+            'simpanan_pokok' => 300000,
             'hutang' => 0,
             'shu' => 50000,
         ]);
@@ -130,6 +131,18 @@ class ApplyPosMemberBalanceChangesActionTest extends TestCase
         $this->expectExceptionMessage('melebihi sisa limit hutang Rp 50.000');
 
         $this->action->execute($this->anggota, 'hutang', 60000);
+    }
+
+    public function test_hutang_payment_fails_when_member_has_zero_simpanan_pokok(): void
+    {
+        $this->anggota->simpanan_pokok = 0;
+        $this->anggota->hutang = 0;
+        $this->anggota->save();
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('melebihi sisa limit hutang Rp 0');
+
+        $this->action->execute($this->anggota, 'hutang', 10000);
     }
 
     public function test_cash_payment_does_not_mutate_member_balance(): void

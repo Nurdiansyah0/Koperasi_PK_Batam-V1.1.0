@@ -408,9 +408,8 @@ class AnggotaController extends Controller
             } else {
                 // If paying by hutang or ewallet
                 if ($metode === 'hutang') {
-                    $limit_hutang = 400000;
-                    if (($anggota->hutang + $totalHarga) > $limit_hutang) {
-                        $sisa_limit = $limit_hutang - $anggota->hutang;
+                    $sisa_limit = (float) $anggota->sisa_limit_hutang;
+                    if ($sisa_limit <= 0 || $totalHarga > $sisa_limit) {
                         throw new \Exception('Gagal: Limit hutang Koperasi tidak mencukupi. Sisa limit Anda: Rp '.number_format($sisa_limit > 0 ? $sisa_limit : 0, 0, ',', '.'));
                     }
 

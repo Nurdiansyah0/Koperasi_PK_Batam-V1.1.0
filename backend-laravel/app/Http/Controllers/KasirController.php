@@ -305,11 +305,10 @@ class KasirController extends Controller
 
         $anggota = Cache::remember('kasir_all_anggota_slim', 120, function () {
             // NOTE: limit_hutang, sisa_limit_hutang, allowance_hutang adalah computed attributes
-            // (accessor di Model Anggota via $appends), BUKAN kolom database.
-            // Jangan masukkan ke select() — Eloquent akan append otomatis setelah get().
+            // (accessor di Model Anggota via $appends), simpanan_pokok dibaca dari database.
             return Anggota::select(
                 'anggota_id', 'user_id', 'nama_lengkap',
-                'saldo', 'hutang', 'shu'
+                'saldo', 'hutang', 'shu', 'simpanan_pokok'
             )
                 ->with('user:user_id,username')
                 ->orderBy('nama_lengkap', 'asc')

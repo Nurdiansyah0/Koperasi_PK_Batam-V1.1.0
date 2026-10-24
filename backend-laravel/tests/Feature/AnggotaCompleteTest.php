@@ -36,6 +36,7 @@ class AnggotaCompleteTest extends TestCase
             'nama_lengkap' => 'Test Anggota API',
             'email' => 'test_anggota_api@example.com',
             'saldo' => 500000,
+            'simpanan_pokok' => 300000,
             'hutang' => 0,
             'shu' => 0,
         ]);
@@ -132,6 +133,24 @@ class AnggotaCompleteTest extends TestCase
     public function test_simpan_transaksi_fail_limit_hutang()
     {
         $this->anggotaUser->anggota->hutang = 400000;
+        $this->anggotaUser->anggota->save();
+
+        $response = $this->withHeader('Authorization', "Bearer {$this->token}")
+            ->postJson('/laravel/api/anggota/transaksi', [
+                'metode_pembayaran' => 'hutang',
+                'items' => [
+                    [
+                        'barang_id' => $this->barang->barang_id,
+                        'jumlah' => 1,
+                    ],
+                ],
+            ]);
+        $response->assertStatus(400);
+    }
+
+    public function test_simpan_transaksi_fail_zero_simpanan_pokok()
+    {
+        $this->anggotaUser->anggota->simpanan_pokok = 0;
         $this->anggotaUser->anggota->save();
 
         $response = $this->withHeader('Authorization', "Bearer {$this->token}")
