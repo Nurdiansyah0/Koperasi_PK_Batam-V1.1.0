@@ -1,0 +1,137 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "d91df381166da08f7a7947f61ce66006",
+    "entities": [
+      {
+        "tableName": "cached_barang",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`barang_id` INTEGER NOT NULL, `nama_barang` TEXT NOT NULL, `kategori` TEXT, `stok` INTEGER NOT NULL, `stok_toko` INTEGER NOT NULL, `stok_gudang` INTEGER NOT NULL, `harga_jual` REAL NOT NULL, `harga_modal` REAL NOT NULL, `pkm` INTEGER NOT NULL, `satuan` TEXT, `tgl_kadaluarsa_toko` TEXT, `tgl_kadaluarsa_gudang` TEXT, `status_kadaluarsa_toko` TEXT, `status_kadaluarsa_gudang` TEXT, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`barang_id`))",
+        "fields": [
+          {
+            "fieldPath": "barangId",
+            "columnName": "barang_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "namaBarang",
+            "columnName": "nama_barang",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kategori",
+            "columnName": "kategori",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "stok",
+            "columnName": "stok",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stokToko",
+            "columnName": "stok_toko",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stokGudang",
+            "columnName": "stok_gudang",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hargaJual",
+            "columnName": "harga_jual",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hargaModal",
+            "columnName": "harga_modal",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pkm",
+            "columnName": "pkm",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "satuan",
+            "columnName": "satuan",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "tglKadaluarsaToko",
+            "columnName": "tgl_kadaluarsa_toko",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "tglKadaluarsaGudang",
+            "columnName": "tgl_kadaluarsa_gudang",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "statusKadaluarsaToko",
+            "columnName": "status_kadaluarsa_toko",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "statusKadaluarsaGudang",
+            "columnName": "status_kadaluarsa_gudang",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "barang_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cached_barang_nama_barang",
+            "unique": false,
+            "columnNames": [
+              "nama_barang"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cached_barang_nama_barang` ON `${TABLE_NAME}` (`nama_barang`)"
+          },
+          {
+            "name": "index_cached_barang_kategori",
+            "unique": false,
+            "columnNames": [
+              "kategori"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cached_barang_kategori` ON `${TABLE_NAME}` (`kategori`)"
+          }
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd91df381166da08f7a7947f61ce66006')"
+    ]
+  }
+}

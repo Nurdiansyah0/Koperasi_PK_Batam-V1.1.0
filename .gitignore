@@ -14,7 +14,18 @@ id_rsa*
 # Database and SQLite Cache
 *.sqlite
 *.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
 *.sql
+
+# Data Dumps & Compiled Binaries
+esraPurbaShurelease.csv
+esra_purba_dump.json
+Laporan_Resmi_SHU_Esra_Purba.pdf
+backend-go/server
+
+# Agent Teamwork Logs
+.agents/teamwork/
 
 # Patch, Backup, and Scratch Artifacts
 *.orig
